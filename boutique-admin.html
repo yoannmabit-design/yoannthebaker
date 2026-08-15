@@ -67,7 +67,7 @@
     background:transparent;border:1px solid var(--trait);color:var(--alerte);
     padding:9px 13px;border-radius:var(--r);cursor:pointer;font-size:14px;
   }
-  .option{
+  .option,.cadre{
     border:1px solid var(--trait);border-radius:var(--r);
     padding:14px;margin-bottom:12px;background:#fff;
   }
@@ -179,7 +179,7 @@
         <h2>Coordonnées de paiement</h2>
         <p class="aide">Affichées au client au moment de choisir son paiement. Un moyen sans numéro ni QR n'est pas proposé. Pour le QR, indiquez le nom du fichier déposé dans le dépôt (par exemple <code>qr-gcash.jpg</code>) ou une adresse complète.</p>
 
-        <div class="option">
+        <div class="cadre">
           <div class="grille">
             <div><label for="gcashNom">GCash — nom du compte</label>
               <input type="text" id="gcashNom" placeholder="Yoann M."></div>
@@ -190,7 +190,7 @@
           </div>
         </div>
 
-        <div class="option">
+        <div class="cadre">
           <div class="grille">
             <div><label for="mayaNom">Maya — nom du compte</label>
               <input type="text" id="mayaNom"></div>
@@ -201,7 +201,7 @@
           </div>
         </div>
 
-        <div class="option">
+        <div class="cadre">
           <div class="grille">
             <div><label for="banqueNom">Banque</label>
               <input type="text" id="banqueNom" placeholder="BPI"></div>
@@ -418,7 +418,7 @@ function ajouterOption(o = {}) {
 $("btnAjoutOption").onclick = () => ajouterOption();
 
 function lireOptions() {
-  return [...document.querySelectorAll(".option")].map(b => ({
+  return [...document.querySelectorAll("#listeOptions .option")].map(b => ({
     nom: b.querySelector(".o-nom").value.trim(),
     type: b.querySelector(".o-type").value,
     tarif: Number(b.querySelector(".o-tarif").value) || 0,
