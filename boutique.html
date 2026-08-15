@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Yoann's French Bakery — Order online</title>
+<meta name="description" content="Authentic French artisan bread and pastries, baked to order in Manila.">
+<meta name="theme-color" content="#1a1a1a">
+<style>
+  :root{
+    --creme:#fdf6ec;
+    --papier:#fffdf9;
+    --encre:#1a1a1a;
+    --encre-doux:#6b6157;
+    --trait:#e2d7c6;
+    --accent:#2f4858;
+    --epuise:#9a9188;
+    --r:6px;
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0;background:var(--creme);color:var(--encre);
+    font:16px/1.55 ui-sans-serif,-apple-system,"Segoe UI",Roboto,sans-serif;
+    padding-bottom:96px;
+  }
+
+  /* ---------- En-tête ---------- */
+  .banniere{
+    background:var(--encre);color:var(--creme);
+    padding:30px 20px;text-align:center;
+  }
+  .banniere .logo{
+    width:112px;height:112px;border-radius:50%;
+    object-fit:contain;background:var(--creme);
+    display:block;margin:0 auto 18px;
+  }
+  .banniere h1{
+    font-family:"Iowan Old Style",Georgia,"Times New Roman",serif;
+    font-size:clamp(27px,7vw,40px);font-weight:400;
+    margin:0;letter-spacing:.015em;
+  }
+  .banniere .sous{
+    margin:9px 0 0;font-size:12.5px;letter-spacing:.19em;
+    text-transform:uppercase;opacity:.72;
+  }
+  .avis{
+    background:#f3e8d5;border-bottom:1px solid var(--trait);
+    padding:13px 20px;text-align:center;font-size:14.5px;color:#4a4038;
+  }
+
+  main{max-width:760px;margin:0 auto;padding:26px 16px 30px}
+
+  /* ---------- Catégories ---------- */
+  .categorie{margin-bottom:34px}
+  .categorie h2{
+    font-family:"Iowan Old Style",Georgia,serif;
+    font-size:20px;font-weight:400;margin:0 0 3px;
+  }
+  .categorie .filet{height:1px;background:var(--trait);margin-bottom:16px}
+
+  /* ---------- Produit ---------- */
+  .produit{
+    display:flex;gap:14px;align-items:center;
+    padding:14px 0;border-bottom:1px solid var(--trait);
+  }
+  .produit:last-child{border-bottom:none}
+  .produit img{
+    width:66px;height:66px;object-fit:cover;border-radius:var(--r);
+    background:#efe6d8;flex-shrink:0;
+  }
+  .infos{flex:1;min-width:0}
+  .infos .nom{font-weight:600;font-size:16px}
+  .infos .desc{
+    font-size:13.5px;color:var(--encre-doux);margin-top:2px;
+  }
+  .infos .prix{font-size:15px;margin-top:5px}
+  .produit.indispo{opacity:.55}
+  .indispo .etiquette{
+    font-size:11.5px;letter-spacing:.09em;text-transform:uppercase;
+    color:var(--epuise);margin-top:5px;
+  }
+
+  /* ---------- Compteur ---------- */
+  .compteur{display:flex;align-items:center;gap:9px;flex-shrink:0}
+  .compteur button{
+    width:38px;height:38px;border-radius:50%;
+    border:1px solid var(--trait);background:var(--papier);
+    font-size:19px;line-height:1;color:var(--encre);cursor:pointer;
+  }
+  .compteur button:active{background:var(--trait)}
+  .compteur button:disabled{opacity:.3;cursor:default}
+  .compteur .n{min-width:20px;text-align:center;font-variant-numeric:tabular-nums}
+  .ajouter{
+    border:1px solid var(--accent);background:transparent;color:var(--accent);
+    padding:9px 17px;border-radius:var(--r);font-size:14.5px;
+    font-weight:600;cursor:pointer;white-space:nowrap;
+  }
+  .ajouter:active{background:var(--accent);color:#fff}
+
+  /* ---------- Panier ---------- */
+  .panier{
+    position:fixed;left:0;right:0;bottom:0;
+    background:var(--encre);color:var(--creme);
+    padding:14px 18px;display:flex;align-items:center;gap:14px;
+    transform:translateY(110%);transition:transform .22s ease;
+  }
+  .panier.visible{transform:translateY(0)}
+  .panier .resume{flex:1;min-width:0}
+  .panier .articles{font-size:13px;opacity:.75}
+  .panier .total{font-size:19px;font-weight:600;font-variant-numeric:tabular-nums}
+  .panier button{
+    background:var(--creme);color:var(--encre);border:none;
+    padding:13px 22px;border-radius:var(--r);
+    font-size:15.5px;font-weight:600;cursor:pointer;
+  }
+
+  .message{padding:52px 20px;text-align:center;color:var(--encre-doux)}
+  footer{
+    text-align:center;padding:24px 20px 34px;
+    font-size:13px;color:var(--encre-doux);
+  }
+  @media (prefers-reduced-motion:reduce){
+    .panier{transition:none}
+  }
+  @media (max-width:420px){
+    .produit img{width:56px;height:56px}
+    .compteur button{width:36px;height:36px}
+  }
+</style>
+</head>
+<body>
+
+<div class="banniere">
+  <img class="logo" src="logo.jpg" alt="Yoann's French Bakery"
+       onerror="this.remove()">
+  <h1>Yoann's French Bakery</h1>
+  <p class="sous">Baked to order in Manila</p>
+</div>
+
+<div class="avis" id="avis" hidden></div>
+
+<main id="catalogue">
+  <div class="message">Loading the bakery…</div>
+</main>
+
+<footer id="pied"></footer>
+
+<div class="panier" id="panier">
+  <div class="resume">
+    <div class="articles" id="panierArticles"></div>
+    <div class="total" id="panierTotal"></div>
+  </div>
+  <button id="btnCommander">Checkout</button>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, collection, getDocs, doc, getDoc }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDuq8KS8M_Z8U7BlSp6MvE-6Y9OYYaDujE",
+  authDomain: "bakertools-ae124.firebaseapp.com",
+  projectId: "bakertools-ae124",
+  storageBucket: "bakertools-ae124.firebasestorage.app",
+  messagingSenderId: "978584667113",
+  appId: "1:978584667113:web:868cc89788aff27717c178"
+};
+
+const db = getFirestore(initializeApp(firebaseConfig));
+const $  = (id) => document.getElementById(id);
+
+/* Ordre d'affichage des catégories. Toute catégorie non listée passe à la fin. */
+const ORDRE = ["Pains", "Viennoiseries", "Autres"];
+
+let produits = [];
+let panier   = {};   // { idProduit: quantité }
+
+/* ---------- Panier conservé sur l'appareil du client ---------- */
+function chargerPanier() {
+  try { panier = JSON.parse(localStorage.getItem("panier") || "{}"); }
+  catch { panier = {}; }
+}
+function sauverPanier() {
+  try { localStorage.setItem("panier", JSON.stringify(panier)); } catch {}
+}
+
+const peso = (n) => "₱" + Number(n).toLocaleString("en-PH");
+
+/* ---------- Chargement ---------- */
+async function demarrer() {
+  chargerPanier();
+  try {
+    const [params, catalogue] = await Promise.all([
+      getDoc(doc(db, "parametres", "boutique")),
+      getDocs(collection(db, "boutique_produits"))
+    ]);
+
+    if (params.exists()) {
+      const p = params.data();
+      if (p.message_accueil) {
+        $("avis").textContent = p.message_accueil;
+        $("avis").hidden = false;
+      }
+      if (p.whatsapp) {
+        $("pied").innerHTML =
+          'Questions? <a href="https://wa.me/' + p.whatsapp +
+          '" style="color:#2f4858">Message us on WhatsApp</a>';
+      }
+    }
+
+    produits = [];
+    catalogue.forEach(s => {
+      const d = s.data();
+      if (d.visible === false) return;
+      produits.push({ id: s.id, ...d });
+    });
+
+    // Le panier peut contenir des produits retirés depuis la dernière visite.
+    Object.keys(panier).forEach(id => {
+      if (!produits.some(p => p.id === id && p.disponible !== false)) delete panier[id];
+    });
+    sauverPanier();
+
+    afficher();
+  } catch (e) {
+    console.error(e);
+    $("catalogue").innerHTML =
+      '<div class="message">The menu could not be loaded. Please refresh the page.</div>';
+  }
+}
+
+/* ---------- Affichage ---------- */
+function afficher() {
+  const zone = $("catalogue");
+
+  if (!produits.length) {
+    zone.innerHTML =
+      '<div class="message">No products available right now. Please check back soon.</div>';
+    majPanier();
+    return;
+  }
+
+  const groupes = {};
+  produits.forEach(p => {
+    const c = p.categorie || "Autres";
+    (groupes[c] = groupes[c] || []).push(p);
+  });
+
+  const cles = Object.keys(groupes).sort((a, b) => {
+    const ia = ORDRE.indexOf(a), ib = ORDRE.indexOf(b);
+    return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib) || a.localeCompare(b);
+  });
+
+  zone.innerHTML = "";
+  cles.forEach(cle => {
+    const bloc = document.createElement("section");
+    bloc.className = "categorie";
+
+    const titre = document.createElement("h2");
+    titre.textContent = cle;
+    bloc.appendChild(titre);
+    bloc.insertAdjacentHTML("beforeend", '<div class="filet"></div>');
+
+    groupes[cle]
+      .sort((a, b) => a.nom.localeCompare(b.nom))
+      .forEach(p => bloc.appendChild(ligneProduit(p)));
+
+    zone.appendChild(bloc);
+  });
+
+  majPanier();
+}
+
+function ligneProduit(p) {
+  const dispo = p.disponible !== false;
+  const el = document.createElement("div");
+  el.className = "produit" + (dispo ? "" : " indispo");
+
+  if (p.photo_url) {
+    const img = document.createElement("img");
+    img.src = p.photo_url;
+    img.alt = "";
+    img.loading = "lazy";
+    img.onerror = () => img.remove();
+    el.appendChild(img);
+  }
+
+  const infos = document.createElement("div");
+  infos.className = "infos";
+  const nom = document.createElement("div");
+  nom.className = "nom";
+  nom.textContent = p.nom;
+  infos.appendChild(nom);
+
+  if (p.description_client) {
+    const d = document.createElement("div");
+    d.className = "desc";
+    d.textContent = p.description_client;
+    infos.appendChild(d);
+  }
+
+  const prix = document.createElement("div");
+  prix.className = "prix";
+  prix.textContent = peso(p.prix_vente || 0);
+  infos.appendChild(prix);
+
+  if (!dispo) {
+    const e = document.createElement("div");
+    e.className = "etiquette";
+    e.textContent = "Sold out";
+    infos.appendChild(e);
+  }
+  el.appendChild(infos);
+
+  if (dispo) el.appendChild(controle(p));
+  return el;
+}
+
+function controle(p) {
+  const n = panier[p.id] || 0;
+
+  if (!n) {
+    const b = document.createElement("button");
+    b.className = "ajouter";
+    b.textContent = "Add";
+    b.setAttribute("aria-label", "Add " + p.nom);
+    b.onclick = () => { panier[p.id] = 1; apresChangement(); };
+    return b;
+  }
+
+  const boite = document.createElement("div");
+  boite.className = "compteur";
+
+  const moins = document.createElement("button");
+  moins.textContent = "−";
+  moins.setAttribute("aria-label", "Remove one " + p.nom);
+  moins.onclick = () => {
+    panier[p.id] > 1 ? panier[p.id]-- : delete panier[p.id];
+    apresChangement();
+  };
+
+  const compte = document.createElement("span");
+  compte.className = "n";
+  compte.textContent = n;
+
+  const plus = document.createElement("button");
+  plus.textContent = "+";
+  plus.setAttribute("aria-label", "Add one " + p.nom);
+  plus.onclick = () => { panier[p.id] = n + 1; apresChangement(); };
+
+  boite.append(moins, compte, plus);
+  return boite;
+}
+
+function apresChangement() {
+  sauverPanier();
+  afficher();
+}
+
+/* ---------- Barre du panier ---------- */
+function majPanier() {
+  let articles = 0, total = 0;
+  produits.forEach(p => {
+    const q = panier[p.id];
+    if (q) { articles += q; total += q * (p.prix_vente || 0); }
+  });
+
+  $("panier").classList.toggle("visible", articles > 0);
+  $("panierArticles").textContent = articles + (articles === 1 ? " item" : " items");
+  $("panierTotal").textContent = peso(total);
+}
+
+$("btnCommander").onclick = () => {
+  window.location.href = "checkout.html";
+};
+
+demarrer();
+</script>
+</body>
+</html>

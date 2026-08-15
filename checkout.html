@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Checkout — Yoann's French Bakery</title>
+<meta name="theme-color" content="#1a1a1a">
+<style>
+  :root{
+    --creme:#fdf6ec;--papier:#fffdf9;--encre:#1a1a1a;
+    --encre-doux:#6b6157;--trait:#e2d7c6;--accent:#2f4858;
+    --alerte:#8c2f22;--r:6px;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;background:var(--creme);color:var(--encre);
+    font:16px/1.55 ui-sans-serif,-apple-system,"Segoe UI",Roboto,sans-serif;
+    padding-bottom:110px;
+  }
+  header{
+    background:var(--encre);color:var(--creme);
+    padding:15px 18px;display:flex;align-items:center;gap:14px;
+  }
+  header a{color:var(--creme);text-decoration:none;font-size:22px;line-height:1}
+  header h1{font-size:17px;margin:0;font-weight:600}
+  main{max-width:620px;margin:0 auto;padding:20px 16px}
+
+  .bloc{
+    background:var(--papier);border:1px solid var(--trait);
+    border-radius:var(--r);padding:18px;margin-bottom:16px;
+  }
+  .bloc h2{font-size:15px;margin:0 0 14px;letter-spacing:.01em}
+
+  label.champ{display:block;margin-bottom:13px}
+  label.champ span{display:block;font-size:13px;color:var(--encre-doux);margin-bottom:5px}
+  input,select,textarea{
+    width:100%;padding:12px;border:1px solid var(--trait);border-radius:var(--r);
+    background:#fff;font:inherit;font-size:16px;color:var(--encre);
+  }
+  input:focus,select:focus,textarea:focus{outline:2px solid var(--accent);outline-offset:1px}
+  textarea{min-height:66px;resize:vertical}
+
+  .choix{
+    display:flex;align-items:flex-start;gap:11px;padding:13px;
+    border:1px solid var(--trait);border-radius:var(--r);
+    margin-bottom:9px;cursor:pointer;background:#fff;
+  }
+  .choix.actif{border-color:var(--accent);background:#f2f6f8}
+  .choix input{width:auto;margin-top:3px;flex-shrink:0}
+  .choix .corps{flex:1;min-width:0}
+  .choix .t{font-weight:600;font-size:15px;display:flex;
+    justify-content:space-between;gap:12px}
+  .choix .t .tarif{font-weight:400;white-space:nowrap;color:var(--encre-doux)}
+  .choix .d{font-size:13px;color:var(--encre-doux);margin-top:3px}
+  .choix .j{font-size:12.5px;color:var(--accent);margin-top:4px}
+
+  .recap{font-size:15px}
+  .recap .l{display:flex;justify-content:space-between;gap:14px;padding:5px 0}
+  .recap .l.somme{
+    border-top:1px solid var(--trait);margin-top:9px;padding-top:11px;
+    font-weight:600;font-size:18px;
+  }
+  .recap .q{color:var(--encre-doux)}
+
+  .pied{
+    position:fixed;left:0;right:0;bottom:0;background:var(--encre);
+    color:var(--creme);padding:13px 18px;display:flex;align-items:center;gap:14px;
+  }
+  .pied .total{flex:1;font-size:19px;font-weight:600}
+  .pied button{
+    background:var(--creme);color:var(--encre);border:none;
+    padding:14px 22px;border-radius:var(--r);
+    font-size:15.5px;font-weight:600;cursor:pointer;
+  }
+  .pied button:disabled{opacity:.45;cursor:default}
+
+  .erreur{color:var(--alerte);font-size:14px;margin-top:10px}
+  .note{font-size:13px;color:var(--encre-doux);margin-top:9px}
+  .message{padding:60px 20px;text-align:center;color:var(--encre-doux)}
+  .message a{color:var(--accent)}
+  .retour{
+    background:none;border:none;color:var(--accent);
+    font-size:14px;cursor:pointer;padding:0;text-decoration:underline;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <a href="boutique.html" aria-label="Back to the menu">&#8249;</a>
+  <h1>Checkout</h1>
+</header>
+
+<main id="page">
+  <div class="message">Loading your order…</div>
+</main>
+
+<div class="pied" id="pied" hidden>
+  <span class="total" id="totalPied"></span>
+  <button id="btnEnvoyer">Place order</button>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, collection, getDocs, doc, getDoc, setDoc }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDuq8KS8M_Z8U7BlSp6MvE-6Y9OYYaDujE",
+  authDomain: "bakertools-ae124.firebaseapp.com",
+  projectId: "bakertools-ae124",
+  storageBucket: "bakertools-ae124.firebasestorage.app",
+  messagingSenderId: "978584667113",
+  appId: "1:978584667113:web:868cc89788aff27717c178"
+};
+
+const db = getFirestore(initializeApp(firebaseConfig));
+const $  = (id) => document.getElementById(id);
+const peso = (n) => "₱" + Number(n).toLocaleString("en-PH");
+
+const JOURS_COURTS = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+
+let params = {}, options = [], lignes = [], sousTotal = 0;
+
+/* ---------- Démarrage ---------- */
+(async function () {
+  let panier = {};
+  try { panier = JSON.parse(localStorage.getItem("panier") || "{}"); } catch {}
+
+  if (!Object.keys(panier).length) return vide("Your basket is empty.");
+
+  try {
+    const [p, catalogue] = await Promise.all([
+      getDoc(doc(db, "parametres", "boutique")),
+      getDocs(collection(db, "boutique_produits"))
+    ]);
+    params  = p.exists() ? p.data() : {};
+    options = params.options_retrait || [];
+
+    // Les prix viennent de la base, jamais du panier gardé sur l'appareil.
+    catalogue.forEach(s => {
+      const d = s.data(), q = panier[s.id];
+      if (!q || d.visible === false || d.disponible === false) return;
+      const prix = Number(d.prix_vente) || 0;
+      lignes.push({ id: s.id, nom: d.nom, qte: q, prix, montant: q * prix });
+    });
+    sousTotal = lignes.reduce((t, l) => t + l.montant, 0);
+
+    if (!lignes.length) return vide("The items in your basket are no longer available.");
+    if (!options.length) return vide("Ordering is temporarily unavailable.");
+
+    construire();
+  } catch (e) {
+    console.error(e);
+    $("page").innerHTML =
+      '<div class="message">Something went wrong loading your order. Please refresh.</div>';
+  }
+})();
+
+function vide(texte) {
+  $("page").innerHTML =
+    `<div class="message">${texte}<br><br><a href="boutique.html">Back to the menu</a></div>`;
+}
+
+/* ---------- Formulaire ---------- */
+function construire() {
+  const memo = lireMemo();
+  const creneaux = params.creneaux || [];
+
+  $("page").innerHTML = `
+    <div class="bloc">
+      <h2>Your order</h2>
+      <div class="recap" id="recap"></div>
+    </div>
+
+    <div class="bloc">
+      <h2>Your details</h2>
+      <label class="champ"><span>Full name</span>
+        <input type="text" id="nom" autocomplete="name"></label>
+      <label class="champ"><span>WhatsApp number</span>
+        <input type="tel" id="tel" inputmode="tel" placeholder="0917 123 4567"
+               autocomplete="tel"></label>
+      <div id="zoneMemo"></div>
+    </div>
+
+    <div class="bloc">
+      <h2>Where would you like to get it?</h2>
+      <div id="listeOptions"></div>
+      <div id="blocAdresse" hidden style="margin-top:14px">
+        <label class="champ"><span>Delivery address</span>
+          <textarea id="adresse" autocomplete="street-address"></textarea></label>
+      </div>
+    </div>
+
+    <div class="bloc">
+      <h2>When?</h2>
+      <label class="champ"><span>Date</span>
+        <input type="date" id="date"></label>
+      ${creneaux.length ? `
+      <label class="champ"><span>Time</span>
+        <select id="creneau">${creneaux.map(c => `<option>${c}</option>`).join("")}</select>
+      </label>` : ""}
+      <div class="note" id="noteDate"></div>
+    </div>
+
+    <div class="bloc">
+      <h2>Payment</h2>
+      <label class="choix"><input type="radio" name="paiement" value="gcash" checked>
+        <span class="corps"><span class="t">GCash</span>
+        <span class="d">We send the details on WhatsApp.</span></span></label>
+      <label class="choix"><input type="radio" name="paiement" value="virement">
+        <span class="corps"><span class="t">Bank transfer</span>
+        <span class="d">We send the account details on WhatsApp.</span></span></label>
+      <label class="choix"><input type="radio" name="paiement" value="especes">
+        <span class="corps"><span class="t">Cash</span>
+        <span class="d">Pay when you collect or receive your order.</span></span></label>
+    </div>
+
+    <div class="bloc">
+      <h2>Anything else?</h2>
+      <textarea id="notes" placeholder="Allergies, a message on the cake, landmarks…"></textarea>
+    </div>
+
+    <div class="erreur" id="erreur"></div>
+  `;
+
+  // Options de retrait
+  const liste = $("listeOptions");
+  options.forEach((o, i) => {
+    const tarif = o.tarif_variable ? "Confirmed later"
+                : (o.tarif > 0 ? peso(o.tarif) : "Free");
+    const jours = (o.jours || []).length
+      ? (o.jours || []).map(n => JOURS_COURTS[n]).join(", ")
+      : "";
+    const l = document.createElement("label");
+    l.className = "choix";
+    l.dataset.i = i;
+    l.innerHTML = `
+      <input type="radio" name="option" value="${i}" ${i === 0 ? "checked" : ""}>
+      <span class="corps">
+        <span class="t"><span></span><span class="tarif">${tarif}</span></span>
+        ${o.lieu ? '<span class="d"></span>' : ""}
+        ${jours ? `<span class="j">${jours} only</span>` : ""}
+      </span>`;
+    l.querySelector(".t span").textContent = o.nom;
+    if (o.lieu) l.querySelector(".d").textContent = o.lieu;
+    l.querySelector("input").onchange = majOption;
+    liste.appendChild(l);
+  });
+
+  if (memo.nom) $("nom").value = memo.nom;
+  if (memo.tel) $("tel").value = memo.tel;
+  if (memo.adresse) $("adresse").value = memo.adresse;
+  if (memo.nom || memo.tel) {
+    $("zoneMemo").innerHTML =
+      '<button class="retour" id="oublier">Not you? Clear these details</button>';
+    $("oublier").onclick = () => {
+      localStorage.removeItem("client");
+      $("nom").value = ""; $("tel").value = ""; $("adresse").value = "";
+      $("zoneMemo").innerHTML = "";
+    };
+  }
+
+  $("date").onchange = verifierDate;
+  majOption();
+  $("pied").hidden = false;
+}
+
+/* ---------- Option choisie ---------- */
+function choisie() {
+  const r = document.querySelector('input[name="option"]:checked');
+  return options[Number(r.value)];
+}
+
+function majOption() {
+  const o = choisie();
+  document.querySelectorAll(".choix[data-i]").forEach(c =>
+    c.classList.toggle("actif", options[Number(c.dataset.i)] === o));
+
+  $("blocAdresse").hidden = !o.demander_adresse;
+
+  // La date doit repartir du premier jour compatible avec cette option.
+  const delai = Number(params.delai_min_heures) || 0;
+  const mini  = new Date(Date.now() + delai * 3600000);
+  $("date").min = iso(mini);
+  const premier = premierJourPossible(mini, o);
+  $("date").value = premier ? iso(premier) : "";
+
+  const bouts = [];
+  if (delai) bouts.push("We need at least " + delai + " hours' notice.");
+  if ((o.jours || []).length)
+    bouts.push(o.nom + " is available on " +
+      o.jours.map(n => JOURS_COURTS[n]).join(", ") + " only.");
+  $("noteDate").textContent = bouts.join(" ");
+
+  verifierDate();
+  majTotaux();
+}
+
+/* ---------- Dates ---------- */
+function iso(d) {
+  return new Date(d.getTime() - d.getTimezoneOffset() * 60000)
+    .toISOString().slice(0, 10);
+}
+function indexJour(d) { return (d.getDay() + 6) % 7; }   // 0 = lundi
+
+function jourPossible(d, o) {
+  const jours = o.jours || [];
+  // Une option limitée à certains jours impose ses propres jours.
+  if (jours.length) return jours.includes(indexJour(d));
+  return !(params.jours_fermes || []).includes(indexJour(d));
+}
+function premierJourPossible(depuis, o) {
+  const j = new Date(depuis);
+  for (let i = 0; i < 21; i++) {
+    if (jourPossible(j, o)) return j;
+    j.setDate(j.getDate() + 1);
+  }
+  return null;
+}
+function verifierDate() {
+  const v = $("date").value;
+  const o = choisie();
+  if (!v) {
+    $("erreur").textContent = "Please choose a date.";
+    $("btnEnvoyer").disabled = true;
+    return;
+  }
+  const d = new Date(v + "T12:00:00");
+  if (!jourPossible(d, o)) {
+    $("erreur").textContent = (o.jours || []).length
+      ? o.nom + " is not available on that day. Please pick another date."
+      : "We are closed that day. Please pick another date.";
+    $("btnEnvoyer").disabled = true;
+  } else {
+    $("erreur").textContent = "";
+    $("btnEnvoyer").disabled = false;
+  }
+}
+
+/* ---------- Totaux ---------- */
+function majTotaux() {
+  const o = choisie();
+  const frais = o.tarif_variable ? 0 : (Number(o.tarif) || 0);
+  const total = sousTotal + frais;
+
+  let html = lignes.map(l =>
+    `<div class="l"><span><span class="q">${l.qte} ×</span> ${echapper(l.nom)}</span>
+     <span>${peso(l.montant)}</span></div>`).join("");
+
+  if (o.tarif_variable)
+    html += `<div class="l"><span>${echapper(o.nom)}</span><span>Confirmed later</span></div>`;
+  else if (frais > 0)
+    html += `<div class="l"><span>${echapper(o.nom)}</span><span>${peso(frais)}</span></div>`;
+
+  html += `<div class="l somme"><span>Total</span><span>${peso(total)}</span></div>`;
+  $("recap").innerHTML = html;
+  $("totalPied").textContent = peso(total);
+}
+function echapper(t) {
+  return String(t).replace(/[&<>"]/g, c =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+}
+
+/* ---------- Mémoire de l'appareil ---------- */
+function lireMemo() {
+  try { return JSON.parse(localStorage.getItem("client") || "{}"); }
+  catch { return {}; }
+}
+
+/* ---------- Envoi ---------- */
+$("btnEnvoyer").onclick = async () => {
+  const o   = choisie();
+  const nom = $("nom").value.trim();
+  const tel = $("tel").value.replace(/\D/g, "");
+  const adresse = o.demander_adresse ? $("adresse").value.trim() : "";
+
+  if (nom.length < 2)  return echec("Please enter your name.");
+  if (tel.length < 10) return echec("Please enter a valid mobile number.");
+  if (o.demander_adresse && !adresse) return echec("Please enter your delivery address.");
+  if (!$("date").value) return echec("Please choose a date.");
+
+  $("btnEnvoyer").disabled = true;
+  $("erreur").textContent = "";
+
+  const frais  = o.tarif_variable ? 0 : (Number(o.tarif) || 0);
+  const numero = reference();
+
+  const commande = {
+    numero,
+    statut: "nouvelle",
+    client: { nom, telephone: tel, adresse },
+    panier: lignes.map(l => ({ nom: l.nom, qte: l.qte, prix: l.prix })),
+    sous_total: sousTotal,
+    frais_livraison: frais,
+    frais_a_confirmer: !!o.tarif_variable,
+    total: sousTotal + frais,
+    option: { nom: o.nom, type: o.type, lieu: o.lieu || "" },
+    date_retrait: $("date").value,
+    creneau: $("creneau") ? $("creneau").value : "",
+    paiement: {
+      methode: document.querySelector('input[name="paiement"]:checked').value,
+      statut: "en attente"
+    },
+    notes: $("notes").value.trim(),
+    cree_le: new Date().toISOString()
+  };
+
+  try {
+    await setDoc(doc(db, "commandes", numero), commande);
+    try {
+      localStorage.setItem("client", JSON.stringify({ nom, tel, adresse }));
+      localStorage.removeItem("panier");
+    } catch {}
+    window.location.href = lienWhatsApp(commande);
+  } catch (e) {
+    console.error(e);
+    echec("Your order could not be sent. Please check your connection and try again.");
+  }
+};
+
+function echec(texte) {
+  $("erreur").textContent = texte;
+  $("btnEnvoyer").disabled = false;
+  $("erreur").scrollIntoView({ behavior: "smooth", block: "center" });
+}
+
+function reference() {
+  const d = new Date();
+  const j = String(d.getDate()).padStart(2, "0");
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  return `${j}${m}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
+}
+
+function lienWhatsApp(c) {
+  const paiements = { gcash: "GCash", virement: "Bank transfer", especes: "Cash" };
+  const t = [
+    `New order ${c.numero}`,
+    "",
+    ...c.panier.map(l => `${l.qte} × ${l.nom} — ${peso(l.qte * l.prix)}`),
+    "",
+    `Subtotal: ${peso(c.sous_total)}`,
+    c.frais_a_confirmer ? `${c.option.nom}: fare to confirm`
+      : (c.frais_livraison > 0 ? `${c.option.nom}: ${peso(c.frais_livraison)}` : null),
+    `Total: ${peso(c.total)}`,
+    "",
+    `Name: ${c.client.nom}`,
+    `Option: ${c.option.nom}`,
+    c.client.adresse ? `Address: ${c.client.adresse}` : null,
+    `Date: ${c.date_retrait}${c.creneau ? " — " + c.creneau : ""}`,
+    `Payment: ${paiements[c.paiement.methode]}`,
+    c.notes ? `Notes: ${c.notes}` : null
+  ].filter(Boolean).join("\n");
+
+  return "https://wa.me/" + (params.whatsapp || "").replace(/\D/g, "") +
+         "?text=" + encodeURIComponent(t);
+}
+</script>
+</body>
+</html>
