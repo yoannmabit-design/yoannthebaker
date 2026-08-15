@@ -62,6 +62,32 @@
   .choix .qr a{
     display:inline-block;margin-top:7px;font-size:13.5px;color:var(--accent);
   }
+  .champ .etiq{display:block;font-size:13px;color:var(--encre-doux);margin-bottom:5px}
+  .cal{border:1px solid var(--trait);border-radius:var(--r);background:#fff;padding:11px}
+  .cal .tete{
+    display:flex;align-items:center;justify-content:space-between;
+    margin-bottom:9px;
+  }
+  .cal .mois{font-weight:600;font-size:15px}
+  .cal .nav{
+    width:34px;height:34px;border:1px solid var(--trait);border-radius:var(--r);
+    background:#fff;font-size:16px;line-height:1;color:var(--encre);cursor:pointer;
+  }
+  .cal .nav:disabled{opacity:.3;cursor:default}
+  .cal .grille{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
+  .cal .jour-nom{
+    text-align:center;font-size:11px;color:var(--encre-doux);
+    text-transform:uppercase;letter-spacing:.04em;padding:4px 0;
+  }
+  .cal .case{
+    aspect-ratio:1;border:none;background:transparent;border-radius:var(--r);
+    font:inherit;font-size:15px;color:var(--epuise,#b3aaa0);cursor:default;
+  }
+  .cal .case.libre{color:var(--encre);font-weight:700;cursor:pointer;background:#f4efe6}
+  .cal .case.libre:hover{background:#e9e1d4}
+  .cal .case.prise{background:var(--accent);color:#fff}
+  .cal .case.vide{background:transparent}
+  .choisie{font-size:14px;color:var(--accent);margin:9px 0 0;font-weight:600}
   .recap{font-size:15px}
   .recap .l{display:flex;justify-content:space-between;gap:14px;padding:5px 0}
   .recap .l.somme{
@@ -129,6 +155,7 @@ const peso = (n) => "₱" + Number(n).toLocaleString("en-PH");
 const JOURS_COURTS = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
 
 let params = {}, options = [], lignes = [], sousTotal = 0;
+let dateChoisie = "", moisVu = null, dateMin = null;
 
 /* ---------- Démarrage ---------- */
 (async function () {
@@ -202,8 +229,10 @@ function construire() {
 
     <div class="bloc">
       <h2>When?</h2>
-      <label class="champ"><span>Date</span>
-        <input type="date" id="date"></label>
+      <div class="champ"><span class="etiq">Date</span>
+        <div class="cal" id="calendrier"></div>
+        <p class="choisie" id="dateChoisie"></p>
+      </div>
       ${creneaux.length ? `
       <label class="champ"><span>Time</span>
         <select id="creneau">${creneaux.map(c => `<option>${c}</option>`).join("")}</select>
@@ -264,7 +293,6 @@ function construire() {
 
   construirePaiements();
 
-  $("date").onchange = verifierDate;
   majOption();
   $("pied").hidden = false;
 }
@@ -358,12 +386,16 @@ function majOption() {
 
   $("blocAdresse").hidden = !o.demander_adresse;
 
-  // La date doit repartir du premier jour compatible avec cette option.
+  // Le calendrier repart du premier jour compatible avec cette option.
   const delai = Number(params.delai_min_heures) || 0;
-  const mini  = new Date(Date.now() + delai * 3600000);
-  $("date").min = iso(mini);
-  const premier = premierJourPossible(mini, o);
-  $("date").value = premier ? iso(premier) : "";
+  dateMin = new Date(Date.now() + delai * 3600000);
+  dateMin.setHours(0, 0, 0, 0);
+
+  const premier = premierJourPossible(new Date(Date.now() + delai * 3600000), o);
+  dateChoisie = premier ? iso(premier) : "";
+  moisVu = premier ? new Date(premier.getFullYear(), premier.getMonth(), 1)
+                   : new Date(dateMin.getFullYear(), dateMin.getMonth(), 1);
+  dessinerCalendrier();
 
   const bouts = [];
   if (delai) bouts.push("We need at least " + delai + " hours' notice.");
@@ -374,6 +406,63 @@ function majOption() {
 
   verifierDate();
   majTotaux();
+}
+
+/* ---------- Calendrier ---------- */
+function dessinerCalendrier() {
+  const o = choisie();
+  const premierDuMois = new Date(moisVu.getFullYear(), moisVu.getMonth(), 1);
+  const nbJours = new Date(moisVu.getFullYear(), moisVu.getMonth() + 1, 0).getDate();
+  const decalage = indexJour(premierDuMois);   // 0 = lundi
+
+  const moisNom = premierDuMois.toLocaleDateString("en-GB",
+    { month: "long", year: "numeric" });
+
+  // Un mois entièrement passé n'a pas à être atteignable.
+  const finDuMoisPrecedent = new Date(moisVu.getFullYear(), moisVu.getMonth(), 0);
+  const reculPossible = finDuMoisPrecedent >= dateMin;
+
+  let cases = "";
+  for (let i = 0; i < decalage; i++) cases += '<div class="case vide"></div>';
+
+  for (let n = 1; n <= nbJours; n++) {
+    const d = new Date(moisVu.getFullYear(), moisVu.getMonth(), n);
+    const cle = iso(d);
+    const libre = d >= dateMin && jourPossible(d, o);
+    const prise = cle === dateChoisie;
+    cases += libre
+      ? `<button type="button" class="case libre ${prise ? "prise" : ""}"
+           data-jour="${cle}">${n}</button>`
+      : `<div class="case" aria-disabled="true">${n}</div>`;
+  }
+
+  $("calendrier").innerHTML = `
+    <div class="tete">
+      <button type="button" class="nav" id="calPrec" ${reculPossible ? "" : "disabled"}
+        aria-label="Previous month">&#8249;</button>
+      <span class="mois">${moisNom}</span>
+      <button type="button" class="nav" id="calSuiv" aria-label="Next month">&#8250;</button>
+    </div>
+    <div class="grille">
+      ${JOURS_COURTS.map(j => `<div class="jour-nom">${j[0]}</div>`).join("")}
+      ${cases}
+    </div>`;
+
+  $("calPrec").onclick = () => { moisVu.setMonth(moisVu.getMonth() - 1); dessinerCalendrier(); };
+  $("calSuiv").onclick = () => { moisVu.setMonth(moisVu.getMonth() + 1); dessinerCalendrier(); };
+
+  $("calendrier").querySelectorAll(".case.libre").forEach(b => {
+    b.onclick = () => {
+      dateChoisie = b.dataset.jour;
+      dessinerCalendrier();
+      verifierDate();
+    };
+  });
+
+  $("dateChoisie").textContent = dateChoisie
+    ? new Date(dateChoisie + "T12:00:00").toLocaleDateString("en-GB",
+        { weekday: "long", day: "numeric", month: "long" })
+    : "";
 }
 
 /* ---------- Dates ---------- */
@@ -398,23 +487,13 @@ function premierJourPossible(depuis, o) {
   return null;
 }
 function verifierDate() {
-  const v = $("date").value;
-  const o = choisie();
-  if (!v) {
-    $("erreur").textContent = "Please choose a date.";
+  if (!dateChoisie) {
+    $("erreur").textContent = "No date is available for this option in the coming weeks.";
     $("btnEnvoyer").disabled = true;
     return;
   }
-  const d = new Date(v + "T12:00:00");
-  if (!jourPossible(d, o)) {
-    $("erreur").textContent = (o.jours || []).length
-      ? o.nom + " is not available on that day. Please pick another date."
-      : "We are closed that day. Please pick another date.";
-    $("btnEnvoyer").disabled = true;
-  } else {
-    $("erreur").textContent = "";
-    $("btnEnvoyer").disabled = false;
-  }
+  $("erreur").textContent = "";
+  $("btnEnvoyer").disabled = false;
 }
 
 /* ---------- Totaux ---------- */
@@ -457,7 +536,7 @@ $("btnEnvoyer").onclick = async () => {
   if (nom.length < 2)  return echec("Please enter your name.");
   if (tel.length < 10) return echec("Please enter a valid mobile number.");
   if (o.demander_adresse && !adresse) return echec("Please enter your delivery address.");
-  if (!$("date").value) return echec("Please choose a date.");
+  if (!dateChoisie) return echec("Please choose a date.");
 
   $("btnEnvoyer").disabled = true;
   $("erreur").textContent = "";
@@ -475,7 +554,7 @@ $("btnEnvoyer").onclick = async () => {
     frais_a_confirmer: !!o.tarif_variable,
     total: sousTotal + frais,
     option: { nom: o.nom, type: o.type, lieu: o.lieu || "" },
-    date_retrait: $("date").value,
+    date_retrait: dateChoisie,
     creneau: $("creneau") ? $("creneau").value : "",
     paiement: {
       methode: document.querySelector('input[name="paiement"]:checked').value,
