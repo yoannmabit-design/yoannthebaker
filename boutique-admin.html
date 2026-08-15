@@ -149,8 +149,20 @@
             <input type="number" id="delai" min="0" step="1" value="24">
           </div>
           <div>
-            <label for="whatsapp">Numéro WhatsApp de la boulangerie</label>
+            <label for="whatsapp">Numéro WhatsApp</label>
             <input type="text" id="whatsapp" placeholder="639171234567">
+          </div>
+          <div>
+            <label for="viber">Numéro Viber</label>
+            <input type="text" id="viber" placeholder="639171234567">
+          </div>
+          <div>
+            <label for="email">Adresse e-mail</label>
+            <input type="text" id="email" placeholder="hello@exemple.com">
+          </div>
+          <div>
+            <label for="messenger">Messenger — nom de la page</label>
+            <input type="text" id="messenger" placeholder="yoannsfrenchbakery">
           </div>
         </div>
         <div style="margin-top:16px">
@@ -160,6 +172,51 @@
         <div style="margin-top:16px">
           <label>Jours de fermeture</label>
           <div class="jours" id="jours"></div>
+        </div>
+      </div>
+
+      <div class="carte">
+        <h2>Coordonnées de paiement</h2>
+        <p class="aide">Affichées au client au moment de choisir son paiement. Un moyen sans numéro ni QR n'est pas proposé. Pour le QR, indiquez le nom du fichier déposé dans le dépôt (par exemple <code>qr-gcash.jpg</code>) ou une adresse complète.</p>
+
+        <div class="option">
+          <div class="grille">
+            <div><label for="gcashNom">GCash — nom du compte</label>
+              <input type="text" id="gcashNom" placeholder="Yoann M."></div>
+            <div><label for="gcashNumero">GCash — numéro</label>
+              <input type="text" id="gcashNumero" placeholder="0917 123 4567"></div>
+            <div><label for="gcashQR">GCash — image du QR</label>
+              <input type="text" id="gcashQR" placeholder="qr-gcash.jpg"></div>
+          </div>
+        </div>
+
+        <div class="option">
+          <div class="grille">
+            <div><label for="mayaNom">Maya — nom du compte</label>
+              <input type="text" id="mayaNom"></div>
+            <div><label for="mayaNumero">Maya — numéro</label>
+              <input type="text" id="mayaNumero"></div>
+            <div><label for="mayaQR">Maya — image du QR</label>
+              <input type="text" id="mayaQR" placeholder="qr-maya.jpg"></div>
+          </div>
+        </div>
+
+        <div class="option">
+          <div class="grille">
+            <div><label for="banqueNom">Banque</label>
+              <input type="text" id="banqueNom" placeholder="BPI"></div>
+            <div><label for="banqueTitulaire">Titulaire du compte</label>
+              <input type="text" id="banqueTitulaire"></div>
+            <div><label for="banqueNumero">Numéro de compte</label>
+              <input type="text" id="banqueNumero"></div>
+            <div><label for="banqueQR">Virement — image du QR</label>
+              <input type="text" id="banqueQR" placeholder="qr-bpi.jpg"></div>
+          </div>
+        </div>
+
+        <div style="margin-top:16px">
+          <label for="instrPaiement">Consigne affichée au client</label>
+          <textarea id="instrPaiement" placeholder="Send the payment screenshot on WhatsApp to confirm your order."></textarea>
         </div>
       </div>
 
@@ -408,8 +465,30 @@ async function chargerParametres() {
 
   $("delai").value    = d.delai_min_heures ?? 24;
   $("whatsapp").value = d.whatsapp || "";
+  $("viber").value     = d.viber || "";
+  $("email").value     = d.email || "";
+  $("messenger").value = d.messenger || "";
   $("creneaux").value = (d.creneaux || []).join("\n");
   $("accueil").value  = d.message_accueil || "";
+
+  const pay = d.paiement || {};
+  const g = pay.gcash  || { nom: pay.gcash_nom, numero: pay.gcash_numero };
+  const m = pay.maya   || {};
+  const b = pay.banque || { nom: pay.banque_nom,
+                            titulaire: pay.banque_titulaire,
+                            numero: pay.banque_numero };
+
+  $("gcashNom").value    = g.nom || "";
+  $("gcashNumero").value = g.numero || "";
+  $("gcashQR").value     = g.qr || "";
+  $("mayaNom").value     = m.nom || "";
+  $("mayaNumero").value  = m.numero || "";
+  $("mayaQR").value      = m.qr || "";
+  $("banqueNom").value       = b.nom || "";
+  $("banqueTitulaire").value = b.titulaire || "";
+  $("banqueNumero").value    = b.numero || "";
+  $("banqueQR").value        = b.qr || "";
+  $("instrPaiement").value   = pay.instructions || "";
 
   const fermes = d.jours_fermes || [];
   $("jours").querySelectorAll("input").forEach(c => {
@@ -564,7 +643,29 @@ $("btnEnregistrer").onclick = async () => {
       jours_fermes: joursFermes,
       delai_min_heures: Number($("delai").value) || 0,
       whatsapp: $("whatsapp").value.replace(/\D/g, ""),
+      viber: $("viber").value.replace(/\D/g, ""),
+      email: $("email").value.trim(),
+      messenger: $("messenger").value.trim().replace(/^.*m\.me\//, ""),
       message_accueil: $("accueil").value.trim(),
+      paiement: {
+        gcash: {
+          nom: $("gcashNom").value.trim(),
+          numero: $("gcashNumero").value.trim(),
+          qr: $("gcashQR").value.trim()
+        },
+        maya: {
+          nom: $("mayaNom").value.trim(),
+          numero: $("mayaNumero").value.trim(),
+          qr: $("mayaQR").value.trim()
+        },
+        banque: {
+          nom: $("banqueNom").value.trim(),
+          titulaire: $("banqueTitulaire").value.trim(),
+          numero: $("banqueNumero").value.trim(),
+          qr: $("banqueQR").value.trim()
+        },
+        instructions: $("instrPaiement").value.trim()
+      },
       maj: new Date().toISOString()
     });
 
