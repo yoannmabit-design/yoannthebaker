@@ -54,6 +54,14 @@
   .choix .d{font-size:13px;color:var(--encre-doux);margin-top:3px}
   .choix .j{font-size:12.5px;color:var(--accent);margin-top:4px}
 
+  .choix .qr{display:block;margin-top:11px}
+  .choix .qr img{
+    display:block;width:172px;max-width:100%;height:auto;
+    border:1px solid var(--trait);border-radius:var(--r);background:#fff;
+  }
+  .choix .qr a{
+    display:inline-block;margin-top:7px;font-size:13.5px;color:var(--accent);
+  }
   .recap{font-size:15px}
   .recap .l{display:flex;justify-content:space-between;gap:14px;padding:5px 0}
   .recap .l.somme{
@@ -205,15 +213,8 @@ function construire() {
 
     <div class="bloc">
       <h2>Payment</h2>
-      <label class="choix"><input type="radio" name="paiement" value="gcash" checked>
-        <span class="corps"><span class="t">GCash</span>
-        <span class="d">We send the details on WhatsApp.</span></span></label>
-      <label class="choix"><input type="radio" name="paiement" value="virement">
-        <span class="corps"><span class="t">Bank transfer</span>
-        <span class="d">We send the account details on WhatsApp.</span></span></label>
-      <label class="choix"><input type="radio" name="paiement" value="especes">
-        <span class="corps"><span class="t">Cash</span>
-        <span class="d">Pay when you collect or receive your order.</span></span></label>
+      <div id="listePaiements"></div>
+      <div class="note" id="instrPaiement"></div>
     </div>
 
     <div class="bloc">
@@ -261,9 +262,87 @@ function construire() {
     };
   }
 
+  construirePaiements();
+
   $("date").onchange = verifierDate;
   majOption();
   $("pied").hidden = false;
+}
+
+/* ---------- Moyens de paiement ---------- */
+function construirePaiements() {
+  const pay = params.paiement || {};
+  const g = pay.gcash  || { nom: pay.gcash_nom, numero: pay.gcash_numero };
+  const m = pay.maya   || {};
+  const b = pay.banque || { nom: pay.banque_nom,
+                            titulaire: pay.banque_titulaire,
+                            numero: pay.banque_numero };
+  const choix = [];
+
+  if (g.numero || g.qr) choix.push({
+    code: "gcash", titre: "GCash", qr: g.qr,
+    detail: [g.numero, g.nom].filter(Boolean).join(" — ")
+  });
+  if (m.numero || m.qr) choix.push({
+    code: "maya", titre: "Maya", qr: m.qr,
+    detail: [m.numero, m.nom].filter(Boolean).join(" — ")
+  });
+  if (b.numero || b.qr) choix.push({
+    code: "virement", titre: "Bank transfer", qr: b.qr,
+    detail: [b.nom, b.titulaire, b.numero].filter(Boolean).join(" — ")
+  });
+  choix.push({
+    code: "especes", titre: "Cash", qr: "",
+    detail: "Pay when you collect or receive your order."
+  });
+
+  const zone = $("listePaiements");
+  zone.innerHTML = "";
+  choix.forEach((c, i) => {
+    const l = document.createElement("label");
+    l.className = "choix";
+    l.dataset.paiement = c.code;
+    l.innerHTML = `
+      <input type="radio" name="paiement" value="${c.code}" ${i === 0 ? "checked" : ""}>
+      <span class="corps"><span class="t"><span></span></span>
+      <span class="d"></span>
+      <span class="qr" hidden></span></span>`;
+    l.querySelector(".t span").textContent = c.titre;
+    l.querySelector(".d").textContent = c.detail;
+
+    if (c.qr) {
+      const boite = l.querySelector(".qr");
+      const img = document.createElement("img");
+      img.src = c.qr;
+      img.alt = c.titre + " QR code";
+      img.loading = "lazy";
+      const lien = document.createElement("a");
+      lien.href = c.qr;
+      lien.download = "";
+      lien.textContent = "Save QR code";
+      lien.onclick = (e) => e.stopPropagation();
+      boite.append(img, lien);
+      boite.dataset.actif = "1";
+    }
+
+    l.querySelector("input").onchange = majPaiement;
+    zone.appendChild(l);
+  });
+
+  majPaiement();
+}
+
+function majPaiement() {
+  const v = document.querySelector('input[name="paiement"]:checked').value;
+  document.querySelectorAll(".choix[data-paiement]").forEach(c => {
+    const actif = c.dataset.paiement === v;
+    c.classList.toggle("actif", actif);
+    const qr = c.querySelector(".qr");
+    if (qr) qr.hidden = !(actif && qr.dataset.actif);
+  });
+
+  const instructions = (params.paiement || {}).instructions || "";
+  $("instrPaiement").textContent = v === "especes" ? "" : instructions;
 }
 
 /* ---------- Option choisie ---------- */
@@ -411,8 +490,9 @@ $("btnEnvoyer").onclick = async () => {
     try {
       localStorage.setItem("client", JSON.stringify({ nom, tel, adresse }));
       localStorage.removeItem("panier");
+      sessionStorage.setItem("commande", JSON.stringify(commande));
     } catch {}
-    window.location.href = lienWhatsApp(commande);
+    window.location.href = "confirmation.html";
   } catch (e) {
     console.error(e);
     echec("Your order could not be sent. Please check your connection and try again.");
@@ -432,29 +512,6 @@ function reference() {
   return `${j}${m}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
 }
 
-function lienWhatsApp(c) {
-  const paiements = { gcash: "GCash", virement: "Bank transfer", especes: "Cash" };
-  const t = [
-    `New order ${c.numero}`,
-    "",
-    ...c.panier.map(l => `${l.qte} × ${l.nom} — ${peso(l.qte * l.prix)}`),
-    "",
-    `Subtotal: ${peso(c.sous_total)}`,
-    c.frais_a_confirmer ? `${c.option.nom}: fare to confirm`
-      : (c.frais_livraison > 0 ? `${c.option.nom}: ${peso(c.frais_livraison)}` : null),
-    `Total: ${peso(c.total)}`,
-    "",
-    `Name: ${c.client.nom}`,
-    `Option: ${c.option.nom}`,
-    c.client.adresse ? `Address: ${c.client.adresse}` : null,
-    `Date: ${c.date_retrait}${c.creneau ? " — " + c.creneau : ""}`,
-    `Payment: ${paiements[c.paiement.methode]}`,
-    c.notes ? `Notes: ${c.notes}` : null
-  ].filter(Boolean).join("\n");
-
-  return "https://wa.me/" + (params.whatsapp || "").replace(/\D/g, "") +
-         "?text=" + encodeURIComponent(t);
-}
 </script>
 </body>
 </html>
