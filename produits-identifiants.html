@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Identifiants produits — Yoann's French Bakery</title>
+<meta name="theme-color" content="#1a1a1a">
+<style>
+  :root{
+    --creme:#fdf6ec;--papier:#fffdf9;--encre:#1f1b16;
+    --encre-doux:#6b6157;--trait:#e2d7c6;--accent:#2f4858;
+    --alerte:#8c2f22;--ok:#3d6b3d;--r:6px;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;background:var(--creme);color:var(--encre);
+    font:16px/1.55 ui-sans-serif,-apple-system,"Segoe UI",Roboto,sans-serif;
+    padding-bottom:90px;
+  }
+  header{
+    background:var(--encre);color:var(--creme);padding:14px 18px;
+    display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+  }
+  header h1{font-size:17px;margin:0;font-weight:600}
+  header .qui{margin-left:auto;font-size:13px;opacity:.72}
+  header button{
+    background:transparent;border:1px solid #4a443c;color:var(--creme);
+    padding:8px 13px;border-radius:var(--r);font-size:13.5px;cursor:pointer;
+  }
+  main{max-width:820px;margin:0 auto;padding:20px 16px}
+
+  .carte{
+    background:var(--papier);border:1px solid var(--trait);
+    border-radius:var(--r);padding:18px;margin-bottom:16px;
+  }
+  .carte h2{font-size:15px;margin:0 0 6px}
+  .carte p.aide{font-size:13.5px;color:var(--encre-doux);margin:0 0 14px}
+
+  .avert{
+    background:#f6e2de;border:1px solid #e4c3bc;color:#6d2419;
+    border-radius:var(--r);padding:13px 15px;font-size:14px;margin-bottom:16px;
+  }
+
+  .ligne{
+    display:flex;gap:12px;align-items:center;padding:9px 0;
+    border-bottom:1px solid var(--trait);flex-wrap:wrap;
+  }
+  .ligne:last-child{border-bottom:none}
+  .ligne .nom{flex:1;min-width:150px;font-size:15px}
+  .ligne .cat{
+    font-size:11.5px;color:var(--encre-doux);
+    text-transform:uppercase;letter-spacing:.05em;
+  }
+  .ligne input{
+    width:130px;padding:9px 10px;border:1px solid var(--trait);
+    border-radius:var(--r);background:#fff;font:ui-monospace,monospace;
+    font-size:14px;text-transform:uppercase;color:var(--encre);
+  }
+  .ligne input.double{border-color:var(--alerte);background:#fdf3f1}
+  .ligne input.fige{background:#eee9e0;color:var(--encre-doux)}
+  .ligne .marque{font-size:12px;color:var(--ok);min-width:56px}
+  .ligne .marque.rouge{color:var(--alerte)}
+
+  button.action{
+    background:var(--accent);color:#fff;border:none;padding:11px 20px;
+    border-radius:var(--r);cursor:pointer;font-size:15px;font-weight:600;
+  }
+  button.action:disabled{opacity:.5;cursor:default}
+  button.mineur{
+    background:transparent;color:var(--accent);border:1px solid var(--trait);
+    padding:10px 16px;border-radius:var(--r);cursor:pointer;font-size:14.5px;
+  }
+  .barre{
+    position:fixed;bottom:0;left:0;right:0;background:var(--papier);
+    border-top:1px solid var(--trait);padding:12px 16px;
+    display:flex;gap:12px;align-items:center;
+  }
+  .etat{font-size:13.5px;color:var(--encre-doux);margin-right:auto}
+  .etat.ok{color:var(--ok)}
+  .etat.err{color:var(--alerte)}
+  .vide{padding:40px;text-align:center;color:var(--encre-doux)}
+  .connexion{max-width:400px;margin:14vh auto;text-align:center;padding:0 20px}
+  .connexion h1{font-size:21px;margin:0 0 20px}
+</style>
+</head>
+<body>
+
+<div id="ecranConnexion" class="connexion">
+  <h1>Identifiants produits</h1>
+  <button class="action" id="btnConnexion">Se connecter avec Google</button>
+  <p id="msgConnexion" style="margin-top:18px;font-size:14px"></p>
+</div>
+
+<div id="app" hidden>
+  <header>
+    <h1>Identifiants produits</h1>
+    <span class="qui" id="qui"></span>
+    <button id="btnDeconnexion">Quitter</button>
+  </header>
+
+  <main>
+    <div class="avert">
+      Cette page écrit dans <b>recettes/fiches</b>, la source de votre ERP.
+      Téléchargez la sauvegarde avant d'enregistrer, et vérifiez ensuite que
+      <b>prix-de-revient.html</b> fonctionne toujours.
+    </div>
+
+    <div class="carte">
+      <h2>Attribution des codes</h2>
+      <p class="aide">
+        Un code est proposé à partir du nom. Vous pouvez le modifier tant qu'il
+        n'est pas enregistré. Une fois écrit, un code n'est plus proposé à la
+        modification : il devient la référence permanente du produit.
+      </p>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px">
+        <button class="mineur" id="btnSauvegarde">Télécharger la sauvegarde</button>
+        <button class="mineur" id="btnProposer">Reproposer les codes manquants</button>
+      </div>
+      <div id="liste"><div class="vide">Chargement…</div></div>
+    </div>
+  </main>
+
+  <div class="barre">
+    <span class="etat" id="etat"></span>
+    <button class="action" id="btnEnregistrer">Enregistrer les codes</button>
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, doc, getDoc, updateDoc }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDuq8KS8M_Z8U7BlSp6MvE-6Y9OYYaDujE",
+  authDomain: "bakertools-ae124.firebaseapp.com",
+  projectId: "bakertools-ae124",
+  storageBucket: "bakertools-ae124.firebasestorage.app",
+  messagingSenderId: "978584667113",
+  appId: "1:978584667113:web:868cc89788aff27717c178"
+};
+
+const app  = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db   = getFirestore(app);
+const $    = (id) => document.getElementById(id);
+
+let brut = null;    // document recettes/fiches tel quel
+let items = [];     // référence directe vers brut.items
+
+/* ---------- Connexion ---------- */
+$("btnConnexion").onclick = async () => {
+  try { await signInWithPopup(auth, new GoogleAuthProvider()); }
+  catch (e) {
+    $("msgConnexion").textContent = "Connexion impossible. Autorisez les fenêtres surgissantes.";
+    console.error(e);
+  }
+};
+$("btnDeconnexion").onclick = () => signOut(auth);
+
+onAuthStateChanged(auth, async (user) => {
+  if (!user) { $("app").hidden = true; $("ecranConnexion").hidden = false; return; }
+
+  let autorise = false;
+  try { autorise = (await getDoc(doc(db, "admins", user.uid))).exists(); }
+  catch (e) { console.error(e); }
+
+  if (!autorise) {
+    await signOut(auth);
+    $("msgConnexion").innerHTML =
+      "Ce compte n'a pas accès.<br>Identifiant : <code>" + user.uid + "</code>";
+    return;
+  }
+  $("ecranConnexion").hidden = true;
+  $("app").hidden = false;
+  $("qui").textContent = user.email;
+  charger();
+});
+
+/* ---------- Génération d'un code ---------- */
+const MOTS_VIDES = new Set(["de","du","des","la","le","les","au","aux","a","et","the","of"]);
+
+function nettoyer(t) {
+  return String(t || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .toUpperCase().replace(/[^A-Z0-9 ]/g, " ").trim();
+}
+
+function proposer(nom, pris) {
+  const mots = nettoyer(nom).split(/\s+/).filter(m => m && !MOTS_VIDES.has(m.toLowerCase()));
+  if (!mots.length) return unique("PRD", pris);
+
+  // Un poids ou un calibre dans le nom est plus distinctif qu'un mot.
+  const chiffre = mots.find(m => /^\d+G?$/.test(m));
+  const lettres = mots.filter(m => !/^\d/.test(m));
+
+  let base = (lettres[0] || "PRD").slice(0, 3);
+  if (chiffre)          base += "-" + chiffre.replace(/G$/, "");
+  else if (lettres[1])  base += "-" + lettres[1].slice(0, 3);
+  else                  base += "-" + (lettres[0] || "PRD").slice(3, 6).padEnd(3, "X");
+
+  return unique(base, pris);
+}
+
+function unique(base, pris) {
+  if (!pris.has(base)) { pris.add(base); return base; }
+  for (let n = 2; n < 100; n++) {
+    const essai = base + n;
+    if (!pris.has(essai)) { pris.add(essai); return essai; }
+  }
+  return base + Date.now().toString(36).slice(-3).toUpperCase();
+}
+
+/* ---------- Chargement ---------- */
+async function charger() {
+  try {
+    const s = await getDoc(doc(db, "recettes", "fiches"));
+    if (!s.exists()) {
+      $("liste").innerHTML = '<div class="vide">Document recettes/fiches introuvable.</div>';
+      return;
+    }
+    brut  = s.data();
+    items = brut.items || brut.fiches || [];
+    if (!items.length) {
+      $("liste").innerHTML = '<div class="vide">Aucune fiche dans ce document.</div>';
+      return;
+    }
+    remplirManquants();
+    afficher();
+  } catch (e) {
+    console.error(e);
+    $("liste").innerHTML = '<div class="vide">Chargement impossible.</div>';
+  }
+}
+
+function remplirManquants() {
+  const pris = new Set(items.map(i => i.id).filter(Boolean));
+  items.forEach(i => {
+    if (!i.id) i._propose = proposer(i.nom || i.produit || "", pris);
+  });
+}
+
+$("btnProposer").onclick = () => {
+  items.forEach(i => { if (!i.id) delete i._propose; });
+  remplirManquants();
+  afficher();
+  signaler("Codes reproposés");
+};
+
+/* ---------- Affichage ---------- */
+function afficher() {
+  const liste = $("liste");
+  liste.innerHTML = "";
+
+  [...items]
+    .sort((a, b) => (a.categorie || "").localeCompare(b.categorie || "") ||
+                    (a.nom || "").localeCompare(b.nom || ""))
+    .forEach(it => {
+      const fige = !!it.id;
+      const el = document.createElement("div");
+      el.className = "ligne";
+      el.innerHTML = `
+        <span class="nom"></span>
+        <span class="cat"></span>
+        <input type="text" maxlength="12" ${fige ? "readonly" : ""}
+               class="${fige ? "fige" : ""}">
+        <span class="marque"></span>`;
+      el.querySelector(".nom").textContent = it.nom || it.produit || "—";
+      el.querySelector(".cat").textContent = it.categorie || "";
+
+      const champ = el.querySelector("input");
+      champ.value = it.id || it._propose || "";
+      el.querySelector(".marque").textContent = fige ? "enregistré" : "à écrire";
+      el.querySelector(".marque").className = "marque" + (fige ? "" : " rouge");
+
+      if (!fige) {
+        champ.oninput = () => {
+          it._propose = champ.value.toUpperCase().replace(/[^A-Z0-9-]/g, "");
+          champ.value = it._propose;
+          verifierDoublons();
+        };
+      }
+      liste.appendChild(el);
+    });
+
+  verifierDoublons();
+}
+
+function verifierDoublons() {
+  const vus = {};
+  items.forEach(i => {
+    const code = i.id || i._propose || "";
+    if (code) vus[code] = (vus[code] || 0) + 1;
+  });
+  const doubles = Object.keys(vus).filter(c => vus[c] > 1);
+
+  $("liste").querySelectorAll("input").forEach(champ => {
+    champ.classList.toggle("double", doubles.includes(champ.value));
+  });
+
+  const vides = items.some(i => !(i.id || i._propose));
+  $("btnEnregistrer").disabled = doubles.length > 0 || vides;
+  if (doubles.length) signaler("Codes en double : " + doubles.join(", "), "err");
+  else if (vides)     signaler("Certains produits n'ont pas de code", "err");
+  else                signaler("");
+}
+
+/* ---------- Sauvegarde ---------- */
+$("btnSauvegarde").onclick = () => {
+  if (!brut) return;
+  const url = URL.createObjectURL(
+    new Blob([JSON.stringify(brut, null, 2)], { type: "application/json" }));
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "recettes-fiches-" + new Date().toISOString().slice(0, 10) + ".json";
+  a.click();
+  URL.revokeObjectURL(url);
+  signaler("Sauvegarde téléchargée", "ok");
+};
+
+/* ---------- Enregistrement ---------- */
+$("btnEnregistrer").onclick = async () => {
+  const aEcrire = items.filter(i => !i.id && i._propose).length;
+  if (!aEcrire) return signaler("Aucun code à écrire", "ok");
+
+  if (!confirm(
+    "Écrire " + aEcrire + " code(s) dans recettes/fiches ?\n\n" +
+    "Les codes existants ne sont pas touchés. Cette opération modifie " +
+    "la source de l'ERP.")) return;
+
+  $("btnEnregistrer").disabled = true;
+  signaler("Enregistrement…");
+
+  try {
+    const nouveaux = items.map(i => {
+      const copie = { ...i };
+      if (!copie.id && copie._propose) copie.id = copie._propose;
+      delete copie._propose;
+      return copie;
+    });
+
+    const champ = brut.items ? "items" : "fiches";
+    await updateDoc(doc(db, "recettes", "fiches"), { [champ]: nouveaux });
+
+    brut[champ] = nouveaux;
+    items = nouveaux;
+    afficher();
+    signaler(aEcrire + " code(s) enregistré(s).", "ok");
+  } catch (e) {
+    console.error(e);
+    signaler("Échec de l'enregistrement.", "err");
+  } finally {
+    $("btnEnregistrer").disabled = false;
+  }
+};
+
+function signaler(texte, type = "") {
+  $("etat").textContent = texte;
+  $("etat").className = "etat " + type;
+}
+</script>
+</body>
+</html>
