@@ -174,10 +174,18 @@ let dateChoisie = "", moisVu = null, dateMin = null;
 
     // Les prix viennent de la base, jamais du panier gardé sur l'appareil.
     catalogue.forEach(s => {
-      const d = s.data(), q = panier[s.id];
+      const d = s.data();
+      let q = panier[s.id];
       if (!q || d.visible === false || d.disponible === false) return;
+      // Le stock a pu descendre depuis la mise au panier.
+      if (d.mode_stock === "limite") {
+        const reste = Math.max(0, Number(d.stock) || 0);
+        if (reste <= 0) return;
+        if (q > reste) q = reste;
+      }
       const prix = Number(d.prix_vente) || 0;
-      lignes.push({ id: s.id, nom: d.nom, qte: q, prix, montant: q * prix });
+      lignes.push({ id: s.id, code: d.code || s.id, nom: d.nom,
+                    qte: q, prix, montant: q * prix });
     });
     sousTotal = lignes.reduce((t, l) => t + l.montant, 0);
 
@@ -548,7 +556,7 @@ $("btnEnvoyer").onclick = async () => {
     numero,
     statut: "nouvelle",
     client: { nom, telephone: tel, adresse },
-    panier: lignes.map(l => ({ nom: l.nom, qte: l.qte, prix: l.prix })),
+    panier: lignes.map(l => ({ code: l.code, nom: l.nom, qte: l.qte, prix: l.prix })),
     sous_total: sousTotal,
     frais_livraison: frais,
     frais_a_confirmer: !!o.tarif_variable,
