@@ -281,14 +281,25 @@ function ligneProduit(p) {
   const el = document.createElement("div");
   el.className = "produit" + (dispo ? "" : " indispo");
 
+  // À défaut d'adresse saisie : photos/<identifiant>.webp, puis .jpg, puis rien.
+  const img = document.createElement("img");
+  img.alt = "";
+  img.loading = "lazy";
+
   if (p.photo_url) {
-    const img = document.createElement("img");
     img.src = p.photo_url;
-    img.alt = "";
-    img.loading = "lazy";
     img.onerror = () => img.remove();
-    el.appendChild(img);
+  } else {
+    const essais = [".webp", ".jpg", ".jpeg", ".png"].map(e => "photos/" + p.id + e);
+    let n = 0;
+    img.onerror = () => {
+      n += 1;
+      if (n < essais.length) img.src = essais[n];
+      else img.remove();
+    };
+    img.src = essais[0];
   }
+  el.appendChild(img);
 
   const infos = document.createElement("div");
   infos.className = "infos";
