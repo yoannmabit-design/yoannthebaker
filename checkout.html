@@ -172,6 +172,11 @@ let dateChoisie = "", moisVu = null, dateMin = null;
     params  = p.exists() ? p.data() : {};
     options = params.options_retrait || [];
 
+    const vac = params.vacances || {};
+    if (vac.actif) {
+      return vide(vac.message || "We are closed at the moment. Online orders are paused.");
+    }
+
     // Les prix viennent de la base, jamais du panier gardé sur l'appareil.
     catalogue.forEach(s => {
       const d = s.data();
