@@ -183,6 +183,8 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getFirestore, collection, getDocs, doc, getDoc }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getAuth, onAuthStateChanged }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDuq8KS8M_Z8U7BlSp6MvE-6Y9OYYaDujE",
@@ -193,7 +195,9 @@ const firebaseConfig = {
   appId: "1:978584667113:web:868cc89788aff27717c178"
 };
 
-const db = getFirestore(initializeApp(firebaseConfig));
+const appF = initializeApp(firebaseConfig);
+const db   = getFirestore(appF);
+const auth = getAuth(appF);
 const $  = (id) => document.getElementById(id);
 
 /* Ordre d'affichage des catégories. Toute catégorie non listée passe à la fin. */
@@ -202,6 +206,7 @@ const ORDRE = ["Pains", "Viennoiseries", "Autres"];
 let produits = [];
 let panier   = {};   // { idProduit: quantité }
 let ferme    = false;   // mode vacances
+let remise   = 0;       // remise du client connecté, en pourcentage
 
 /* ---------- Panier conservé sur l'appareil du client ---------- */
 function chargerPanier() {
@@ -213,6 +218,12 @@ function sauverPanier() {
 }
 
 const peso = (n) => "₱" + Number(n).toLocaleString("en-PH");
+
+// Le prix client tient compte de la remise éventuelle, arrondie au peso.
+function prixClient(p) {
+  const base = Number(p.prix_vente) || 0;
+  return remise > 0 ? Math.round(base * (1 - remise / 100)) : base;
+}
 
 /* ---------- Chargement ---------- */
 async function demarrer() {
@@ -366,7 +377,12 @@ function ligneProduit(p) {
 
   const prix = document.createElement("div");
   prix.className = "prix";
-  prix.textContent = peso(p.prix_vente || 0);
+  if (remise > 0) {
+    prix.innerHTML = `<span style="text-decoration:line-through;color:var(--epuise)">${
+      peso(p.prix_vente || 0)}</span> <strong>${peso(prixClient(p))}</strong>`;
+  } else {
+    prix.textContent = peso(p.prix_vente || 0);
+  }
   infos.appendChild(prix);
 
   if (!dispo && !ferme) {
@@ -435,7 +451,7 @@ function majPanier() {
   let articles = 0, total = 0;
   produits.forEach(p => {
     const q = panier[p.id];
-    if (q) { articles += q; total += q * (p.prix_vente || 0); }
+    if (q) { articles += q; total += q * prixClient(p); }
   });
 
   $("panier").classList.toggle("visible", articles > 0 && !ferme);
@@ -447,7 +463,23 @@ $("btnCommander").onclick = () => {
   window.location.href = "checkout.html";
 };
 
+onAuthStateChanged(auth, async (user) => {
+  remise = 0;
+  if (user) {
+    try {
+      const s = await getDoc(doc(db, "comptes", user.uid));
+      remise = Number(s.data()?.remise) || 0;
+    } catch (e) { console.error(e); }
+  }
+  if (produits.length) afficher();   // les prix changent si la remise arrive après
+  if (remise > 0) {
+    const b = $("avis");
+    b.textContent = "Your " + remise + "% trade price is applied.";
+    b.hidden = false;
+  }
+});
+
 demarrer();
 </script>
 </body>
-</html>          `
+</html>
