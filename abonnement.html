@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bread plan — Yoann's French Bakery</title>
+<meta name="theme-color" content="#1a1a1a">
+<link rel="icon" href="logo.jpg">
+<style>
+  :root{
+    --creme:#fdf6ec;--papier:#fffdf9;--encre:#1a1a1a;
+    --encre-doux:#6b6157;--trait:#e2d7c6;--accent:#2f4858;
+    --ok:#3d6b3d;--alerte:#8c2f22;--r:6px;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;background:var(--creme);color:var(--encre);
+    font:16px/1.55 ui-sans-serif,-apple-system,"Segoe UI",Roboto,sans-serif;
+    padding-bottom:104px;
+  }
+  header{
+    background:var(--encre);color:var(--creme);
+    padding:15px 18px;display:flex;align-items:center;gap:14px;
+  }
+  header a{color:var(--creme);text-decoration:none;font-size:22px;line-height:1}
+  header h1{font-size:17px;margin:0;font-weight:600}
+  main{max-width:620px;margin:0 auto;padding:20px 16px}
+
+  .bloc{
+    background:var(--papier);border:1px solid var(--trait);
+    border-radius:var(--r);padding:18px;margin-bottom:16px;
+  }
+  .bloc h2{font-size:15px;margin:0 0 6px}
+  .bloc .aide{font-size:13.5px;color:var(--encre-doux);margin:0 0 14px}
+
+  .produit{
+    display:flex;gap:12px;align-items:center;padding:11px 0;
+    border-bottom:1px solid var(--trait);
+  }
+  .produit:last-child{border-bottom:none}
+  .produit .nom{flex:1;min-width:0}
+  .produit .prix{font-size:14px;color:var(--encre-doux)}
+  .compteur{display:flex;align-items:center;gap:9px}
+  .compteur button{
+    width:36px;height:36px;border-radius:50%;border:1px solid var(--trait);
+    background:#fff;font-size:18px;line-height:1;color:var(--encre);cursor:pointer;
+  }
+  .compteur .n{min-width:20px;text-align:center;font-variant-numeric:tabular-nums}
+
+  .choix{
+    display:flex;align-items:flex-start;gap:11px;padding:13px;
+    border:1px solid var(--trait);border-radius:var(--r);
+    margin-bottom:9px;cursor:pointer;background:#fff;
+  }
+  .choix.actif{border-color:var(--accent);background:#f2f6f8}
+  .choix input{width:auto;margin-top:3px;flex-shrink:0}
+  .choix .t{font-weight:600;font-size:15px}
+  .choix .d{font-size:13px;color:var(--encre-doux);margin-top:3px}
+
+  .pastilles{display:flex;gap:9px;flex-wrap:wrap}
+  .pastilles button{
+    border:1px solid var(--trait);background:#fff;color:var(--encre);
+    padding:12px 20px;border-radius:var(--r);font:inherit;font-size:16px;cursor:pointer;
+  }
+  .pastilles button[aria-pressed="true"]{
+    background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600;
+  }
+
+  label.champ{display:block;margin-bottom:13px}
+  label.champ span{display:block;font-size:13px;color:var(--encre-doux);margin-bottom:5px}
+  input[type=text],input[type=tel],select,textarea{
+    width:100%;padding:12px;border:1px solid var(--trait);border-radius:var(--r);
+    background:#fff;font:inherit;font-size:16px;color:var(--encre);
+  }
+  textarea{min-height:60px;resize:vertical}
+
+  .recap .l{display:flex;justify-content:space-between;gap:14px;padding:5px 0;font-size:15px}
+  .recap .l.sous{border-top:1px solid var(--trait);margin-top:9px;padding-top:10px;font-weight:600}
+  .recap .l.somme{
+    border-top:2px solid var(--encre);margin-top:9px;padding-top:11px;
+    font-weight:600;font-size:19px;
+  }
+  .recap .q{color:var(--encre-doux)}
+  .economie{
+    background:#e7f0e7;color:#2c5c2c;border-radius:var(--r);
+    padding:10px 13px;font-size:14.5px;font-weight:600;margin-top:12px;text-align:center;
+  }
+  .dates{font-size:14px;color:var(--encre-doux);line-height:1.7;margin-top:10px}
+
+  .pied{
+    position:fixed;left:0;right:0;bottom:0;background:var(--encre);
+    color:var(--creme);padding:13px 18px;display:flex;align-items:center;gap:14px;
+  }
+  .pied .total{flex:1;font-size:18px;font-weight:600}
+  .pied .total small{display:block;font-size:12px;opacity:.7;font-weight:400}
+  .pied button{
+    background:var(--creme);color:var(--encre);border:none;padding:14px 22px;
+    border-radius:var(--r);font-size:15.5px;font-weight:600;cursor:pointer;
+  }
+  .pied button:disabled{opacity:.45;cursor:default}
+
+  .erreur{color:var(--alerte);font-size:14px;margin-top:10px}
+  .message{padding:60px 20px;text-align:center;color:var(--encre-doux)}
+  .message a{color:var(--accent)}
+  button.principal{
+    width:100%;background:var(--encre);color:var(--creme);border:none;
+    padding:14px;border-radius:var(--r);font-size:15.5px;font-weight:600;cursor:pointer;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <a href="./" aria-label="Back to the menu">&#8249;</a>
+  <h1>Bread plan</h1>
+</header>
+
+<main id="page"><div class="message">Loading…</div></main>
+
+<div class="pied" id="pied" hidden>
+  <span class="total" id="totalPied"></span>
+  <button id="btnSouscrire">Start my plan</button>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, onAuthStateChanged }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, collection, getDocs, doc, getDoc, addDoc }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDuq8KS8M_Z8U7BlSp6MvE-6Y9OYYaDujE",
+  authDomain: "bakertools-ae124.firebaseapp.com",
+  projectId: "bakertools-ae124",
+  storageBucket: "bakertools-ae124.firebasestorage.app",
+  messagingSenderId: "978584667113",
+  appId: "1:978584667113:web:868cc89788aff27717c178"
+};
+
+const app  = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db   = getFirestore(app);
+const $    = (id) => document.getElementById(id);
+const peso = (n) => "₱" + Number(n || 0).toLocaleString("en-PH");
+const ech  = (t) => String(t ?? "").replace(/[&<>"]/g, x =>
+  ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[x]));
+
+const JOURS = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+
+let params = {}, abo = {}, options = [], produits = [], compte = null, user = null;
+let choix = {};          // { code : quantité }
+let cadence = "hebdo";
+let nombre = 0;
+let iOption = 0;
+let depart = "";
+let modePaiement = "avance";
+
+/* ---------- Démarrage ---------- */
+onAuthStateChanged(auth, async (u) => {
+  user = u;
+  if (!u) {
+    $("page").innerHTML = `
+      <div class="message">
+        Please sign in to set up your bread plan.<br><br>
+        <a href="compte.html">Sign in</a> · <a href="./">Back to the menu</a>
+      </div>`;
+    return;
+  }
+  await charger();
+});
+
+async function charger() {
+  try {
+    const [p, cat, cpt] = await Promise.all([
+      getDoc(doc(db, "parametres", "boutique")),
+      getDocs(collection(db, "boutique_produits")),
+      getDoc(doc(db, "comptes", user.uid))
+    ]);
+
+    params  = p.exists() ? p.data() : {};
+    abo     = params.abonnements || {};
+    options = (params.options_retrait || []);
+    compte  = cpt.exists() ? cpt.data() : {};
+
+    if (!abo.actif) {
+      $("page").innerHTML =
+        '<div class="message">Bread plans are not available at the moment.<br><br>' +
+        '<a href="./">Back to the menu</a></div>';
+      return;
+    }
+    if ((params.vacances || {}).actif) {
+      $("page").innerHTML =
+        '<div class="message">We are closed at the moment.<br><br><a href="./">Back to the menu</a></div>';
+      return;
+    }
+
+    produits = [];
+    cat.forEach(s => {
+      const d = s.data();
+      if (d.visible === false || d.disponible === false) return;
+      produits.push({ code: d.code || s.id, nom: d.nom, prix: Number(d.prix_vente) || 0,
+                      categorie: d.categorie || "Autres" });
+    });
+    produits.sort((a, b) => a.categorie.localeCompare(b.categorie) || a.nom.localeCompare(b.nom));
+
+    const nombres = abo.nombres || [4, 6, 8, 12];
+    nombre = nombres[0];
+    construire();
+  } catch (e) {
+    console.error(e);
+    $("page").innerHTML = '<div class="message">Something went wrong. Please refresh.</div>';
+  }
+}
+
+/* ---------- Formulaire ---------- */
+function construire() {
+  const cadences = abo.cadences || ["hebdo", "quinzaine"];
+  const nombres  = abo.nombres || [4, 6, 8, 12];
+
+  $("page").innerHTML = `
+    <div class="bloc">
+      <h2>What would you like, every time?</h2>
+      <p class="aide">The same basket is prepared for each delivery.</p>
+      <div id="listeProduits"></div>
+    </div>
+
+    <div class="bloc">
+      <h2>How often?</h2>
+      <div class="pastilles" id="cadences">
+        ${cadences.includes("hebdo") ? '<button data-c="hebdo">Every week</button>' : ""}
+        ${cadences.includes("quinzaine") ? '<button data-c="quinzaine">Every 2 weeks</button>' : ""}
+      </div>
+    </div>
+
+    <div class="bloc">
+      <h2>How many deliveries?</h2>
+      <div class="pastilles" id="nombres">
+        ${nombres.map(n => `<button data-n="${n}">${n}</button>`).join("")}
+      </div>
+    </div>
+
+    <div class="bloc">
+      <h2>Where?</h2>
+      <div id="listeOptions"></div>
+      <div id="blocAdresse" hidden style="margin-top:14px">
+        <label class="champ"><span>Delivery address</span>
+          <textarea id="adresse"></textarea></label>
+      </div>
+    </div>
+
+    <div class="bloc">
+      <h2>First delivery</h2>
+      <label class="champ"><span>Choose a date</span>
+        <select id="depart"></select></label>
+      <div class="dates" id="apercuDates"></div>
+    </div>
+
+    <div class="bloc">
+      <h2>Your details</h2>
+      <label class="champ"><span>Full name</span>
+        <input type="text" id="nom" autocomplete="name"></label>
+      <label class="champ"><span>WhatsApp number</span>
+        <input type="tel" id="tel" inputmode="tel" placeholder="0917 123 4567"></label>
+    </div>
+
+    <div class="bloc">
+      <h2>Payment</h2>
+      <div id="listePaiement"></div>
+    </div>
+
+    <div class="bloc">
+      <h2>Summary</h2>
+      <div class="recap" id="recap"></div>
+    </div>
+
+    <div class="erreur" id="erreur"></div>`;
+
+  // Produits
+  const zone = $("listeProduits");
+  produits.forEach(p => {
+    const el = document.createElement("div");
+    el.className = "produit";
+    el.innerHTML = `
+      <div class="nom"><div></div><div class="prix">${peso(p.prix)}</div></div>
+      <div class="compteur">
+        <button type="button" class="moins">−</button>
+        <span class="n">0</span>
+        <button type="button" class="plus">+</button>
+      </div>`;
+    el.querySelector(".nom div").textContent = p.nom;
+    const n = el.querySelector(".n");
+    el.querySelector(".moins").onclick = () => {
+      choix[p.code] = Math.max(0, (choix[p.code] || 0) - 1);
+      if (!choix[p.code]) delete choix[p.code];
+      n.textContent = choix[p.code] || 0;
+      majRecap();
+    };
+    el.querySelector(".plus").onclick = () => {
+      choix[p.code] = (choix[p.code] || 0) + 1;
+      n.textContent = choix[p.code];
+      majRecap();
+    };
+    zone.appendChild(el);
+  });
+
+  // Cadence et nombre
+  brancherPastilles("cadences", "c", (v) => { cadence = v; majDates(); majRecap(); });
+  brancherPastilles("nombres", "n", (v) => { nombre = Number(v); majDates(); majRecap(); });
+
+  // Options de retrait
+  const lo = $("listeOptions");
+  options.forEach((o, i) => {
+    const tarif = tarifAbonne(o);
+    const l = document.createElement("label");
+    l.className = "choix";
+    l.dataset.i = i;
+    l.innerHTML = `
+      <input type="radio" name="option" value="${i}" ${i === 0 ? "checked" : ""}>
+      <span style="flex:1">
+        <span class="t"></span>
+        <span class="d"></span>
+      </span>`;
+    l.querySelector(".t").textContent = o.nom +
+      " — " + (tarif > 0 ? peso(tarif) + " per delivery" : "free");
+    l.querySelector(".d").textContent = [o.lieu,
+      (o.jours || []).length ? o.jours.map(n => JOURS[n]).join(", ") + " only" : ""]
+      .filter(Boolean).join(" · ");
+    l.querySelector("input").onchange = () => { iOption = i; majOption(); };
+    lo.appendChild(l);
+  });
+
+  // Paiement
+  const solde = Number(compte.solde) || 0;
+  $("listePaiement").innerHTML = `
+    <label class="choix" data-p="avance">
+      <input type="radio" name="paiement" value="avance" checked>
+      <span style="flex:1"><span class="t">Pay for all deliveries now</span>
+      <span class="d">One payment, and your deliveries are secured.</span></span>
+    </label>
+    <label class="choix" data-p="credit">
+      <input type="radio" name="paiement" value="credit">
+      <span style="flex:1"><span class="t">Use my store credit</span>
+      <span class="d">Each delivery is taken from your balance — currently ${peso(solde)}.</span></span>
+    </label>`;
+  document.querySelectorAll('input[name="paiement"]').forEach(r => {
+    r.onchange = () => { modePaiement = r.value; majPaiement(); majRecap(); };
+  });
+
+  $("nom").value = compte.nom || user.displayName || "";
+  $("tel").value = compte.telephone || "";
+  $("depart").onchange = (e) => { depart = e.target.value; majDates(); majRecap(); };
+
+  document.querySelector('#cadences button')?.click();
+  document.querySelector(`#nombres button[data-n="${nombre}"]`)?.click();
+  majOption();
+  majPaiement();
+  $("pied").hidden = false;
+}
+
+function brancherPastilles(id, cle, action) {
+  const zone = $(id);
+  zone.querySelectorAll("button").forEach(b => {
+    b.onclick = () => {
+      zone.querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", x === b));
+      action(b.dataset[cle]);
+    };
+  });
+}
+
+/* ---------- Option et dates ---------- */
+function optionChoisie() { return options[iOption] || {}; }
+
+// Le tarif abonné remplace le tarif normal quand il est renseigné.
+function tarifAbonne(o) {
+  if (o.tarif_abonne !== null && o.tarif_abonne !== undefined) return Number(o.tarif_abonne) || 0;
+  return o.tarif_variable ? 0 : (Number(o.tarif) || 0);
+}
+
+function majOption() {
+  const o = optionChoisie();
+  document.querySelectorAll(".choix[data-i]").forEach(c =>
+    c.classList.toggle("actif", Number(c.dataset.i) === iOption));
+  $("blocAdresse").hidden = !o.demander_adresse;
+  if (compte.adresse && $("adresse") && !$("adresse").value) $("adresse").value = compte.adresse;
+  remplirDeparts();
+  majDates();
+  majRecap();
+}
+
+function majPaiement() {
+  document.querySelectorAll(".choix[data-p]").forEach(c =>
+    c.classList.toggle("actif", c.dataset.p === modePaiement));
+}
+
+function iso(d) {
+  return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+}
+function indexJour(d) { return (d.getDay() + 6) % 7; }
+
+function jourPossible(d, o) {
+  const jours = o.jours || [];
+  if (jours.length) return jours.includes(indexJour(d));
+  return !(params.jours_fermes || []).includes(indexJour(d));
+}
+
+// Propose les huit prochaines dates compatibles avec l'option choisie.
+function remplirDeparts() {
+  const o = optionChoisie();
+  const delai = Number(params.delai_min_heures) || 0;
+  const d = new Date(Date.now() + delai * 3600000);
+  d.setHours(0, 0, 0, 0);
+
+  const dispo = [];
+  for (let i = 0; i < 40 && dispo.length < 8; i++) {
+    if (jourPossible(d, o)) dispo.push(iso(d));
+    d.setDate(d.getDate() + 1);
+  }
+
+  const sel = $("depart");
+  sel.innerHTML = dispo.map(x =>
+    `<option value="${x}">${new Date(x + "T12:00:00")
+      .toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" })}</option>`
+  ).join("");
+  depart = dispo[0] || "";
+}
+
+function echeances() {
+  if (!depart || !nombre) return [];
+  const pas = cadence === "quinzaine" ? 14 : 7;
+  const liste = [];
+  const d = new Date(depart + "T12:00:00");
+  for (let i = 0; i < nombre; i++) {
+    liste.push(iso(d));
+    d.setDate(d.getDate() + pas);
+  }
+  return liste;
+}
+
+function majDates() {
+  const l = echeances();
+  if (!l.length) return ($("apercuDates").textContent = "");
+  const format = (x) => new Date(x + "T12:00:00")
+    .toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+  $("apercuDates").innerHTML =
+    "<strong>Your deliveries:</strong><br>" + l.map(format).join(" · ") +
+    "<br><span style=\"font-size:13px\">If we are away, your deliveries shift and none is lost.</span>";
+}
+
+/* ---------- Récapitulatif ---------- */
+function majRecap() {
+  const o = optionChoisie();
+  const lignes = produits.filter(p => choix[p.code]);
+  const panier = lignes.reduce((t, p) => t + p.prix * choix[p.code], 0);
+  const frais = tarifAbonne(o);
+  const normal = o.tarif_variable ? 0 : (Number(o.tarif) || 0);
+  const parLivraison = panier + frais;
+  const total = parLivraison * nombre;
+  const economie = Math.max(0, (normal - frais)) * nombre;
+
+  let html = lignes.map(p =>
+    `<div class="l"><span><span class="q">${choix[p.code]} ×</span> ${ech(p.nom)}</span>
+     <span>${peso(p.prix * choix[p.code])}</span></div>`).join("");
+
+  if (!lignes.length) html = '<div class="l"><span class="q">No items selected yet.</span></div>';
+
+  html += `<div class="l"><span>Delivery${frais > 0 ? " (subscriber rate)" : ""}</span>
+           <span>${frais > 0 ? peso(frais) : "free"}</span></div>`;
+  html += `<div class="l sous"><span>Per delivery</span><span>${peso(parLivraison)}</span></div>`;
+  html += `<div class="l somme"><span>${nombre} deliveries</span><span>${peso(total)}</span></div>`;
+
+  $("recap").innerHTML = html +
+    (economie > 0 ? `<div class="economie">You save ${peso(economie)} on delivery</div>` : "");
+
+  const solde = Number(compte.solde) || 0;
+  $("totalPied").innerHTML = modePaiement === "credit"
+    ? `${peso(total)}<small>from your credit — balance ${peso(solde)}</small>`
+    : `${peso(total)}<small>${nombre} × ${peso(parLivraison)}</small>`;
+
+  $("btnSouscrire").disabled = !lignes.length || !nombre || !depart;
+}
+
+/* ---------- Souscription ---------- */
+$("btnSouscrire").onclick = async () => {
+  const o = optionChoisie();
+  const nom = $("nom").value.trim();
+  const tel = $("tel").value.replace(/\D/g, "");
+  const adresse = o.demander_adresse ? ($("adresse").value || "").trim() : "";
+  const lignes = produits.filter(p => choix[p.code]);
+
+  if (nom.length < 2)  return echec("Please enter your name.");
+  if (tel.length < 10) return echec("Please enter a valid mobile number.");
+  if (o.demander_adresse && !adresse) return echec("Please enter your delivery address.");
+  if (!lignes.length) return echec("Please choose at least one item.");
+
+  const frais = tarifAbonne(o);
+  const parLivraison = lignes.reduce((t, p) => t + p.prix * choix[p.code], 0) + frais;
+  const total = parLivraison * nombre;
+  const dates = echeances();
+
+  if (!confirm(`${nombre} deliveries, ${peso(parLivraison)} each — ${peso(total)} in total.\n\n` +
+               `First delivery: ${dates[0]}\n\nStart your bread plan?`)) return;
+
+  $("btnSouscrire").disabled = true;
+  $("erreur").textContent = "";
+
+  try {
+    const ref = await addDoc(collection(db, "abonnements"), {
+      statut: "nouveau",
+      client: { uid: user.uid, nom, telephone: tel, email: user.email || "", adresse },
+      panier: lignes.map(p => ({ code: p.code, nom: p.nom, qte: choix[p.code], prix: p.prix })),
+      option: { nom: o.nom, type: o.type || "", lieu: o.lieu || "" },
+      cadence,
+      nb_livraisons: nombre,
+      frais_livraison: frais,
+      total_par_livraison: parLivraison,
+      total,
+      paiement: { mode: modePaiement, statut: "en attente" },
+      echeances: dates.map(d => ({ date: d, statut: "planifiee" })),
+      cree_le: new Date().toISOString()
+    });
+
+    try {
+      sessionStorage.setItem("abonnement", JSON.stringify({
+        id: ref.id, nombre, parLivraison, total, dates, mode: modePaiement
+      }));
+    } catch {}
+
+    $("page").innerHTML = `
+      <div class="bloc" style="text-align:center;padding:34px 20px">
+        <h2 style="font-size:20px;margin-bottom:10px">Your bread plan is set</h2>
+        <p style="color:var(--encre-doux);font-size:15px">
+          ${nombre} deliveries, starting ${dates[0]}.<br><br>
+          ${modePaiement === "credit"
+            ? "Each delivery will be taken from your store credit."
+            : "We will contact you to arrange the payment of " + peso(total) + "."}
+        </p>
+        <p style="margin-top:22px">
+          <a href="compte.html" style="color:var(--accent)">See my account</a> ·
+          <a href="./" style="color:var(--accent)">Back to the menu</a>
+        </p>
+      </div>`;
+    $("pied").hidden = true;
+  } catch (e) {
+    console.error(e);
+    echec("Your bread plan could not be saved. Please try again.");
+  }
+};
+
+function echec(texte) {
+  $("erreur").textContent = texte;
+  $("btnSouscrire").disabled = false;
+  $("erreur").scrollIntoView({ behavior: "smooth", block: "center" });
+}
+</script>
+</body>
+</html>
