@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>My account — Yoann's French Bakery</title>
+<meta name="theme-color" content="#1a1a1a">
+<link rel="icon" href="logo.jpg">
+<style>
+  :root{
+    --creme:#fdf6ec;--papier:#fffdf9;--encre:#1a1a1a;
+    --encre-doux:#6b6157;--trait:#e2d7c6;--accent:#2f4858;
+    --ok:#3d6b3d;--alerte:#8c2f22;--r:6px;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;background:var(--creme);color:var(--encre);
+    font:16px/1.55 ui-sans-serif,-apple-system,"Segoe UI",Roboto,sans-serif;
+  }
+  header{
+    background:var(--encre);color:var(--creme);
+    padding:15px 18px;display:flex;align-items:center;gap:14px;
+  }
+  header a{color:var(--creme);text-decoration:none;font-size:22px;line-height:1}
+  header h1{font-size:17px;margin:0;font-weight:600}
+  main{max-width:560px;margin:0 auto;padding:22px 16px 60px}
+
+  .bloc{
+    background:var(--papier);border:1px solid var(--trait);
+    border-radius:var(--r);padding:20px;margin-bottom:16px;
+  }
+  .bloc h2{font-size:15px;margin:0 0 12px}
+
+  .solde{text-align:center;padding:26px 20px}
+  .solde .montant{
+    font-size:38px;font-weight:600;font-variant-numeric:tabular-nums;
+    line-height:1.1;
+  }
+  .solde .etiq{font-size:13px;color:var(--encre-doux);letter-spacing:.08em;
+    text-transform:uppercase;margin-top:6px}
+  .solde .aide{font-size:14px;color:var(--encre-doux);margin-top:14px}
+
+  .mvt{display:flex;justify-content:space-between;gap:12px;padding:9px 0;
+    border-bottom:1px solid var(--trait);font-size:15px}
+  .mvt:last-child{border-bottom:none}
+  .mvt .quand{font-size:13px;color:var(--encre-doux)}
+  .mvt .val{font-variant-numeric:tabular-nums;font-weight:600;white-space:nowrap}
+  .mvt .val.plus{color:var(--ok)}
+  .mvt .val.moins{color:var(--alerte)}
+
+  button.principal{
+    width:100%;background:var(--encre);color:var(--creme);border:none;
+    padding:14px;border-radius:var(--r);font-size:15.5px;font-weight:600;
+    cursor:pointer;margin-bottom:10px;
+  }
+  button.secondaire{
+    width:100%;background:transparent;color:var(--accent);
+    border:1px solid var(--trait);padding:13px;border-radius:var(--r);
+    font-size:15px;cursor:pointer;
+  }
+  input[type=email]{
+    width:100%;padding:13px 12px;border:1px solid var(--trait);
+    border-radius:var(--r);background:#fff;font:inherit;font-size:16px;
+    color:var(--encre);margin-bottom:10px;
+  }
+  .ou{text-align:center;font-size:13px;color:var(--encre-doux);margin:16px 0}
+  .note{font-size:13px;color:var(--encre-doux);line-height:1.5;margin-top:16px}
+  .message{font-size:14.5px;margin-top:12px}
+  .message.ok{color:var(--ok)}
+  .message.err{color:var(--alerte)}
+  .lien{display:block;text-align:center;margin-top:22px;color:var(--accent);font-size:15px}
+  .vide{padding:24px;text-align:center;color:var(--encre-doux);font-size:14.5px}
+  .qui{font-size:13.5px;color:var(--encre-doux);text-align:center;margin-top:14px}
+  .qui button{background:none;border:none;color:var(--accent);
+    text-decoration:underline;cursor:pointer;font-size:13.5px;padding:0}
+</style>
+</head>
+<body>
+
+<header>
+  <a href="./" aria-label="Back to the menu">&#8249;</a>
+  <h1>My account</h1>
+</header>
+
+<main id="page">
+  <div class="vide">Loading…</div>
+</main>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged,
+         sendSignInLinkToEmail, isSignInWithEmailLink, signInWithEmailLink }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, collection, getDocs, doc, getDoc, setDoc,
+         query, orderBy, limit }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDuq8KS8M_Z8U7BlSp6MvE-6Y9OYYaDujE",
+  authDomain: "bakertools-ae124.firebaseapp.com",
+  projectId: "bakertools-ae124",
+  storageBucket: "bakertools-ae124.firebasestorage.app",
+  messagingSenderId: "978584667113",
+  appId: "1:978584667113:web:868cc89788aff27717c178"
+};
+
+const app  = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db   = getFirestore(app);
+const $    = (id) => document.getElementById(id);
+const peso = (n) => "₱" + Number(n || 0).toLocaleString("en-PH");
+const ech  = (t) => String(t ?? "").replace(/[&<>"]/g, x =>
+  ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[x]));
+
+const LIBELLES = {
+  rechargement: "Top-up", depense: "Order", remboursement: "Refund", correction: "Adjustment"
+};
+
+/* ---------- Retour depuis un lien e-mail ---------- */
+(async function () {
+  if (isSignInWithEmailLink(auth, window.location.href)) {
+    let email = "";
+    try { email = localStorage.getItem("emailConnexion") || ""; } catch {}
+    if (!email) email = window.prompt("Please confirm your email address") || "";
+    try {
+      await signInWithEmailLink(auth, email, window.location.href);
+      try { localStorage.removeItem("emailConnexion"); } catch {}
+      history.replaceState(null, "", location.pathname);
+    } catch (e) {
+      console.error(e);
+    }
+  }
+})();
+
+/* ---------- État de connexion ---------- */
+onAuthStateChanged(auth, async (user) => {
+  if (!user) return ecranConnexion();
+  await ecranCompte(user);
+});
+
+/* ---------- Écran de connexion ---------- */
+function ecranConnexion() {
+  $("page").innerHTML = `
+    <div class="bloc">
+      <h2>Sign in to your account</h2>
+      <p style="font-size:14.5px;color:var(--encre-doux);margin:0 0 18px">
+        Your account keeps your store credit and your order history.
+      </p>
+
+      <button class="principal" id="btnGoogle">Continue with Google</button>
+
+      <div class="ou">or</div>
+
+      <input type="email" id="email" placeholder="your@email.com" autocomplete="email">
+      <button class="secondaire" id="btnLien">Get a sign-in link by email</button>
+
+      <div class="message" id="message"></div>
+
+      <p class="note">
+        We only keep your name, your email and your orders. Nothing is shared
+        with anyone, and signing in with Google gives us no access to your
+        Google data beyond your name and email address.
+      </p>
+    </div>
+    <a class="lien" href="./">Back to the menu</a>`;
+
+  $("btnGoogle").onclick = async () => {
+    try { await signInWithPopup(auth, new GoogleAuthProvider()); }
+    catch (e) {
+      console.error(e);
+      dire("Sign-in did not complete. Please allow pop-ups and try again.", "err");
+    }
+  };
+
+  $("btnLien").onclick = async () => {
+    const email = $("email").value.trim();
+    if (!email || !email.includes("@")) return dire("Please enter a valid email address.", "err");
+    try {
+      await sendSignInLinkToEmail(auth, email, {
+        url: location.origin + location.pathname,
+        handleCodeInApp: true
+      });
+      try { localStorage.setItem("emailConnexion", email); } catch {}
+      dire("Check your inbox — we sent you a sign-in link. It may take a minute.", "ok");
+    } catch (e) {
+      console.error(e);
+      dire("The link could not be sent. Please try Google sign-in instead.", "err");
+    }
+  };
+}
+
+function dire(texte, type) {
+  const el = $("message");
+  if (!el) return;
+  el.textContent = texte;
+  el.className = "message " + (type || "");
+}
+
+/* ---------- Écran du compte ---------- */
+async function ecranCompte(user) {
+  $("page").innerHTML = '<div class="vide">Loading your account…</div>';
+
+  const ref = doc(db, "comptes", user.uid);
+  let fiche = null;
+
+  try {
+    const s = await getDoc(ref);
+    if (s.exists()) {
+      fiche = s.data();
+    } else {
+      // Première connexion : on crée la fiche, sans solde — seul le
+      // boulanger peut créditer un compte.
+      const nouvelle = {
+        nom: user.displayName || "",
+        email: user.email || "",
+        cree_le: new Date().toISOString()
+      };
+      await setDoc(ref, nouvelle);
+      fiche = nouvelle;
+    }
+  } catch (e) {
+    console.error(e);
+    $("page").innerHTML =
+      '<div class="bloc"><p>Your account could not be loaded. Please try again later.</p></div>';
+    return;
+  }
+
+  const solde = Number(fiche.solde) || 0;
+
+  let mouvements = [];
+  try {
+    const q = query(collection(db, "comptes", user.uid, "mouvements"),
+                    orderBy("quand", "desc"), limit(20));
+    const s = await getDocs(q);
+    s.forEach(d => mouvements.push(d.data()));
+  } catch (e) { console.error(e); }
+
+  const histo = mouvements.length
+    ? mouvements.map(m => {
+        const plus = m.montant >= 0;
+        return `<div class="mvt">
+          <span>${ech(LIBELLES[m.type] || m.type)}
+            <span class="quand">${ech((m.quand || "").slice(0, 10))}</span></span>
+          <span class="val ${plus ? "plus" : "moins"}">${plus ? "+" : ""}${peso(m.montant)}</span>
+        </div>`;
+      }).join("")
+    : '<div class="vide">No activity yet.</div>';
+
+  $("page").innerHTML = `
+    <div class="bloc solde">
+      <div class="montant">${peso(solde)}</div>
+      <div class="etiq">Store credit</div>
+      <p class="aide">${solde > 0
+        ? "You can use this at checkout."
+        : "Ask us about topping up your account — pay once, order as you go."}</p>
+    </div>
+
+    <div class="bloc">
+      <h2>Activity</h2>
+      ${histo}
+    </div>
+
+    <a class="lien" href="./">Back to the menu</a>
+    <p class="qui">Signed in as ${ech(user.email || user.displayName || "")} —
+      <button id="btnSortir">sign out</button></p>`;
+
+  $("btnSortir").onclick = () => signOut(auth);
+}
+</script>
+</body>
+</html>
