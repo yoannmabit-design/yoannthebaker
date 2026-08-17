@@ -138,6 +138,8 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getFirestore, collection, getDocs, doc, getDoc, setDoc }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getAuth, onAuthStateChanged }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDuq8KS8M_Z8U7BlSp6MvE-6Y9OYYaDujE",
@@ -148,17 +150,37 @@ const firebaseConfig = {
   appId: "1:978584667113:web:868cc89788aff27717c178"
 };
 
-const db = getFirestore(initializeApp(firebaseConfig));
+const appF = initializeApp(firebaseConfig);
+const db   = getFirestore(appF);
+const auth = getAuth(appF);
 const $  = (id) => document.getElementById(id);
 const peso = (n) => "₱" + Number(n).toLocaleString("en-PH");
 
 const JOURS_COURTS = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
 
 let params = {}, options = [], lignes = [], sousTotal = 0;
+let remise = 0, uidClient = "";
 let dateChoisie = "", moisVu = null, dateMin = null;
 
 /* ---------- Démarrage ---------- */
+function attendreConnexion() {
+  return new Promise(resolve => {
+    const stop = onAuthStateChanged(auth, async (user) => {
+      stop();
+      if (user) {
+        uidClient = user.uid;
+        try {
+          const s = await getDoc(doc(db, "comptes", user.uid));
+          remise = Number(s.data()?.remise) || 0;
+        } catch (e) { console.error(e); }
+      }
+      resolve();
+    });
+  });
+}
+
 (async function () {
+  await attendreConnexion();
   let panier = {};
   try { panier = JSON.parse(localStorage.getItem("panier") || "{}"); } catch {}
 
@@ -188,7 +210,8 @@ let dateChoisie = "", moisVu = null, dateMin = null;
         if (reste <= 0) return;
         if (q > reste) q = reste;
       }
-      const prix = Number(d.prix_vente) || 0;
+      const base = Number(d.prix_vente) || 0;
+      const prix = remise > 0 ? Math.round(base * (1 - remise / 100)) : base;
       lignes.push({ id: s.id, code: d.code || s.id, nom: d.nom,
                     qte: q, prix, montant: q * prix });
     });
@@ -562,6 +585,8 @@ $("btnEnvoyer").onclick = async () => {
     statut: "nouvelle",
     client: { nom, telephone: tel, adresse },
     panier: lignes.map(l => ({ code: l.code, nom: l.nom, qte: l.qte, prix: l.prix })),
+    remise,
+    compte_uid: uidClient,
     sous_total: sousTotal,
     frais_livraison: frais,
     frais_a_confirmer: !!o.tarif_variable,
