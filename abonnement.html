@@ -37,7 +37,12 @@
     display:flex;gap:12px;align-items:center;padding:11px 0;
     border-bottom:1px solid var(--trait);
   }
-  .produit:last-child{border-bottom:none}
+  .rayon-groupe:last-child .produit:last-child{border-bottom:none}
+  .rayon-titre{
+    font-size:12.5px;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--encre-doux);margin:16px 0 2px;
+  }
+  .rayon-groupe:first-child .rayon-titre{margin-top:4px}
   .produit .nom{flex:1;min-width:0}
   .produit .prix{font-size:14px;color:var(--encre-doux)}
   .compteur{display:flex;align-items:center;gap:9px}
@@ -148,6 +153,18 @@ const ech  = (t) => String(t ?? "").replace(/[&<>"]/g, x =>
 
 const JOURS = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
 
+/* Rayons de la vitrine, dans le même ordre que la boutique. */
+const ORDRE = ["Breads", "Pastries", "Cakes", "Frozen", "Other"];
+
+// Repli pour les produits publiés avant l'existence des rayons.
+function rayon(p) {
+  if (p.rayon && ORDRE.includes(p.rayon)) return p.rayon;
+  const c = (p.categorie || "").toLowerCase();
+  if (c.includes("pain")) return "Breads";
+  if (c.includes("viennoiserie")) return "Pastries";
+  return "Other";
+}
+
 let params = {}, abo = {}, options = [], produits = [], compte = null, user = null;
 let choix = {};          // { code : quantité }
 let cadence = "hebdo";
@@ -199,10 +216,14 @@ async function charger() {
     cat.forEach(s => {
       const d = s.data();
       if (d.visible === false || d.disponible === false) return;
+      // Champ absent = proposé : un produit publié avant l'existence de ce
+      // réglage reste disponible à l'abonnement.
+      if (d.abonnement === false) return;
       produits.push({ code: d.code || s.id, nom: d.nom, prix: Number(d.prix_vente) || 0,
-                      categorie: d.categorie || "Autres" });
+                      categorie: d.categorie || "Autres", rayon: rayon(d) });
     });
-    produits.sort((a, b) => a.categorie.localeCompare(b.categorie) || a.nom.localeCompare(b.nom));
+    produits.sort((a, b) =>
+      ORDRE.indexOf(a.rayon) - ORDRE.indexOf(b.rayon) || a.nom.localeCompare(b.nom));
 
     const nombres = abo.nombres || [4, 6, 8, 12];
     nombre = nombres[0];
@@ -276,9 +297,20 @@ function construire() {
 
     <div class="erreur" id="erreur"></div>`;
 
-  // Produits
+  // Produits, regroupés par rayon dans l'ordre de la vitrine.
   const zone = $("listeProduits");
+  let groupe = null, rayonVu = null;
   produits.forEach(p => {
+    if (p.rayon !== rayonVu) {
+      rayonVu = p.rayon;
+      groupe = document.createElement("div");
+      groupe.className = "rayon-groupe";
+      const titre = document.createElement("div");
+      titre.className = "rayon-titre";
+      titre.textContent = p.rayon;
+      groupe.appendChild(titre);
+      zone.appendChild(groupe);
+    }
     const el = document.createElement("div");
     el.className = "produit";
     el.innerHTML = `
@@ -301,7 +333,7 @@ function construire() {
       n.textContent = choix[p.code];
       majRecap();
     };
-    zone.appendChild(el);
+    groupe.appendChild(el);
   });
 
   // Cadence et nombre
