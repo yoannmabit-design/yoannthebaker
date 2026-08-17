@@ -1,0 +1,911 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Boutique — Administration | Yoann's French Bakery</title>
+<meta name="theme-color" content="#1a1a1a">
+<link rel="icon" href="logo.png" type="image/png">
+<link rel="apple-touch-icon" href="logo.png">
+<link rel="manifest" href="manifest.json">
+<style>
+  :root{
+    --creme:#fdf6ec;
+    --papier:#fffdf9;
+    --encre:#1f1b16;
+    --encre-doux:#6b6157;
+    --trait:#e2d7c6;
+    --accent:#2f4858;
+    --accent-clair:#e8eef1;
+    --alerte:#8c2f22;
+    --ok:#3d6b3d;
+    --r:6px;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;background:var(--creme);color:var(--encre);
+    font:16px/1.55 ui-sans-serif,-apple-system,"Segoe UI",Roboto,sans-serif;
+  }
+  header{
+    background:var(--encre);color:var(--creme);
+    padding:14px 20px;display:flex;align-items:center;
+    gap:14px;flex-wrap:wrap;position:sticky;top:0;z-index:10;
+  }
+  header h1{font-size:17px;margin:0;font-weight:600;letter-spacing:.02em}
+  header .qui{margin-left:auto;font-size:13px;opacity:.75}
+  main{max-width:960px;margin:0 auto;padding:22px 16px 80px}
+  .onglets{display:flex;gap:6px;margin-bottom:22px;flex-wrap:wrap}
+  .onglets button{
+    background:transparent;border:1px solid var(--trait);color:var(--encre-doux);
+    padding:10px 18px;border-radius:var(--r);cursor:pointer;font-size:15px;
+  }
+  .onglets button[aria-selected="true"]{
+    background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600;
+  }
+  .carte{
+    background:var(--papier);border:1px solid var(--trait);
+    border-radius:var(--r);padding:20px;margin-bottom:18px;
+  }
+  .carte h2{margin:0 0 4px;font-size:16px;letter-spacing:.01em}
+  .carte p.aide{margin:0 0 16px;font-size:13.5px;color:var(--encre-doux)}
+  label{display:block;font-size:13px;color:var(--encre-doux);margin-bottom:5px}
+  input[type=text],input[type=number],textarea,select{
+    width:100%;padding:10px 11px;border:1px solid var(--trait);
+    border-radius:var(--r);background:#fff;font:inherit;font-size:15px;color:var(--encre);
+  }
+  input:focus,textarea:focus,select:focus{outline:2px solid var(--accent);outline-offset:1px}
+  textarea{min-height:64px;resize:vertical}
+  .grille{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px}
+  .ligne{display:flex;gap:10px;align-items:flex-end;margin-bottom:10px;flex-wrap:wrap}
+  .ligne > div{flex:1;min-width:130px}
+  button.action{
+    background:var(--accent);color:#fff;border:none;padding:11px 20px;
+    border-radius:var(--r);cursor:pointer;font-size:15px;font-weight:600;
+  }
+  button.action:disabled{opacity:.5;cursor:default}
+  button.mineur{
+    background:transparent;color:var(--accent);border:1px solid var(--trait);
+    padding:9px 15px;border-radius:var(--r);cursor:pointer;font-size:14px;
+  }
+  button.retirer{
+    background:transparent;border:1px solid var(--trait);color:var(--alerte);
+    padding:9px 13px;border-radius:var(--r);cursor:pointer;font-size:14px;
+  }
+  .alerte{
+    background:#f6e2de;border:1px solid #e4c3bc;color:#6d2419;
+    border-radius:var(--r);padding:13px 15px;font-size:14px;margin-bottom:14px;
+  }
+  .alerte b{display:block;margin-bottom:5px}
+  .alerte ul{margin:6px 0 10px;padding-left:20px}
+  .alerte button{
+    background:#8c2f22;color:#fff;border:none;padding:9px 15px;
+    border-radius:var(--r);font-size:14px;cursor:pointer;
+  }
+  .option,.cadre{
+    border:1px solid var(--trait);border-radius:var(--r);
+    padding:14px;margin-bottom:12px;background:#fff;
+  }
+  .jours{display:flex;gap:8px;flex-wrap:wrap}
+  .jours label{
+    display:flex;align-items:center;gap:6px;font-size:14px;color:var(--encre);
+    border:1px solid var(--trait);padding:8px 12px;border-radius:var(--r);
+    cursor:pointer;background:#fff;margin:0;
+  }
+  .produit{
+    border:1px solid var(--trait);border-radius:var(--r);
+    padding:14px;margin-bottom:10px;background:#fff;
+  }
+  .produit.publie{border-left:4px solid var(--ok)}
+  .produit .tete{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  .produit .nom{font-weight:600;flex:1;min-width:150px}
+  .produit .code{
+    font-family:ui-monospace,monospace;font-size:12px;
+    background:#efe6d8;color:var(--encre-doux);padding:2px 7px;border-radius:3px;
+  }
+  .produit .cat{font-size:12px;color:var(--encre-doux);text-transform:uppercase;letter-spacing:.05em}
+  .produit .detail{margin-top:14px;padding-top:14px;border-top:1px dashed var(--trait)}
+  .produit .detail[hidden]{display:none}
+  .bascule{display:flex;align-items:center;gap:7px;font-size:14px;margin:0;color:var(--encre);cursor:pointer}
+  .barre{
+    position:fixed;bottom:0;left:0;right:0;background:var(--papier);
+    border-top:1px solid var(--trait);padding:12px 16px;
+    display:flex;gap:12px;align-items:center;justify-content:flex-end;
+  }
+  .etat{font-size:13.5px;color:var(--encre-doux);margin-right:auto}
+  .etat.ok{color:var(--ok)}
+  .etat.err{color:var(--alerte)}
+  .vide{padding:26px;text-align:center;color:var(--encre-doux);font-size:14.5px}
+  .connexion{max-width:400px;margin:14vh auto;text-align:center;padding:0 20px}
+  .connexion h1{font-size:22px;margin:0 0 6px}
+  .connexion p{color:var(--encre-doux);font-size:14.5px;margin:0 0 22px}
+  .recherche{margin-bottom:14px}
+  @media (prefers-reduced-motion:no-preference){
+    .produit{transition:border-color .15s}
+  }
+</style>
+</head>
+<body>
+
+<!-- ================= ÉCRAN DE CONNEXION ================= -->
+<div id="ecranConnexion" class="connexion">
+  <h1>Boutique — Administration</h1>
+  <p>Réservé à la boulangerie.</p>
+  <button class="action" id="btnConnexion">Se connecter avec Google</button>
+  <p id="msgConnexion" style="margin-top:18px"></p>
+</div>
+
+<!-- ================= APPLICATION ================= -->
+<div id="app" hidden>
+  <header>
+    <h1>Boutique — Administration</h1>
+    <span class="qui" id="qui"></span>
+    <button class="mineur" id="btnDeconnexion" style="color:var(--creme);border-color:#4a443c">Se déconnecter</button>
+  </header>
+
+  <main>
+    <div class="onglets" role="tablist">
+      <button role="tab" id="ongletParams" aria-selected="true">Paramètres</button>
+      <button role="tab" id="ongletProduits" aria-selected="false">Produits en vente</button>
+    </div>
+
+    <!-- ---------- PARAMÈTRES ---------- -->
+    <section id="vueParams">
+
+      <div class="carte">
+        <h2>Points de retrait et de livraison</h2>
+        <p class="aide">Chaque option apparaît telle quelle au client. Laissez les jours vides si l'option est possible tous les jours.</p>
+        <div id="listeOptions"></div>
+        <button class="mineur" id="btnAjoutOption">Ajouter une option</button>
+      </div>
+
+      <div class="carte">
+        <h2>Retrait et livraison</h2>
+        <p class="aide">Ce que le client peut choisir au moment de commander.</p>
+        <div class="grille">
+          <div>
+            <label for="delai">Délai minimum de commande (heures)</label>
+            <input type="number" id="delai" min="0" step="1" value="24">
+          </div>
+          <div>
+            <label for="whatsapp">Numéro WhatsApp</label>
+            <input type="text" id="whatsapp" placeholder="639171234567">
+          </div>
+          <div>
+            <label for="viber">Numéro Viber</label>
+            <input type="text" id="viber" placeholder="639171234567">
+          </div>
+          <div>
+            <label for="email">Adresse e-mail</label>
+            <input type="text" id="email" placeholder="hello@exemple.com">
+          </div>
+          <div>
+            <label for="messenger">Messenger — nom de la page</label>
+            <input type="text" id="messenger" placeholder="yoannsfrenchbakery">
+          </div>
+        </div>
+        <div style="margin-top:16px">
+          <label for="creneaux">Créneaux proposés (un par ligne)</label>
+          <textarea id="creneaux" placeholder="7h00 – 9h00&#10;9h00 – 11h00&#10;16h00 – 18h00"></textarea>
+        </div>
+        <div style="margin-top:16px">
+          <label>Jours de fermeture</label>
+          <div class="jours" id="jours"></div>
+        </div>
+      </div>
+
+      <div class="carte">
+        <h2>Coordonnées de paiement</h2>
+        <p class="aide">Affichées au client au moment de choisir son paiement. Un moyen sans numéro ni QR n'est pas proposé. Pour le QR, indiquez le nom du fichier déposé dans le dépôt (par exemple <code>qr-gcash.jpg</code>) ou une adresse complète.</p>
+
+        <div class="cadre">
+          <div class="grille">
+            <div><label for="gcashNom">GCash — nom du compte</label>
+              <input type="text" id="gcashNom" placeholder="Yoann M."></div>
+            <div><label for="gcashNumero">GCash — numéro</label>
+              <input type="text" id="gcashNumero" placeholder="0917 123 4567"></div>
+            <div><label for="gcashQR">GCash — image du QR</label>
+              <input type="text" id="gcashQR" placeholder="qr-gcash.jpg"></div>
+          </div>
+        </div>
+
+        <div class="cadre">
+          <div class="grille">
+            <div><label for="mayaNom">Maya — nom du compte</label>
+              <input type="text" id="mayaNom"></div>
+            <div><label for="mayaNumero">Maya — numéro</label>
+              <input type="text" id="mayaNumero"></div>
+            <div><label for="mayaQR">Maya — image du QR</label>
+              <input type="text" id="mayaQR" placeholder="qr-maya.jpg"></div>
+          </div>
+        </div>
+
+        <div class="cadre">
+          <div class="grille">
+            <div><label for="banqueNom">Banque</label>
+              <input type="text" id="banqueNom" placeholder="BPI"></div>
+            <div><label for="banqueTitulaire">Titulaire du compte</label>
+              <input type="text" id="banqueTitulaire"></div>
+            <div><label for="banqueNumero">Numéro de compte</label>
+              <input type="text" id="banqueNumero"></div>
+            <div><label for="banqueQR">Virement — image du QR</label>
+              <input type="text" id="banqueQR" placeholder="qr-bpi.jpg"></div>
+          </div>
+        </div>
+
+        <div style="margin-top:16px">
+          <label for="instrPaiement">Consigne affichée au client</label>
+          <textarea id="instrPaiement" placeholder="Send the payment screenshot on WhatsApp to confirm your order."></textarea>
+        </div>
+      </div>
+
+      <div class="carte">
+        <h2>Abonnements</h2>
+        <p class="aide">Le client choisit ses produits, une cadence et un nombre de livraisons. Chaque livraison est facturée au tarif abonné de l'option choisie, défini plus haut dans « Points de retrait et de livraison ».</p>
+        <label class="bascule" style="margin-bottom:14px">
+          <input type="checkbox" id="aboActif"> Proposer les abonnements
+        </label>
+        <div class="grille">
+          <div>
+            <label for="aboNombres">Nombres de livraisons proposés</label>
+            <input type="text" id="aboNombres" placeholder="4, 6, 8, 12" value="4, 6, 8, 12">
+          </div>
+        </div>
+        <div style="margin-top:16px">
+          <label>Cadences proposées</label>
+          <div class="jours">
+            <label><input type="checkbox" id="aboHebdo" checked> Chaque semaine</label>
+            <label><input type="checkbox" id="aboQuinzaine" checked> Toutes les 2 semaines</label>
+          </div>
+        </div>
+        <p class="aide" style="margin:14px 0 0">
+          Un tarif abonné laissé vide signifie que l'abonné paie le tarif habituel de l'option —
+          gratuit reste gratuit. Renseigné, il remplace le tarif normal, y compris pour les
+          livraisons à tarif variable : le prix annoncé au client reste donc ferme.
+        </p>
+      </div>
+
+      <div class="carte">
+        <h2>Mode vacances</h2>
+        <p class="aide">Le catalogue reste visible, mais la commande est fermée. Vos clients voient votre message à la place du panier.</p>
+        <label class="bascule" style="margin-bottom:14px">
+          <input type="checkbox" id="vacancesActif"> Boutique fermée
+        </label>
+        <div>
+          <label for="vacancesMessage">Message affiché</label>
+          <textarea id="vacancesMessage" placeholder="We are away until 5 September. Orders will reopen then — thank you!"></textarea>
+        </div>
+        <div style="margin-top:14px">
+          <label for="vacancesImage">Image (nom du fichier ou adresse) — facultatif</label>
+          <input type="text" id="vacancesImage" placeholder="vacances.jpg">
+        </div>
+      </div>
+
+      <div class="carte">
+        <h2>Message d'accueil</h2>
+        <p class="aide">Affiché en haut de la boutique. Laissez vide pour n'afficher que le catalogue.</p>
+        <textarea id="accueil" placeholder="Commandes prises jusqu'à 18h pour le lendemain matin."></textarea>
+      </div>
+
+    </section>
+
+    <!-- ---------- PRODUITS ---------- -->
+    <section id="vueProduits" hidden>
+      <div class="carte">
+        <h2>Produits en vente</h2>
+        <p class="aide">Cochez ce qui doit apparaître dans la boutique. Les fiches techniques et les coûts de revient restent privés — seuls les champs ci-dessous sont publiés.</p>
+        <div id="sansCode"></div>
+        <div id="orphelins"></div>
+        <input type="text" class="recherche" id="recherche" placeholder="Rechercher un produit…">
+        <div id="listeProduits"><div class="vide">Chargement…</div></div>
+      </div>
+    </section>
+  </main>
+
+  <div class="barre">
+    <span class="etat" id="etat"></span>
+    <button class="action" id="btnEnregistrer">Enregistrer</button>
+  </div>
+</div>
+
+<script src="admin-nav.js" defer></script>
+<script type="module">
+/* ============================================================
+   1. CONFIGURATION FIREBASE
+   Remplacez ce bloc par celui de votre projet.
+   Vous le trouverez en haut de gestion.html ou ingredients-master.html,
+   ou dans Paramètres du projet > Général > Vos applications.
+   ============================================================ */
+const firebaseConfig = {
+  apiKey: "AIzaSyDuq8KS8M_Z8U7BlSp6MvE-6Y9OYYaDujE",
+  authDomain: "bakertools-ae124.firebaseapp.com",
+  projectId: "bakertools-ae124",
+  storageBucket: "bakertools-ae124.firebasestorage.app",
+  messagingSenderId: "978584667113",
+  appId: "1:978584667113:web:868cc89788aff27717c178"
+};
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, collection, getDocs, doc, getDoc, setDoc, deleteDoc }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const app  = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db   = getFirestore(app);
+
+const $ = (id) => document.getElementById(id);
+const JOURS = ["Lundi","Mardi","Mercredi","Jeudi","Vendredi","Samedi","Dimanche"];
+
+// Catégories de la vitrine — indépendantes de celles de l'ERP.
+const RAYONS = ["Breads", "Pastries", "Cakes", "Frozen", "Other"];
+
+// Premier remplissage à partir de la catégorie technique.
+function rayonParDefaut(categorieERP) {
+  const c = (categorieERP || "").toLowerCase();
+  if (c.includes("pain")) return "Breads";
+  if (c.includes("viennoiserie")) return "Pastries";
+  return "Other";
+}
+
+let orphelins = [];
+let sansCode  = [];
+let produits = [];   // { id, nom, categorie, publie, prix, description, photo, disponible }
+
+/* ============================================================
+   2. CONNEXION
+   ============================================================ */
+$("btnConnexion").onclick = async () => {
+  $("msgConnexion").textContent = "";
+  try {
+    await signInWithPopup(auth, new GoogleAuthProvider());
+  } catch (e) {
+    $("msgConnexion").textContent =
+      "La connexion n'a pas abouti. Autorisez les fenêtres surgissantes, puis réessayez.";
+    console.error(e);
+  }
+};
+
+$("btnDeconnexion").onclick = () => signOut(auth);
+
+onAuthStateChanged(auth, async (user) => {
+  if (!user) {
+    $("app").hidden = true;
+    $("ecranConnexion").hidden = false;
+    return;
+  }
+  // Vérification des droits : le document admins/{uid} doit exister.
+  let autorise = false;
+  try {
+    autorise = (await getDoc(doc(db, "admins", user.uid))).exists();
+  } catch (e) { console.error(e); }
+
+  if (!autorise) {
+    await signOut(auth);
+    $("msgConnexion").innerHTML =
+      "Ce compte n'a pas accès à l'administration.<br><br>" +
+      "Votre identifiant : <code>" + user.uid + "</code><br>" +
+      "Créez un document portant cet identifiant dans la collection <b>admins</b>.";
+    return;
+  }
+
+  $("ecranConnexion").hidden = true;
+  $("app").hidden = false;
+  $("qui").textContent = user.email;
+  await chargerTout();
+});
+
+/* ============================================================
+   3. ONGLETS
+   ============================================================ */
+function ouvrir(onglet) {
+  const p = onglet === "params";
+  $("ongletParams").setAttribute("aria-selected", p);
+  $("ongletProduits").setAttribute("aria-selected", !p);
+  $("vueParams").hidden = !p;
+  $("vueProduits").hidden = p;
+}
+$("ongletParams").onclick   = () => ouvrir("params");
+$("ongletProduits").onclick = () => ouvrir("produits");
+
+/* ============================================================
+   4. POINTS DE RETRAIT ET DE LIVRAISON
+   ============================================================ */
+function ajouterOption(o = {}) {
+  const bloc = document.createElement("div");
+  bloc.className = "option";
+  bloc.innerHTML = `
+    <div class="ligne">
+      <div>
+        <label>Nom affiché au client</label>
+        <input type="text" class="o-nom" placeholder="Legazpi Sunday Market">
+      </div>
+      <div style="max-width:230px">
+        <label>Type</label>
+        <select class="o-type">
+          <option value="retrait">Le client vient chercher</option>
+          <option value="livraison">Je fais livrer</option>
+        </select>
+      </div>
+      <button class="retirer" type="button">Retirer</button>
+    </div>
+
+    <div class="ligne">
+      <div style="max-width:150px">
+        <label>Tarif (₱)</label>
+        <input type="number" class="o-tarif" min="0" step="1" value="0">
+      </div>
+      <div>
+        <label class="bascule" style="margin-top:22px">
+          <input type="checkbox" class="o-variable"> Tarif confirmé après commande
+        </label>
+      </div>
+      <div>
+        <label class="bascule" style="margin-top:22px">
+          <input type="checkbox" class="o-adresse"> Demander l'adresse du client
+        </label>
+      </div>
+      <div style="max-width:170px">
+        <label>Tarif abonné (₱)</label>
+        <input type="number" class="o-abo" min="0" step="1" placeholder="tarif normal">
+      </div>
+    </div>
+
+    <div>
+      <label>Adresse ou précision affichée au client</label>
+      <input type="text" class="o-lieu" placeholder="Legazpi Street, Makati — 7h à 14h">
+    </div>
+
+    <div style="margin-top:12px">
+      <label>Jours possibles <span style="opacity:.7">(aucun coché = tous les jours)</span></label>
+      <div class="jours o-jours"></div>
+    </div>`;
+
+  const zoneJours = bloc.querySelector(".o-jours");
+  JOURS.forEach((j, i) => {
+    const l = document.createElement("label");
+    l.innerHTML = `<input type="checkbox" value="${i}"> ${j.slice(0, 3)}`;
+    zoneJours.appendChild(l);
+  });
+
+  bloc.querySelector(".o-nom").value      = o.nom || "";
+  bloc.querySelector(".o-type").value     = o.type || "retrait";
+  bloc.querySelector(".o-tarif").value    = o.tarif ?? 0;
+  bloc.querySelector(".o-variable").checked = !!o.tarif_variable;
+  bloc.querySelector(".o-adresse").checked  = !!o.demander_adresse;
+  bloc.querySelector(".o-abo").value        =
+    (o.tarif_abonne === null || o.tarif_abonne === undefined) ? "" : o.tarif_abonne;
+  bloc.querySelector(".o-lieu").value     = o.lieu || "";
+  (o.jours || []).forEach(n => {
+    const c = zoneJours.querySelector(`input[value="${n}"]`);
+    if (c) c.checked = true;
+  });
+
+  // Un tarif confirmé après commande rend le montant fixe sans objet.
+  const tarif = bloc.querySelector(".o-tarif");
+  const variable = bloc.querySelector(".o-variable");
+  const majTarif = () => { tarif.disabled = variable.checked; };
+  variable.onchange = majTarif;
+  majTarif();
+
+  // Une livraison suppose presque toujours une adresse.
+  const type = bloc.querySelector(".o-type");
+  type.onchange = () => {
+    if (type.value === "livraison") bloc.querySelector(".o-adresse").checked = true;
+  };
+
+  bloc.querySelector(".retirer").onclick = () => bloc.remove();
+  $("listeOptions").appendChild(bloc);
+}
+$("btnAjoutOption").onclick = () => ajouterOption();
+
+function lireOptions() {
+  return [...document.querySelectorAll("#listeOptions .option")].map(b => ({
+    nom: b.querySelector(".o-nom").value.trim(),
+    type: b.querySelector(".o-type").value,
+    tarif: Number(b.querySelector(".o-tarif").value) || 0,
+    tarif_variable: b.querySelector(".o-variable").checked,
+    demander_adresse: b.querySelector(".o-adresse").checked,
+    tarif_abonne: b.querySelector(".o-abo").value.trim() === ""
+      ? null : Number(b.querySelector(".o-abo").value) || 0,
+    lieu: b.querySelector(".o-lieu").value.trim(),
+    jours: [...b.querySelectorAll(".o-jours input:checked")].map(c => Number(c.value))
+  })).filter(o => o.nom);
+}
+
+/* ============================================================
+   5. JOURS DE FERMETURE
+   ============================================================ */
+JOURS.forEach((j, i) => {
+  const l = document.createElement("label");
+  l.innerHTML = `<input type="checkbox" value="${i}"> ${j}`;
+  $("jours").appendChild(l);
+});
+
+/* ============================================================
+   6. CHARGEMENT
+   ============================================================ */
+async function chargerTout() {
+  await Promise.all([chargerParametres(), chargerProduits()]);
+}
+
+async function chargerParametres() {
+  let d = {};
+  try {
+    const s = await getDoc(doc(db, "parametres", "boutique"));
+    if (s.exists()) d = s.data();
+  } catch (e) { console.error(e); }
+
+  $("listeOptions").innerHTML = "";
+  let options = d.options_retrait;
+  if (!options) {
+    // Reprise de l'ancien format à zones de livraison.
+    options = (d.zones_livraison || []).map(z => ({
+      nom: z.nom, type: "livraison", tarif: z.tarif, demander_adresse: true
+    }));
+  }
+  options.forEach(o => ajouterOption(o));
+  if (!options.length) ajouterOption();
+
+  $("delai").value    = d.delai_min_heures ?? 24;
+  $("whatsapp").value = d.whatsapp || "";
+  $("viber").value     = d.viber || "";
+  $("email").value     = d.email || "";
+  $("messenger").value = d.messenger || "";
+  $("creneaux").value = (d.creneaux || []).join("\n");
+  $("accueil").value  = d.message_accueil || "";
+
+  const abo = d.abonnements || {};
+  $("aboActif").checked     = !!abo.actif;
+  $("aboNombres").value     = (abo.nombres || [4, 6, 8, 12]).join(", ");
+  $("aboHebdo").checked     = (abo.cadences || ["hebdo", "quinzaine"]).includes("hebdo");
+  $("aboQuinzaine").checked = (abo.cadences || ["hebdo", "quinzaine"]).includes("quinzaine");
+
+  const vac = d.vacances || {};
+  $("vacancesActif").checked  = !!vac.actif;
+  $("vacancesMessage").value  = vac.message || "";
+  $("vacancesImage").value    = vac.image || "";
+
+  const pay = d.paiement || {};
+  const g = pay.gcash  || { nom: pay.gcash_nom, numero: pay.gcash_numero };
+  const m = pay.maya   || {};
+  const b = pay.banque || { nom: pay.banque_nom,
+                            titulaire: pay.banque_titulaire,
+                            numero: pay.banque_numero };
+
+  $("gcashNom").value    = g.nom || "";
+  $("gcashNumero").value = g.numero || "";
+  $("gcashQR").value     = g.qr || "";
+  $("mayaNom").value     = m.nom || "";
+  $("mayaNumero").value  = m.numero || "";
+  $("mayaQR").value      = m.qr || "";
+  $("banqueNom").value       = b.nom || "";
+  $("banqueTitulaire").value = b.titulaire || "";
+  $("banqueNumero").value    = b.numero || "";
+  $("banqueQR").value        = b.qr || "";
+  $("instrPaiement").value   = pay.instructions || "";
+
+  const fermes = d.jours_fermes || [];
+  $("jours").querySelectorAll("input").forEach(c => {
+    c.checked = fermes.includes(Number(c.value));
+  });
+}
+
+/* Les fiches produits vivent dans UN document : recettes/fiches,
+   avec un tableau "items". Chaque item porte nom, categorie, ingredients… */
+function identifiant(nom) {
+  return nom.toLowerCase()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+}
+
+async function chargerProduits() {
+  try {
+    const [fiches, publies] = await Promise.all([
+      getDoc(doc(db, "recettes", "fiches")),
+      getDocs(collection(db, "boutique_produits"))
+    ]);
+
+    const dejaPublies = {};
+    const ancienParNom = {};   // reprise des anciens documents publiés sous leur nom
+    publies.forEach(s => {
+      const d = s.data();
+      dejaPublies[s.id] = d;
+      if (d.nom) ancienParNom[identifiant(d.nom)] = d;
+    });
+
+    const donnees = fiches.exists() ? fiches.data() : {};
+    const items = donnees.items || donnees.fiches || [];
+
+    produits = [];
+    sansCode = [];
+    items.forEach(it => {
+      const nom = it.nom || it.produit || it.name;
+      if (!nom) return;
+      const id = (it.id || "").trim();
+      if (!id) { sansCode.push(nom); return; }   // sans code, pas de publication
+      // À défaut de document au code, on reprend l'ancien publié sous le nom :
+      // prix, description et photo sont ainsi conservés lors de la migration.
+      const ancien = ancienParNom[identifiant(nom)];
+      const p = dejaPublies[id] || ancien || {};
+      const dejaSousCode = !!dejaPublies[id];
+      produits.push({
+        id,
+        nom,
+        categorie: it.categorie || it.category || "Sans catégorie",
+        publie: dejaSousCode || !!ancien,
+        prix: p.prix_vente ?? it.prixVente ?? it.prix ?? 0,
+        description: p.description_client || "",
+        photo: p.photo_url || "",
+        disponible: p.disponible !== false,
+        rayon: p.rayon || rayonParDefaut(it.categorie || it.category),
+        mode_stock: p.mode_stock || "illimite",
+        stock: p.stock ?? 0
+      });
+    });
+
+    // Un produit renommé laisse derrière lui son ancien document publié.
+    orphelins = Object.entries(dejaPublies)
+      .filter(([id]) => !produits.some(p => p.id === id))
+      .map(([id, d]) => ({ id, nom: d.nom || id }));
+
+    produits.sort((a, b) =>
+      a.categorie.localeCompare(b.categorie) || a.nom.localeCompare(b.nom));
+
+    if (!produits.length) {
+      $("listeProduits").innerHTML =
+        '<div class="vide">Aucune fiche trouvée dans recettes/fiches.</div>';
+      return;
+    }
+    afficherProduits();
+  } catch (e) {
+    console.error(e);
+    $("listeProduits").innerHTML =
+      '<div class="vide">Les produits n\'ont pas pu être chargés. Vérifiez les règles Firestore.</div>';
+  }
+}
+
+/* ============================================================
+   7. AFFICHAGE DES PRODUITS
+   ============================================================ */
+function afficherOrphelins() {
+  const zone = $("orphelins");
+  if (!orphelins.length) { zone.innerHTML = ""; return; }
+
+  zone.innerHTML = `
+    <div class="alerte">
+      <b>${orphelins.length} produit(s) encore en vente ne correspondent plus à aucune fiche</b>
+      Ils viennent sans doute d'un renommage : la boutique affiche encore l'ancien nom.
+      <ul>${orphelins.map(o => "<li>" + o.nom + " <code>" + o.id + "</code></li>").join("")}</ul>
+      <button id="btnOrphelins">Les retirer de la boutique</button>
+    </div>`;
+
+  $("btnOrphelins").onclick = async () => {
+    if (!confirm("Retirer " + orphelins.length +
+      " produit(s) de la boutique ?\n\nLes fiches techniques ne sont pas touchées.")) return;
+    try {
+      for (const o of orphelins) await deleteDoc(doc(db, "boutique_produits", o.id));
+      orphelins = [];
+      afficherOrphelins();
+      etat("Anciens produits retirés.", "ok");
+    } catch (e) {
+      console.error(e);
+      etat("Le retrait a échoué.", "err");
+    }
+  };
+}
+
+function afficherSansCode() {
+  const zone = $("sansCode");
+  if (!sansCode.length) { zone.innerHTML = ""; return; }
+  zone.innerHTML = `
+    <div class="alerte">
+      <b>${sansCode.length} fiche(s) sans code produit</b>
+      Elles ne peuvent pas être publiées. Attribuez-leur un code depuis la page
+      <a href="produits-identifiants.html">Produits</a>.
+      <ul>${sansCode.map(n => "<li>" + n + "</li>").join("")}</ul>
+    </div>`;
+}
+
+function afficherProduits() {
+  afficherSansCode();
+  afficherOrphelins();
+  const filtre = $("recherche").value.trim().toLowerCase();
+  const liste  = $("listeProduits");
+  liste.innerHTML = "";
+
+  const visibles = produits.filter(p =>
+    !filtre || p.nom.toLowerCase().includes(filtre) || p.categorie.toLowerCase().includes(filtre));
+
+  if (!visibles.length) {
+    liste.innerHTML = '<div class="vide">Aucun produit ne correspond.</div>';
+    return;
+  }
+
+  visibles.forEach(p => {
+    const bloc = document.createElement("div");
+    bloc.className = "produit" + (p.publie ? " publie" : "");
+    bloc.innerHTML = `
+      <div class="tete">
+        <label class="bascule"><input type="checkbox" class="pub" ${p.publie ? "checked" : ""}> Publier</label>
+        <span class="nom"></span>
+        <span class="code"></span>
+        <span class="cat"></span>
+      </div>
+      <div class="detail" ${p.publie ? "" : "hidden"}>
+        <div class="grille">
+          <div>
+            <label>Prix de vente (₱)</label>
+            <input type="number" class="prix" min="0" step="1">
+          </div>
+          <div>
+            <label>Photo (URL)</label>
+            <input type="text" class="photo" placeholder="https://…">
+          </div>
+          <div>
+            <label>Rayon de la boutique</label>
+            <select class="rayon">
+              ${RAYONS.map(r => `<option value="${r}">${r}</option>`).join("")}
+            </select>
+          </div>
+        </div>
+        <div style="margin-top:12px">
+          <label>Description pour le client</label>
+          <textarea class="desc" placeholder="Pur levain, farine de blé et de seigle."></textarea>
+        </div>
+        <label class="bascule" style="margin-top:12px">
+          <input type="checkbox" class="dispo"> Disponible à la commande
+        </label>
+        <div class="grille" style="margin-top:12px">
+          <div>
+            <label>Disponibilité</label>
+            <select class="mode-stock">
+              <option value="illimite">Toujours disponible</option>
+              <option value="limite">Stock limité</option>
+            </select>
+          </div>
+          <div class="champ-stock">
+            <label>Pièces restantes</label>
+            <input type="number" class="stock" min="0" step="1" value="0">
+          </div>
+        </div>
+      </div>`;
+
+    bloc.querySelector(".nom").textContent  = p.nom;
+    bloc.querySelector(".code").textContent = p.id;
+    bloc.querySelector(".cat").textContent = p.rayon + " · " + p.categorie;
+    bloc.querySelector(".prix").value       = p.prix;
+    bloc.querySelector(".photo").value      = p.photo;
+    bloc.querySelector(".desc").value       = p.description;
+    bloc.querySelector(".dispo").checked    = p.disponible;
+    const selRayon = bloc.querySelector(".rayon");
+    selRayon.value = p.rayon;
+    selRayon.onchange = (e) => p.rayon = e.target.value;
+    const selMode = bloc.querySelector(".mode-stock");
+    const champStock = bloc.querySelector(".stock");
+    const boiteStock = bloc.querySelector(".champ-stock");
+    selMode.value = p.mode_stock;
+    champStock.value = p.stock;
+    const majStock = () => {
+      boiteStock.style.display = selMode.value === "limite" ? "" : "none";
+    };
+    majStock();
+    selMode.onchange = (e) => { p.mode_stock = e.target.value; majStock(); };
+    champStock.oninput = (e) => p.stock = Math.max(0, Number(e.target.value) || 0);
+
+    const detail = bloc.querySelector(".detail");
+    bloc.querySelector(".pub").onchange = (e) => {
+      p.publie = e.target.checked;
+      detail.hidden = !p.publie;
+      bloc.classList.toggle("publie", p.publie);
+    };
+    bloc.querySelector(".prix").oninput  = (e) => p.prix = Number(e.target.value) || 0;
+    bloc.querySelector(".photo").oninput = (e) => p.photo = e.target.value;
+    bloc.querySelector(".desc").oninput  = (e) => p.description = e.target.value;
+    bloc.querySelector(".dispo").onchange = (e) => p.disponible = e.target.checked;
+
+    liste.appendChild(bloc);
+  });
+}
+$("recherche").oninput = afficherProduits;
+
+/* ============================================================
+   8. ENREGISTREMENT
+   ============================================================ */
+function etat(texte, type = "") {
+  const e = $("etat");
+  e.textContent = texte;
+  e.className = "etat " + type;
+}
+
+$("btnEnregistrer").onclick = async () => {
+  $("btnEnregistrer").disabled = true;
+  etat("Enregistrement…");
+
+  try {
+    // --- Paramètres ---
+    const joursFermes = [...$("jours").querySelectorAll("input:checked")]
+      .map(c => Number(c.value));
+
+    await setDoc(doc(db, "parametres", "boutique"), {
+      options_retrait: lireOptions(),
+      creneaux: $("creneaux").value.split("\n").map(s => s.trim()).filter(Boolean),
+      jours_fermes: joursFermes,
+      delai_min_heures: Number($("delai").value) || 0,
+      whatsapp: $("whatsapp").value.replace(/\D/g, ""),
+      viber: $("viber").value.replace(/\D/g, ""),
+      email: $("email").value.trim(),
+      messenger: $("messenger").value.trim().replace(/^.*m\.me\//, ""),
+      message_accueil: $("accueil").value.trim(),
+      abonnements: {
+        actif: $("aboActif").checked,
+        nombres: ($("aboNombres").value.split(",")
+          .map(n => parseInt(n.trim(), 10))
+          .filter(n => Number.isFinite(n) && n > 0)
+          .sort((a, b) => a - b)) || [4, 6, 8, 12],
+        cadences: [
+          $("aboHebdo").checked ? "hebdo" : null,
+          $("aboQuinzaine").checked ? "quinzaine" : null
+        ].filter(Boolean)
+      },
+      vacances: {
+        actif: $("vacancesActif").checked,
+        message: $("vacancesMessage").value.trim(),
+        image: $("vacancesImage").value.trim()
+      },
+      paiement: {
+        gcash: {
+          nom: $("gcashNom").value.trim(),
+          numero: $("gcashNumero").value.trim(),
+          qr: $("gcashQR").value.trim()
+        },
+        maya: {
+          nom: $("mayaNom").value.trim(),
+          numero: $("mayaNumero").value.trim(),
+          qr: $("mayaQR").value.trim()
+        },
+        banque: {
+          nom: $("banqueNom").value.trim(),
+          titulaire: $("banqueTitulaire").value.trim(),
+          numero: $("banqueNumero").value.trim(),
+          qr: $("banqueQR").value.trim()
+        },
+        instructions: $("instrPaiement").value.trim()
+      },
+      maj: new Date().toISOString()
+    });
+
+    // --- Produits ---
+    for (const p of produits) {
+      const ref = doc(db, "boutique_produits", p.id);
+      if (p.publie) {
+        await setDoc(ref, {
+          code: p.id,
+          nom: p.nom,
+          categorie: p.categorie,
+          rayon: p.rayon,
+          prix_vente: Number(p.prix) || 0,
+          description_client: p.description.trim(),
+          photo_url: p.photo.trim(),
+          disponible: p.disponible,
+          mode_stock: p.mode_stock,
+          stock: p.mode_stock === "limite" ? Number(p.stock) || 0 : null,
+          visible: true
+        });
+      } else {
+        await deleteDoc(ref).catch(() => {});
+      }
+    }
+
+    const n = produits.filter(p => p.publie).length;
+    etat(`Enregistré — ${n} produit${n > 1 ? "s" : ""} en vente.`, "ok");
+  } catch (e) {
+    console.error(e);
+    etat("L'enregistrement a échoué. Vérifiez votre connexion, puis réessayez.", "err");
+  } finally {
+    $("btnEnregistrer").disabled = false;
+  }
+};
+</script>
+</body>
+</html>
