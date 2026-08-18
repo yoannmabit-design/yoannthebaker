@@ -39,6 +39,7 @@
   .solde .etiq{font-size:13px;color:var(--encre-doux);letter-spacing:.08em;
     text-transform:uppercase;margin-top:6px}
   .solde .aide{font-size:14px;color:var(--encre-doux);margin-top:14px}
+  .aide{font-size:13.5px;color:var(--encre-doux)}
 
   .mvt{display:flex;justify-content:space-between;gap:12px;padding:9px 0;
     border-bottom:1px solid var(--trait);font-size:15px}
@@ -70,6 +71,34 @@
   .message.err{color:var(--alerte)}
   .lien{display:block;text-align:center;margin-top:22px;color:var(--accent);font-size:15px}
   .vide{padding:24px;text-align:center;color:var(--encre-doux);font-size:14.5px}
+  .cmd{border-bottom:1px solid var(--trait)}
+  .cmd:last-child{border-bottom:none}
+  .cmd .tete{
+    display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+    width:100%;background:none;border:none;padding:12px 0;
+    font:inherit;color:inherit;text-align:left;cursor:pointer;
+  }
+  .cmd .tete:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  .cmd .quand{font-weight:600}
+  .cmd .num{
+    font-family:ui-monospace,monospace;font-size:12px;color:var(--encre-doux);
+  }
+  .cmd .statut{
+    font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;
+    padding:2px 9px;border-radius:11px;background:#efe6d8;color:var(--encre-doux);
+  }
+  .cmd .statut.vive{background:#e4efe4;color:var(--ok)}
+  .cmd .statut.morte{background:#f6e2de;color:var(--alerte)}
+  .cmd .somme{margin-left:auto;font-weight:600;font-variant-numeric:tabular-nums}
+  .cmd .fleche{color:var(--encre-doux);font-size:12px}
+  .cmd .detail{padding:2px 0 14px;font-size:14.5px}
+  .cmd .detail[hidden]{display:none}
+  .cmd .l{display:flex;justify-content:space-between;gap:12px;padding:3px 0}
+  .cmd .l.total{
+    border-top:1px solid var(--trait);margin-top:7px;padding-top:8px;font-weight:600;
+  }
+  .cmd .l .q{color:var(--encre-doux)}
+  .cmd .ou{color:var(--encre-doux);font-size:13.5px;margin:8px 0 0;line-height:1.45}
   .qui{font-size:13.5px;color:var(--encre-doux);text-align:center;margin-top:14px}
   .qui button{background:none;border:none;color:var(--accent);
     text-decoration:underline;cursor:pointer;font-size:13.5px;padding:0}
@@ -92,7 +121,7 @@ import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChang
          sendSignInLinkToEmail, isSignInWithEmailLink, signInWithEmailLink }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import { getFirestore, collection, getDocs, doc, getDoc, setDoc,
-         query, orderBy, limit }
+         query, orderBy, limit, where }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -196,6 +225,89 @@ function dire(texte, type) {
   el.className = "message " + (type || "");
 }
 
+
+/* ---------- Historique des commandes ----------
+   Le détail est replié : la liste reste lisible, le client ouvre ce qu'il veut. */
+const ETATS = {
+  "nouvelle":      { texte: "Received",    classe: "" },
+  "confirmee":     { texte: "Confirmed",   classe: "vive" },
+  "en production": { texte: "Baking",      classe: "vive" },
+  "prete":         { texte: "Ready",       classe: "vive" },
+  "remise":        { texte: "Collected",   classe: "" },
+  "annulee":       { texte: "Cancelled",   classe: "morte" }
+};
+
+// Le nom du jour plutôt qu'une date brute : plus parlant pour un retrait.
+function joliJour(iso) {
+  if (!iso) return "";
+  const d = new Date(iso + (iso.length <= 10 ? "T12:00:00" : ""));
+  if (isNaN(d)) return iso;
+  return d.toLocaleDateString("en-PH",
+    { weekday: "short", day: "numeric", month: "short", year: "numeric" });
+}
+
+function ligneCommande(c) {
+  const e = ETATS[c.statut] || { texte: c.statut || "", classe: "" };
+  const total = Number(c.total) || 0;
+  const restant = Math.max(0, total - (Number(c.credit_utilise) || 0));
+
+  const articles = (c.panier || []).map(l =>
+    `<div class="l"><span><span class="q">${Number(l.qte) || 0} × </span>${
+      ech(l.nom || l.code || "")}</span>
+     <span>${peso((Number(l.qte) || 0) * (Number(l.prix) || 0))}</span></div>`).join("");
+
+  const extras = [];
+  if (c.code_promo && c.code_promo.montant)
+    extras.push(`<div class="l"><span>Promo code ${ech(c.code_promo.code || "")}</span>
+                 <span>−${peso(c.code_promo.montant)}</span></div>`);
+  if (c.frais_a_confirmer)
+    extras.push(`<div class="l"><span>${ech(c.option?.nom || "Delivery")}</span>
+                 <span>Confirmed later</span></div>`);
+  else if (Number(c.frais_livraison) > 0)
+    extras.push(`<div class="l"><span>${ech(c.option?.nom || "Delivery")}</span>
+                 <span>${peso(c.frais_livraison)}</span></div>`);
+  if (Number(c.credit_utilise) > 0)
+    extras.push(`<div class="l"><span>Store credit</span>
+                 <span>−${peso(c.credit_utilise)}</span></div>`);
+
+  const ou = [
+    c.option?.nom || "",
+    c.creneau || "",
+    c.client?.adresse || ""
+  ].filter(Boolean).join(" · ");
+
+  return `<div class="cmd">
+    <button class="tete" type="button" aria-expanded="false">
+      <span class="quand">${ech(joliJour(c.date_retrait))}</span>
+      <span class="num">${ech(c.numero || c.id)}</span>
+      <span class="statut ${e.classe}">${ech(e.texte)}</span>
+      <span class="somme">${peso(total)}</span>
+      <span class="fleche">▾</span>
+    </button>
+    <div class="detail" hidden>
+      ${articles}
+      ${extras.join("")}
+      <div class="l total"><span>${Number(c.credit_utilise) > 0 ? "Paid" : "Total"}</span>
+        <span>${peso(Number(c.credit_utilise) > 0 ? restant : total)}</span></div>
+      ${ou ? `<p class="ou">${ech(ou)}</p>` : ""}
+    </div>
+  </div>`;
+}
+
+// Le détail s'ouvre au clic, une fois la page écrite.
+function brancherCommandes() {
+  document.querySelectorAll(".cmd").forEach(bloc => {
+    const tete = bloc.querySelector(".tete");
+    const detail = bloc.querySelector(".detail");
+    tete.onclick = () => {
+      const ouvert = detail.hidden;
+      detail.hidden = !ouvert;
+      tete.setAttribute("aria-expanded", String(ouvert));
+      bloc.querySelector(".fleche").textContent = ouvert ? "▴" : "▾";
+    };
+  });
+}
+
 /* ---------- Écran du compte ---------- */
 async function ecranCompte(user) {
   $("page").innerHTML = '<div class="vide">Loading your account…</div>';
@@ -235,6 +347,28 @@ async function ecranCompte(user) {
     s.forEach(d => mouvements.push(d.data()));
   } catch (e) { console.error(e); }
 
+  /* Commandes du client, lues sur le serveur : le stockage local ne garde
+     que la dernière, et rien ne suit d'un appareil à l'autre.
+     Le tri se fait ici plutôt que dans la requête : un orderBy combiné à un
+     where imposerait un index composite dans Firestore. */
+  let commandes = [];
+  let commandesLues = true;
+  const DERNIERES = 3;
+  try {
+    const q = query(collection(db, "commandes"),
+                    where("compte_uid", "==", user.uid), limit(50));
+    const s = await getDocs(q);
+    s.forEach(d => commandes.push({ id: d.id, ...d.data() }));
+    commandes.sort((a, b) => String(b.cree_le || "").localeCompare(String(a.cree_le || "")));
+    // Limiter dans la requête donnerait trois commandes au hasard : sans
+    // orderBy, Firestore coupe selon l'identifiant, qui n'a rien de
+    // chronologique. On trie d'abord, on coupe ensuite.
+    commandes = commandes.slice(0, DERNIERES);
+  } catch (e) {
+    console.error(e);
+    commandesLues = false;   // règles Firestore, le plus souvent
+  }
+
   const histo = mouvements.length
     ? mouvements.map(m => {
         const plus = m.montant >= 0;
@@ -246,6 +380,12 @@ async function ecranCompte(user) {
       }).join("")
     : '<div class="vide">No activity yet.</div>';
 
+  const listeCommandes = !commandesLues
+    ? '<div class="vide">Your orders could not be loaded right now.</div>'
+    : (commandes.length
+        ? commandes.map(ligneCommande).join("")
+        : '<div class="vide">No orders yet.</div>');
+
   $("page").innerHTML = `
     <div class="bloc solde">
       <div class="montant">${peso(solde)}</div>
@@ -256,7 +396,15 @@ async function ecranCompte(user) {
     </div>
 
     <div class="bloc">
-      <h2>Activity</h2>
+      <h2>Your last orders</h2>
+      ${listeCommandes}
+      ${commandes.length >= DERNIERES
+        ? '<p class="aide" style="margin:12px 0 0">Older orders aren\'t shown here — message us if you need one.</p>'
+        : ""}
+    </div>
+
+    <div class="bloc">
+      <h2>Store credit activity</h2>
       ${histo}
     </div>
 
@@ -264,6 +412,7 @@ async function ecranCompte(user) {
     <p class="qui">Signed in as ${ech(user.email || user.displayName || "")} —
       <button id="btnSortir">sign out</button></p>`;
 
+  brancherCommandes();
   $("btnSortir").onclick = () => signOut(auth);
 }
 </script>
