@@ -20,6 +20,42 @@ import { doc, getDoc }
 
 export const CLE_CODE = "code_promo";
 
+/* Rayons de la vitrine, dans l'ordre d'affichage. La même liste sert au
+   classement du catalogue et à la portée des codes promo : un rayon ajouté
+   ici est aussitôt disponible des deux côtés. */
+export const RAYONS = ["Breads", "Pastries", "Cakes", "Frozen", "Other"];
+
+/* Repli pour les produits publiés avant l'existence des rayons : on
+   retombe sur la catégorie technique de la fiche. */
+export function rayonDe(p) {
+  if (p && p.rayon && RAYONS.includes(p.rayon)) return p.rayon;
+  const c = ((p && (p.categorie || p.category)) || "").toLowerCase();
+  if (c.includes("pain")) return "Breads";
+  if (c.includes("viennoiserie")) return "Pastries";
+  return "Other";
+}
+
+/* Portée d'un code : liste vide ou absente = tout le panier. */
+export function porteeDe(fiche) {
+  const r = (fiche && Array.isArray(fiche.rayons)) ? fiche.rayons.filter(Boolean) : [];
+  return r;
+}
+
+// Un produit est-il concerné par ce code ?
+export function ligneConcernee(ligne, fiche) {
+  const portee = porteeDe(fiche);
+  if (!portee.length) return true;
+  return portee.includes(ligne.rayon || "Other");
+}
+
+// Libellé anglais de la portée, pour les messages au client.
+export function libellePortee(fiche) {
+  const p = porteeDe(fiche);
+  if (!p.length) return "";
+  if (p.length === 1) return p[0];
+  return p.slice(0, -1).join(", ") + " and " + p[p.length - 1];
+}
+
 /* ---------- Saisie ---------- */
 
 // Le client peut taper en minuscules, avec des espaces ou des accents.
@@ -97,14 +133,19 @@ export function prixGroupe(base, remise) {
   return r > 0 ? Math.round(b * (1 - r / 100)) : b;
 }
 
-/* lignes : [{ qte, prixBase }]
+/* lignes : [{ qte, prixBase, rayon }]
    remise : pourcentage du tarif de groupe (0 si aucun)
    fiche  : code promo déjà vérifié, ou null
+
+   Le tarif de groupe porte sur tout le panier ; le code promo ne porte
+   que sur les rayons de sa portée. On compare malgré tout les deux
+   sous-totaux du panier entier : c'est le montant que paie le client.
 
    Renvoie :
      base        sous-total au tarif catalogue
      groupe      sous-total au tarif de groupe
      promo       sous-total avec le code
+     eligible    part du panier concernée par le code
      sousTotal   celui retenu
      source      "groupe" | "promo" | "aucune"
      economie    base − sousTotal
@@ -116,19 +157,28 @@ export function calculerPrix(lignes, remise, fiche) {
   const groupe = (lignes || []).reduce(
     (t, l) => t + (Number(l.qte) || 0) * prixGroupe(l.prixBase, remise), 0);
 
+  // Part du panier sur laquelle le code peut mordre.
+  const eligible = fiche
+    ? (lignes || []).reduce((t, l) => ligneConcernee(l, fiche)
+        ? t + (Number(l.qte) || 0) * (Number(l.prixBase) || 0) : t, 0)
+    : 0;
+
   let promo = base;
   if (fiche) {
     const v = Number(fiche.valeur) || 0;
-    promo = fiche.type === "montant"
-      ? Math.max(0, base - v)
-      : Math.round(base * (1 - v / 100));
+    // Un montant fixe plus grand que la part concernée est ramené à
+    // cette part : la remise ne déborde jamais sur le reste du panier.
+    const reduction = fiche.type === "montant"
+      ? Math.min(v, eligible)
+      : Math.round(eligible * v / 100);
+    promo = base - reduction;
   }
 
   let source = "aucune", sousTotal = base;
   if (groupe < base && groupe <= promo)      { source = "groupe"; sousTotal = groupe; }
   else if (fiche && promo < base && promo < groupe) { source = "promo"; sousTotal = promo; }
 
-  return { base, groupe, promo, sousTotal, source, economie: base - sousTotal };
+  return { base, groupe, promo, eligible, sousTotal, source, economie: base - sousTotal };
 }
 
 // Prix unitaire réellement facturé, selon la remise retenue.
@@ -142,5 +192,7 @@ export function prixUnitaire(prixBase, remise, source) {
 export function libelleCode(fiche) {
   if (!fiche) return "";
   const v = Number(fiche.valeur) || 0;
-  return fiche.type === "montant" ? "₱" + v + " off" : v + "% off";
+  const montant = fiche.type === "montant" ? "₱" + v + " off" : v + "% off";
+  const portee = libellePortee(fiche);
+  return portee ? montant + " " + portee : montant;
 }
