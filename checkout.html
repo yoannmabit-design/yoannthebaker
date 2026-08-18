@@ -97,6 +97,27 @@
   .recap .q{color:var(--encre-doux)}
   .recap .ligne-panier{align-items:center}
   .recap .nom-panier{flex:1;min-width:0}
+  .recap .l.remise span:last-child{color:#3d6b3d}
+  .promo{margin-top:13px;padding-top:12px;border-top:1px dashed var(--trait)}
+  .promo .saisie{display:flex;gap:9px;flex-wrap:wrap}
+  .promo input{
+    flex:1;min-width:140px;padding:10px 12px;border:1px solid var(--trait);
+    border-radius:var(--r);background:#fff;font:inherit;font-size:15px;
+    text-transform:uppercase;letter-spacing:.06em;color:var(--encre);
+  }
+  .promo button.appliquer{
+    background:var(--accent);color:#fff;border:none;padding:10px 18px;
+    border-radius:var(--r);font-size:15px;font-weight:600;cursor:pointer;
+  }
+  .promo button.appliquer:disabled{opacity:.5;cursor:default}
+  .promo .etat{margin:9px 0 0;font-size:14px;color:var(--encre-doux)}
+  .promo .etat.ok{color:#3d6b3d}
+  .promo .etat.err{color:var(--alerte)}
+  .promo .etat a{color:var(--accent)}
+  .promo .retirer{
+    background:none;border:none;color:var(--accent);padding:0;margin-left:8px;
+    font-size:14px;text-decoration:underline;cursor:pointer;
+  }
   .compteur-mini{display:flex;align-items:center;gap:7px}
   .compteur-mini button{
     width:30px;height:30px;border-radius:50%;border:1px solid var(--trait);
@@ -157,6 +178,9 @@ import { getFirestore, collection, getDocs, doc, getDoc, setDoc }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import { getAuth, onAuthStateChanged }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { normaliserCode, lireCodeMemorise, memoriserCode, oublierCode,
+         chargerCode, verifierCode, calculerPrix, prixUnitaire, libelleCode }
+  from "./promo.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDuq8KS8M_Z8U7BlSp6MvE-6Y9OYYaDujE",
@@ -177,6 +201,9 @@ const JOURS_COURTS = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
 
 let params = {}, options = [], lignes = [], sousTotal = 0;
 let remise = 0, uidClient = "", solde = 0, creditUtilise = 0;
+let promo = null;              // fiche du code promo appliqué
+let sourceRemise = "aucune";   // "groupe" | "promo" | "aucune"
+let economie = 0;              // écart avec le tarif catalogue
 let dateChoisie = "", moisVu = null, dateMin = null;
 
 /* ---------- Démarrage ---------- */
@@ -230,13 +257,18 @@ let panier = {};
         if (q > reste) q = reste;
       }
       const base = Number(d.prix_vente) || 0;
-      const prix = remise > 0 ? Math.round(base * (1 - remise / 100)) : base;
       const reste = d.mode_stock === "limite"
         ? Math.max(0, Number(d.stock) || 0) : null;
+      // prix reste le montant réellement facturé : il est recalculé par
+      // majPrix() une fois le code promo connu.
       lignes.push({ id: s.id, code: d.code || s.id, nom: d.nom,
-                    qte: q, prix, reste, montant: q * prix });
+                    qte: q, prixBase: base, prix: base, reste, montant: q * base });
     });
-    sousTotal = lignes.reduce((t, l) => t + l.montant, 0);
+
+    // Le code saisi sur la vitrine suit le panier : on le revérifie ici,
+    // il a pu être désactivé depuis.
+    await reprendreCode();
+    majPrix();
 
     if (!lignes.length) return vide("The items in your basket are no longer available.");
     if (!options.length) return vide("Ordering is temporarily unavailable.");
@@ -263,6 +295,15 @@ function construire() {
     <div class="bloc">
       <h2>Your order</h2>
       <div class="recap" id="recap"></div>
+      <div class="promo">
+        <div class="saisie" id="saisieCode">
+          <input type="text" id="champCode" placeholder="Promo code"
+                 autocomplete="off" autocapitalize="characters" spellcheck="false"
+                 aria-label="Promo code">
+          <button type="button" class="appliquer" id="btnCode">Apply</button>
+        </div>
+        <p class="etat" id="etatPromo"></p>
+      </div>
     </div>
 
     <div class="bloc">
@@ -361,9 +402,122 @@ function construire() {
 
   construireCredit();
   construirePaiements();
+  construirePromo();
 
   majOption();
   $("pied").hidden = false;
+}
+
+/* ---------- Code promo ----------
+   Le code suit le panier : celui saisi sur la vitrine est déjà chargé,
+   et celui saisi ici sera retrouvé au retour sur la vitrine. */
+function construirePromo() {
+  $("btnCode").onclick = appliquerCode;
+  $("champCode").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") { e.preventDefault(); appliquerCode(); }
+  });
+  majPromo();
+}
+
+function etatPromo(texte, type = "", html = false) {
+  const e = $("etatPromo");
+  if (!e) return;
+  if (html) e.innerHTML = texte; else e.textContent = texte;
+  e.className = "etat " + type;
+}
+
+function majPromo() {
+  if (!$("saisieCode")) return;
+
+  if (!promo) {
+    $("saisieCode").hidden = false;
+    if (!uidClient) {
+      etatPromo('Have a code? <a href="compte.html">Sign in</a> to use it.', "", true);
+    }
+    return;
+  }
+
+  $("saisieCode").hidden = true;
+  const e = $("etatPromo");
+  e.className = "etat ok";
+  e.textContent = sourceRemise === "promo"
+    ? promo.id + " applied — " + libelleCode(promo)
+    : promo.id + " saved for later — your trade price is a better deal today";
+
+  const b = document.createElement("button");
+  b.className = "retirer";
+  b.type = "button";
+  b.textContent = "Remove";
+  b.onclick = () => {
+    promo = null;
+    oublierCode();
+    $("champCode").value = "";
+    etatPromo("");
+    majPrix();
+    majTotaux();
+  };
+  e.appendChild(b);
+}
+
+async function appliquerCode() {
+  const saisie = normaliserCode($("champCode").value);
+  if (!saisie) { etatPromo("Enter a code first.", "err"); return; }
+
+  $("btnCode").disabled = true;
+  etatPromo("Checking…");
+  try {
+    const fiche = await chargerCode(db, saisie);
+    const v = verifierCode(fiche, { connecte: !!uidClient });
+    if (!v.ok) {
+      promo = null;
+      oublierCode();
+      etatPromo(v.connexion
+        ? 'Please <a href="compte.html">sign in</a> to use a promo code.'
+        : v.message, "err", !!v.connexion);
+      majPrix();
+      majTotaux();
+      return;
+    }
+    promo = fiche;
+    memoriserCode(fiche.id);
+    $("champCode").value = "";
+    majPrix();
+    majTotaux();
+  } catch (e) {
+    console.error(e);
+    etatPromo("We couldn't check that code. Please try again.", "err");
+  } finally {
+    $("btnCode").disabled = false;
+  }
+}
+
+// Reprise du code mémorisé, revérifié sur le serveur.
+async function reprendreCode() {
+  const memorise = lireCodeMemorise();
+  if (!memorise) return;
+  try {
+    const fiche = await chargerCode(db, memorise);
+    const v = verifierCode(fiche, { connecte: !!uidClient });
+    promo = v.ok ? fiche : null;
+    if (!v.ok && !v.connexion) oublierCode();
+  } catch (e) {
+    console.error(e);
+    promo = null;
+  }
+}
+
+/* Prix facturés : le module tranche entre tarif de groupe et code promo,
+   la vitrine et cette page appliquent donc la même règle. */
+function majPrix() {
+  const calcul = calculerPrix(
+    lignes.map(l => ({ qte: l.qte, prixBase: l.prixBase })), remise, promo);
+  sourceRemise = calcul.source;
+  economie = calcul.economie;
+  lignes.forEach(l => {
+    l.prix = prixUnitaire(l.prixBase, remise, sourceRemise);
+    l.montant = l.qte * l.prix;
+  });
+  sousTotal = calcul.sousTotal;
 }
 
 /* ---------- Panier modifiable depuis le checkout ---------- */
@@ -383,7 +537,7 @@ function modifierLigne(id, delta) {
   }
 
   try { localStorage.setItem("panier", JSON.stringify(panier)); } catch {}
-  sousTotal = lignes.reduce((t, x) => t + x.montant, 0);
+  majPrix();
 
   if (!lignes.length) return vide("Your basket is empty.");
   majTotaux();
@@ -667,6 +821,12 @@ function majTotaux() {
   html += `<div class="ajouter-plus"><a href="./">+ Add more items</a>
            <button type="button" id="btnDerniere" hidden>Add my last order</button></div>`;
 
+  // Avec un code promo la réduction porte sur le total : les lignes
+  // gardent leur prix catalogue et l'écart s'affiche ici.
+  if (sourceRemise === "promo")
+    html += `<div class="l remise"><span>Promo code ${echapper(promo.id)}</span>
+             <span>−${peso(economie)}</span></div>`;
+
   if (o.tarif_variable)
     html += `<div class="l"><span>${echapper(o.nom)}</span><span>Confirmed later</span></div>`;
   else if (frais > 0)
@@ -690,6 +850,8 @@ function majTotaux() {
     });
   });
   brancherDerniere();
+  // Le gagnant peut changer avec les quantités : le message suit.
+  majPromo();
 }
 function echapper(t) {
   return String(t).replace(/[&<>"]/g, c =>
@@ -717,6 +879,28 @@ $("btnEnvoyer").onclick = async () => {
   $("btnEnvoyer").disabled = true;
   $("erreur").textContent = "";
 
+  // Dernière vérification du code au moment de valider : il a pu être
+  // désactivé pendant que le client remplissait le formulaire.
+  if (promo) {
+    try {
+      const fiche = await chargerCode(db, promo.id);
+      const v = verifierCode(fiche, { connecte: !!uidClient });
+      if (!v.ok) {
+        promo = null;
+        oublierCode();
+        majPrix();
+        majTotaux();
+        return echec(v.message + " Your total has been updated — please check it before ordering.");
+      }
+      promo = fiche;
+      majPrix();
+      majTotaux();
+    } catch (e) {
+      console.error(e);
+      return echec("We couldn't confirm your promo code. Please try again.");
+    }
+  }
+
   const frais  = o.tarif_variable ? 0 : (Number(o.tarif) || 0);
   const numero = reference();
 
@@ -726,8 +910,18 @@ $("btnEnvoyer").onclick = async () => {
     client: { nom, telephone: tel, adresse },
     panier: lignes.map(l => ({ code: l.code, nom: l.nom, qte: l.qte, prix: l.prix })),
     remise,
+    // Quelle remise a réellement joué : "groupe", "promo" ou "aucune".
+    remise_source: sourceRemise,
+    code_promo: sourceRemise === "promo"
+      ? { code: promo.id, type: promo.type, valeur: Number(promo.valeur) || 0,
+          montant: economie }
+      : null,
     compte_uid: uidClient,
     credit_utilise: creditUtilise,
+    // sous_total est le montant facturé ; sous_total_brut est le tarif
+    // catalogue avant toute remise.
+    sous_total_brut: lignes.reduce((t, l) => t + l.qte * l.prixBase, 0),
+    remise_montant: economie,
     sous_total: sousTotal,
     frais_livraison: frais,
     frais_a_confirmer: !!o.tarif_variable,
@@ -752,6 +946,8 @@ $("btnEnvoyer").onclick = async () => {
         lignes: lignes.map(l => ({ id: l.id, nom: l.nom, qte: l.qte }))
       }));
       localStorage.removeItem("panier");
+      // Le code ne doit pas se rappliquer tout seul à la commande suivante.
+      oublierCode();
       sessionStorage.setItem("commande", JSON.stringify(commande));
     } catch {}
     window.location.href = "confirmation.html";
