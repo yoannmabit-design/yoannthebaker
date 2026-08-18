@@ -1,185 +1,192 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Commandes — Yoann's French Bakery</title>
+<title>Checkout — Yoann's French Bakery</title>
 <meta name="theme-color" content="#1a1a1a">
-<link rel="icon" href="logo.png" type="image/png">
-<link rel="apple-touch-icon" href="logo.png">
-<link rel="manifest" href="manifest.json">
 <style>
   :root{
-    --creme:#fdf6ec;--papier:#fffdf9;--encre:#1f1b16;
+    --creme:#fdf6ec;--papier:#fffdf9;--encre:#1a1a1a;
     --encre-doux:#6b6157;--trait:#e2d7c6;--accent:#2f4858;
-    --alerte:#8c2f22;--ok:#3d6b3d;--r:6px;
+    --alerte:#8c2f22;--r:6px;
   }
   *{box-sizing:border-box}
   body{
     margin:0;background:var(--creme);color:var(--encre);
     font:16px/1.55 ui-sans-serif,-apple-system,"Segoe UI",Roboto,sans-serif;
+    padding-bottom:110px;
   }
   header{
-    background:var(--encre);color:var(--creme);padding:14px 18px;
-    display:flex;align-items:center;gap:12px;flex-wrap:wrap;
-    position:sticky;top:0;z-index:5;
+    background:var(--encre);color:var(--creme);
+    padding:15px 18px;display:flex;align-items:center;gap:14px;
   }
+  header a{color:var(--creme);text-decoration:none;font-size:22px;line-height:1}
   header h1{font-size:17px;margin:0;font-weight:600}
-  header .qui{margin-left:auto;font-size:13px;opacity:.72}
-  header button{
-    background:transparent;border:1px solid #4a443c;color:var(--creme);
-    padding:8px 13px;border-radius:var(--r);font-size:13.5px;cursor:pointer;
-  }
-  main{max-width:820px;margin:0 auto;padding:20px 16px 120px}
+  main{max-width:620px;margin:0 auto;padding:20px 16px}
 
-  .filtres{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:20px}
-  .filtres button{
-    border:1px solid var(--trait);background:transparent;color:var(--encre-doux);
-    padding:8px 15px;border-radius:var(--r);font-size:14px;cursor:pointer;
-  }
-  .filtres button[aria-pressed="true"]{
-    background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600;
-  }
-
-  .jour{font-size:14px;color:var(--encre-doux);margin:22px 0 9px;font-weight:600}
-  .cmd{
+  .bloc{
     background:var(--papier);border:1px solid var(--trait);
-    border-radius:var(--r);padding:14px;margin-bottom:10px;
+    border-radius:var(--r);padding:18px;margin-bottom:16px;
   }
-  .cmd.impaye{border-left:4px solid var(--alerte)}
-  .cmd.reglee{border-left:4px solid var(--ok)}
-  .tete{display:flex;gap:12px;align-items:baseline;flex-wrap:wrap;cursor:pointer}
-  .tete .ref{font-family:ui-monospace,monospace;font-size:13px;color:var(--encre-doux)}
-  .tete .nom{font-weight:600;flex:1;min-width:120px}
-  .tete .montant{font-weight:600;font-variant-numeric:tabular-nums}
-  .resume{font-size:13.5px;color:var(--encre-doux);margin-top:4px}
+  .bloc h2{font-size:15px;margin:0 0 14px;letter-spacing:.01em}
 
-  .detail{margin-top:13px;padding-top:13px;border-top:1px dashed var(--trait)}
-  .detail[hidden]{display:none}
-  .detail .l{display:flex;justify-content:space-between;gap:12px;font-size:14.5px;padding:2px 0}
-  .info{font-size:14px;color:var(--encre-doux);margin:3px 0}
-  .info b{color:var(--encre);font-weight:600}
+  label.champ{display:block;margin-bottom:13px}
+  label.champ span{display:block;font-size:13px;color:var(--encre-doux);margin-bottom:5px}
+  input,select,textarea{
+    width:100%;padding:12px;border:1px solid var(--trait);border-radius:var(--r);
+    background:#fff;font:inherit;font-size:16px;color:var(--encre);
+  }
+  input:focus,select:focus,textarea:focus{outline:2px solid var(--accent);outline-offset:1px}
+  textarea{min-height:66px;resize:vertical}
 
-  .actions{display:flex;gap:9px;flex-wrap:wrap;align-items:center;margin-top:14px}
-  select{
-    padding:9px 10px;border:1px solid var(--trait);border-radius:var(--r);
-    background:#fff;font:inherit;font-size:14.5px;color:var(--encre);
+  .choix{
+    display:flex;align-items:flex-start;gap:11px;padding:13px;
+    border:1px solid var(--trait);border-radius:var(--r);
+    margin-bottom:9px;cursor:pointer;background:#fff;
   }
-  .lien{
-    display:inline-block;padding:9px 14px;border:1px solid var(--trait);
-    border-radius:var(--r);text-decoration:none;color:var(--accent);font-size:14px;
-  }
-  .etiq{
-    font-size:11.5px;letter-spacing:.07em;text-transform:uppercase;
-    padding:3px 8px;border-radius:3px;background:#efe6d8;color:var(--encre-doux);
-  }
-  .etiq.rouge{background:#f6e2de;color:var(--alerte)}
-  .etiq.verte{background:#e2eede;color:var(--ok)}
-  .etiq.bleue{background:#dfe8ee;color:var(--accent)}
+  .choix.actif{border-color:var(--accent);background:#f2f6f8}
+  .choix input{width:auto;margin-top:3px;flex-shrink:0}
+  .choix .corps{flex:1;min-width:0}
+  .choix .t{font-weight:600;font-size:15px;display:flex;
+    justify-content:space-between;gap:12px}
+  .choix .t .tarif{font-weight:400;white-space:nowrap;color:var(--encre-doux)}
+  .choix .d{font-size:13px;color:var(--encre-doux);margin-top:3px}
+  .choix .j{font-size:12.5px;color:var(--accent);margin-top:4px}
 
-  .coche{width:19px;height:19px;flex-shrink:0;accent-color:var(--accent);cursor:pointer}
-  .jour{display:flex;align-items:center;gap:10px}
-  .jour .tout{
-    font-size:12.5px;color:var(--accent);background:none;border:none;
-    cursor:pointer;text-decoration:underline;padding:0;font-weight:400;
+  .choix .qr{display:block;margin-top:11px}
+  .choix .qr img{
+    display:block;width:172px;max-width:100%;height:auto;
+    border:1px solid var(--trait);border-radius:var(--r);background:#fff;
   }
-  .lot{
-    position:fixed;left:0;right:0;bottom:0;background:var(--encre);color:var(--creme);
-    padding:12px 16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;
-    transform:translateY(120%);transition:transform .18s ease;z-index:6;
+  .choix .qr a{
+    display:inline-block;margin-top:7px;font-size:13.5px;color:var(--accent);
   }
-  .lot.vu{transform:translateY(0)}
-  .lot .n{font-weight:600;margin-right:auto}
-  .lot select{font-size:14px;padding:8px 9px}
-  .lot .appliquer{
-    background:var(--creme);color:var(--encre);border:none;padding:10px 16px;
-    border-radius:var(--r);font-size:14.5px;font-weight:600;cursor:pointer;
+  .case.complet{
+    color:var(--alerte);opacity:.6;
+    text-decoration:line-through;text-decoration-thickness:1px;
   }
-  .lot .appliquer:disabled{opacity:.45;cursor:default}
-  .lot .annuler{
-    background:transparent;border:1px solid #4a443c;color:var(--creme);
-    padding:9px 13px;border-radius:var(--r);font-size:14px;cursor:pointer;
+  .champ .option{font-weight:400;opacity:.65}
+  .champ .etiq{display:block;font-size:13px;color:var(--encre-doux);margin-bottom:5px}
+  .cal{border:1px solid var(--trait);border-radius:var(--r);background:#fff;padding:11px}
+  .cal .tete{
+    display:flex;align-items:center;justify-content:space-between;
+    margin-bottom:9px;
   }
-  .lot .danger{
-    background:transparent;border:1px solid #a8503f;color:#f0a795;
-    padding:9px 13px;border-radius:var(--r);font-size:14px;cursor:pointer;
+  .cal .mois{font-weight:600;font-size:15px}
+  .cal .nav{
+    width:34px;height:34px;border:1px solid var(--trait);border-radius:var(--r);
+    background:#fff;font-size:16px;line-height:1;color:var(--encre);cursor:pointer;
   }
-
-  /* Couleur des menus de statut : l'état d'une commande se lit de loin,
-     sans avoir à déplier la carte. */
-  select[data-v]{font-weight:600}
-  select[data-v="nouvelle"]     {color:#8c2f22;border-color:#d9a79c}
-  select[data-v="confirmee"]    {color:#2f4858;border-color:#a9bcc7}
-  select[data-v="en production"]{color:#8a5a12;border-color:#dcbe8a}
-  select[data-v="prete"]        {color:#3d6b3d;border-color:#a9c7a9}
-  select[data-v="remise"]       {color:#6b6157;border-color:var(--trait)}
-  select[data-v="annulee"]      {color:#9a9188;border-color:var(--trait)}
-  select[data-v="en attente"]   {color:#8c2f22;border-color:#d9a79c}
-  select[data-v="paye"]         {color:#3d6b3d;border-color:#a9c7a9}
-  select[data-v="rembourse"]    {color:#6b6157;border-color:var(--trait)}
-  .vide{padding:44px;text-align:center;color:var(--encre-doux)}
-  .connexion{max-width:400px;margin:14vh auto;text-align:center;padding:0 20px}
-  .connexion h1{font-size:22px;margin:0 0 20px}
-  .connexion button{
-    background:var(--accent);color:#fff;border:none;padding:12px 22px;
+  .cal .nav:disabled{opacity:.3;cursor:default}
+  .cal .grille{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
+  .cal .jour-nom{
+    text-align:center;font-size:11px;color:var(--encre-doux);
+    text-transform:uppercase;letter-spacing:.04em;padding:4px 0;
+  }
+  .cal .case{
+    aspect-ratio:1;border:none;background:transparent;border-radius:var(--r);
+    font:inherit;font-size:15px;color:var(--epuise,#b3aaa0);cursor:default;
+  }
+  .cal .case.libre{color:var(--encre);font-weight:700;cursor:pointer;background:#f4efe6}
+  .cal .case.libre:hover{background:#e9e1d4}
+  .cal .case.prise{background:var(--accent);color:#fff}
+  .cal .case.vide{background:transparent}
+  .choisie{font-size:14px;color:var(--accent);margin:9px 0 0;font-weight:600}
+  .recap{font-size:15px}
+  .recap .l{display:flex;justify-content:space-between;gap:14px;padding:5px 0}
+  .recap .l.somme{
+    border-top:1px solid var(--trait);margin-top:9px;padding-top:11px;
+    font-weight:600;font-size:18px;
+  }
+  .recap .q{color:var(--encre-doux)}
+  .recap .ligne-panier{align-items:center}
+  .recap .nom-panier{flex:1;min-width:0}
+  .recap .l.remise span:last-child{color:#3d6b3d}
+  .promo{margin-top:13px;padding-top:12px;border-top:1px dashed var(--trait)}
+  .promo .saisie{display:flex;gap:9px;flex-wrap:wrap}
+  .promo input{
+    flex:1;min-width:140px;padding:10px 12px;border:1px solid var(--trait);
+    border-radius:var(--r);background:#fff;font:inherit;font-size:15px;
+    text-transform:uppercase;letter-spacing:.06em;color:var(--encre);
+  }
+  .promo button.appliquer{
+    background:var(--accent);color:#fff;border:none;padding:10px 18px;
     border-radius:var(--r);font-size:15px;font-weight:600;cursor:pointer;
   }
-  .etat{
-    position:fixed;bottom:84px;left:50%;transform:translateX(-50%);
-    background:var(--encre);color:var(--creme);padding:10px 18px;
-    border-radius:var(--r);font-size:14px;opacity:0;transition:opacity .2s;
+  .promo button.appliquer:disabled{opacity:.5;cursor:default}
+  .promo .etat{margin:9px 0 0;font-size:14px;color:var(--encre-doux)}
+  .promo .etat.ok{color:#3d6b3d}
+  .promo .etat.err{color:var(--alerte)}
+  .promo .etat a{color:var(--accent)}
+  .promo .retirer{
+    background:none;border:none;color:var(--accent);padding:0;margin-left:8px;
+    font-size:14px;text-decoration:underline;cursor:pointer;
   }
-  .etat.vu{opacity:1}
+  .compteur-mini{display:flex;align-items:center;gap:7px}
+  .compteur-mini button{
+    width:30px;height:30px;border-radius:50%;border:1px solid var(--trait);
+    background:#fff;font-size:16px;line-height:1;color:var(--encre);cursor:pointer;
+  }
+  .compteur-mini button:disabled{opacity:.3;cursor:default}
+  .compteur-mini .qn{min-width:16px;text-align:center;font-variant-numeric:tabular-nums}
+  .ajouter-plus{
+    display:flex;gap:12px;flex-wrap:wrap;align-items:center;
+    margin-top:12px;padding-top:11px;border-top:1px dashed var(--trait);
+  }
+  .ajouter-plus a,.ajouter-plus button{
+    color:var(--accent);font-size:14.5px;text-decoration:none;
+    background:none;border:none;padding:0;cursor:pointer;
+  }
+
+  .pied{
+    position:fixed;left:0;right:0;bottom:0;background:var(--encre);
+    color:var(--creme);padding:13px 18px;display:flex;align-items:center;gap:14px;
+  }
+  .pied .total{flex:1;font-size:19px;font-weight:600}
+  .pied button{
+    background:var(--creme);color:var(--encre);border:none;
+    padding:14px 22px;border-radius:var(--r);
+    font-size:15.5px;font-weight:600;cursor:pointer;
+  }
+  .pied button:disabled{opacity:.45;cursor:default}
+
+  .erreur{color:var(--alerte);font-size:14px;margin-top:10px}
+  .note{font-size:13px;color:var(--encre-doux);margin-top:9px}
+  .message{padding:60px 20px;text-align:center;color:var(--encre-doux)}
+  .message a{color:var(--accent)}
+  .retour{
+    background:none;border:none;color:var(--accent);
+    font-size:14px;cursor:pointer;padding:0;text-decoration:underline;
+  }
 </style>
 </head>
 <body>
 
-<div id="ecranConnexion" class="connexion">
-  <h1>Commandes</h1>
-  <button id="btnConnexion">Se connecter avec Google</button>
-  <p id="msgConnexion" style="margin-top:18px;font-size:14px"></p>
+<header>
+  <a href="./" aria-label="Back to the menu">&#8249;</a>
+  <h1>Checkout</h1>
+</header>
+
+<main id="page">
+  <div class="message">Loading your order…</div>
+</main>
+
+<div class="pied" id="pied" hidden>
+  <span class="total" id="totalPied"></span>
+  <button id="btnEnvoyer">Place order</button>
 </div>
 
-<div id="app" hidden>
-  <header>
-    <h1>Commandes</h1>
-    <span class="qui" id="qui"></span>
-    <button id="btnRecharger">Actualiser</button>
-    <button id="btnDeconnexion">Quitter</button>
-  </header>
-  <main>
-    <div class="filtres" id="filtres">
-      <button data-f="actives" aria-pressed="true">À traiter</button>
-      <button data-f="impayees" aria-pressed="false">Impayées</button>
-      <button data-f="toutes" aria-pressed="false">Toutes</button>
-    </div>
-    <div id="liste"><div class="vide">Chargement…</div></div>
-  </main>
-</div>
-
-<div class="lot" id="lot">
-  <span class="n" id="lotN"></span>
-  <select id="lotStatut">
-    <option value="">Avancement…</option>
-  </select>
-  <select id="lotPaiement">
-    <option value="">Paiement…</option>
-  </select>
-  <button class="appliquer" id="lotAppliquer" disabled>Appliquer</button>
-  <button class="annuler" id="lotImprimer">Imprimer les étiquettes</button>
-  <button class="danger" id="lotSupprimer">Supprimer</button>
-  <button class="annuler" id="lotAnnuler">Annuler</button>
-</div>
-
-<div class="etat" id="etat"></div>
-
-<script src="admin-nav.js" defer></script>
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged }
-  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import { getFirestore, collection, getDocs, doc, getDoc, setDoc, updateDoc, writeBatch, increment }
+import { getFirestore, collection, getDocs, doc, getDoc, setDoc, updateDoc, increment }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getAuth, onAuthStateChanged }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { normaliserCode, lireCodeMemorise, memoriserCode, oublierCode,
+         chargerCode, verifierCode, calculerPrix, prixUnitaire, libelleCode,
+         rayonDe, libellePortee }
+  from "./promo.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDuq8KS8M_Z8U7BlSp6MvE-6Y9OYYaDujE",
@@ -190,712 +197,995 @@ const firebaseConfig = {
   appId: "1:978584667113:web:868cc89788aff27717c178"
 };
 
-const app  = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db   = getFirestore(app);
-const $    = (id) => document.getElementById(id);
-const peso = (n) => "₱" + Number(n || 0).toLocaleString("en-PH");
+const appF = initializeApp(firebaseConfig);
+const db   = getFirestore(appF);
+const auth = getAuth(appF);
+const $  = (id) => document.getElementById(id);
+const peso = (n) => "₱" + Number(n).toLocaleString("en-PH");
 
-const STATUTS = ["nouvelle","confirmee","en production","prete","remise","annulee"];
-const LIBELLES = {
-  "nouvelle":"Nouvelle", "confirmee":"Confirmée", "en production":"En production",
-  "prete":"Prête", "remise":"Remise", "annulee":"Annulée"
-};
-const PAIEMENTS = { "en attente":"En attente", "paye":"Payé", "rembourse":"Remboursé" };
+const JOURS_COURTS = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
 
-// Portée de la génération des commandes d'abonnement, en jours.
-const FENETRE_JOURS = 10;
+let params = {}, options = [], lignes = [], sousTotal = 0;
+let remise = 0, uidClient = "", solde = 0, creditUtilise = 0;
+let promo = null;              // fiche du code promo appliqué
+let sourceRemise = "aucune";   // "groupe" | "promo" | "aucune"
+let economie = 0;              // écart avec le tarif catalogue
+let eligible = 0;              // part du panier concernée par le code
+let adresseCompte = null;      // adresse détaillée enregistrée sur le compte
+let charges = {};              // { "2026-08-22": { "BUT-CRO": 12 } }
+let capacites = {};            // { "BUT-CRO": 30 } — 0 ou absent = pas de limite
+let dateChoisie = "", moisVu = null, dateMin = null;
 
-let commandes = [], filtre = "actives";
-let joursFermes = [];   // 0 = lundi
-let stockLimite = {};   // { code produit : true } — produits à stock décompté
-let nomVersCode = {};   // rattrapage : nom du produit -> code, pour les commandes d'avant les codes
-let abonnements = [];   // échéances d'abonnement à ajouter à la production
-const selection = new Set();
-
-/* ---------- Connexion ---------- */
-$("btnConnexion").onclick = async () => {
-  try { await signInWithPopup(auth, new GoogleAuthProvider()); }
-  catch (e) {
-    $("msgConnexion").textContent = "Connexion impossible. Autorisez les fenêtres surgissantes.";
-    console.error(e);
-  }
-};
-$("btnDeconnexion").onclick = () => signOut(auth);
-$("btnRecharger").onclick   = charger;
-
-onAuthStateChanged(auth, async (user) => {
-  if (!user) { $("app").hidden = true; $("ecranConnexion").hidden = false; return; }
-
-  let autorise = false;
-  try { autorise = (await getDoc(doc(db, "admins", user.uid))).exists(); }
-  catch (e) { console.error(e); }
-
-  if (!autorise) {
-    await signOut(auth);
-    $("msgConnexion").innerHTML =
-      "Ce compte n'a pas accès.<br>Identifiant : <code>" + user.uid + "</code>";
-    return;
-  }
-  $("ecranConnexion").hidden = true;
-  $("app").hidden = false;
-  $("qui").textContent = user.email;
-  charger();
-});
-
-/* ---------- Chargement ---------- */
-async function charger() {
-  try {
-    // Quels produits ont un stock à décompter ?
-    try {
-      const p = await getDoc(doc(db, "parametres", "boutique"));
-      if (p.exists()) joursFermes = p.data().jours_fermes || [];
-    } catch (e) { console.error(e); }
-
-    try {
-      const cat = await getDocs(collection(db, "boutique_produits"));
-      stockLimite = {}; nomVersCode = {};
-      cat.forEach(d => {
-        const v = d.data();
-        if (v.mode_stock === "limite") stockLimite[d.id] = true;
-        if (v.nom) nomVersCode[cle(v.nom)] = d.id;
-      });
-    } catch (e) { console.error(e); }
-
-    try {
-      const sa = await getDocs(collection(db, "abonnements"));
-      abonnements = [];
-      sa.forEach(d => abonnements.push({ id: d.id, ...d.data() }));
-    } catch (e) {
-      console.warn("Abonnements non lus (règles Firestore ?) :", e.message);
-      abonnements = [];
-    }
-
-    const s = await getDocs(collection(db, "commandes"));
-    commandes = [];
-    s.forEach(d => commandes.push({ id: d.id, ...d.data() }));
-    // Les plus proches en premier, puis les plus récemment reçues.
-    commandes.sort((a, b) =>
-      (a.date_retrait || "").localeCompare(b.date_retrait || "") ||
-      (b.cree_le || "").localeCompare(a.cree_le || ""));
-    const crees = await materialiserAbonnements();
-    if (crees) {
-      commandes.sort((a, b) =>
-        (a.date_retrait || "").localeCompare(b.date_retrait || "") ||
-        (b.cree_le || "").localeCompare(a.cree_le || ""));
-      signaler(crees + " commande(s) d'abonnement générée(s).");
-    }
-
-    afficher();
-    publierProduction();
-    publierCharges();
-  } catch (e) {
-    console.error(e);
-    $("liste").innerHTML = '<div class="vide">Les commandes n\'ont pas pu être chargées.</div>';
-  }
-}
-
-/* ---------- Filtres ---------- */
-$("filtres").onclick = (e) => {
-  const b = e.target.closest("button");
-  if (!b) return;
-  filtre = b.dataset.f;
-  $("filtres").querySelectorAll("button").forEach(x =>
-    x.setAttribute("aria-pressed", x === b));
-  afficher();
-};
-
-function retenue(c) {
-  if (filtre === "toutes") return true;
-  if (filtre === "impayees")
-    return (c.paiement?.statut || "en attente") === "en attente" && c.statut !== "annulee";
-  return !["remise", "annulee"].includes(c.statut);
-}
-
-/* ---------- Affichage ---------- */
-function afficher() {
-  const liste = $("liste");
-  const vues = commandes.filter(retenue);
-  liste.innerHTML = "";
-
-  if (!vues.length) {
-    liste.innerHTML = '<div class="vide">Aucune commande dans cette vue.</div>';
-    return;
-  }
-
-  // Une commande sortie de la vue ne doit pas rester sélectionnée en douce.
-  const visibles = new Set(vues.map(c => c.id));
-  [...selection].forEach(id => { if (!visibles.has(id)) selection.delete(id); });
-
-  let jourCourant = null;
-  vues.forEach(c => {
-    if (c.date_retrait !== jourCourant) {
-      jourCourant = c.date_retrait;
-      const t = document.createElement("div");
-      t.className = "jour";
-      const duJour = vues.filter(x => x.date_retrait === jourCourant).map(x => x.id);
-      const toutes = duJour.every(id => selection.has(id));
-      t.innerHTML = '<span></span><button type="button" class="tout"></button>';
-      t.querySelector("span").textContent = dateLongue(jourCourant);
-      const bTout = t.querySelector(".tout");
-      bTout.textContent = toutes ? "Tout désélectionner" : "Tout sélectionner";
-      bTout.onclick = () => {
-        duJour.forEach(id => toutes ? selection.delete(id) : selection.add(id));
-        afficher();
-      };
-      liste.appendChild(t);
-    }
-    liste.appendChild(carte(c));
-  });
-
-  majLot();
-}
-
-function dateLongue(iso) {
-  if (!iso) return "Sans date";
-  const d = new Date(iso + "T12:00:00");
-  const texte = d.toLocaleDateString("fr-FR",
-    { weekday: "long", day: "numeric", month: "long" });
-  const auj = new Date(); auj.setHours(0, 0, 0, 0);
-  const ecart = Math.round((d - auj) / 86400000);
-  if (ecart === 0) return "Aujourd'hui — " + texte;
-  if (ecart === 1) return "Demain — " + texte;
-  if (ecart < 0)   return "Passée — " + texte;
-  return texte;
-}
-
-function carte(c) {
-  const paye = (c.paiement?.statut || "en attente") === "paye";
-  const el = document.createElement("div");
-  el.className = "cmd " + (paye ? "reglee" : "impaye");
-
-  const articles = (c.panier || []).reduce((n, l) => n + l.qte, 0);
-
-  el.innerHTML = `
-    <div class="tete">
-      <input type="checkbox" class="coche" aria-label="Sélectionner">
-      <span class="ref">${c.numero || c.id}</span>
-      <span class="nom"></span>
-      ${c.abonnement_id ? `<span class="etiq bleue">Abonnement${
-        c.abonnement_rang ? " " + c.abonnement_rang +
-          (c.abonnement_total ? "/" + c.abonnement_total : "") : ""}</span>` : ""}
-      ${c.credit_utilise > 0 ? `<span class="etiq">crédit ${peso(c.credit_utilise)}</span>` : ""}
-      <span class="etiq ${paye ? "verte" : "rouge"}">${paye ? "Payé" : "À encaisser"}</span>
-      <span class="montant">${peso(c.total)}</span>
-    </div>
-    <div class="resume"></div>
-    <div class="detail" hidden>
-      <div class="lignes"></div>
-      <p class="info" style="margin-top:11px"><b>Contact</b> ${c.client?.telephone || ""}</p>
-      ${c.client?.adresse ? '<p class="info adresse"></p>' : ""}
-      ${c.option?.lieu ? '<p class="info lieu"></p>' : ""}
-      ${c.notes ? '<p class="info notes"></p>' : ""}
-      <div class="actions">
-        <select class="selStatut">
-          ${STATUTS.map(s => `<option value="${s}">${LIBELLES[s]}</option>`).join("")}
-        </select>
-        <select class="selPaiement">
-          ${Object.entries(PAIEMENTS).map(([v, t]) =>
-            `<option value="${v}">${t}</option>`).join("")}
-        </select>
-        <a class="lien lienClient" target="_blank" rel="noopener">WhatsApp client</a>
-      </div>
-    </div>`;
-
-  el.querySelector(".nom").textContent = c.client?.nom || "—";
-  el.querySelector(".resume").textContent =
-    [LIBELLES[c.statut] || c.statut, c.option?.nom, c.creneau,
-     articles + (articles > 1 ? " articles" : " article")]
-    .filter(Boolean).join(" · ");
-
-  el.querySelector(".lignes").innerHTML = (c.panier || []).map(l =>
-    `<div class="l"><span>${l.qte} × ${echapper(l.nom)}</span>
-     <span>${peso(l.qte * l.prix)}</span></div>`).join("") +
-    (c.frais_livraison > 0
-      ? `<div class="l"><span>${echapper(c.option?.nom || "Livraison")}</span>
-         <span>${peso(c.frais_livraison)}</span></div>` : "") +
-    (c.frais_a_confirmer
-      ? `<div class="l"><span>${echapper(c.option?.nom || "")}</span>
-         <span>à confirmer</span></div>` : "");
-
-  if (c.client?.adresse) el.querySelector(".adresse").textContent = c.client.adresse;
-  if (c.option?.lieu)    el.querySelector(".lieu").textContent = c.option.lieu;
-  if (c.notes)           el.querySelector(".notes").textContent = "Note : " + c.notes;
-
-  const detail = el.querySelector(".detail");
-  el.querySelector(".tete").onclick = () => { detail.hidden = !detail.hidden; };
-
-  const coche = el.querySelector(".coche");
-  coche.checked = selection.has(c.id);
-  coche.onclick = (e) => e.stopPropagation();   // ne pas déplier la carte
-  coche.onchange = () => {
-    coche.checked ? selection.add(c.id) : selection.delete(c.id);
-    majLot();
-  };
-
-  const selS = el.querySelector(".selStatut");
-  const selP = el.querySelector(".selPaiement");
-  selS.value = c.statut || "nouvelle";
-  selP.value = c.paiement?.statut || "en attente";
-  // La valeur est recopiée dans un attribut : le CSS ne peut pas cibler
-  // la sélection courante d'un menu autrement.
-  const teinter = (sel) => sel.dataset.v = sel.value;
-  teinter(selS); teinter(selP);
-  selS.onchange = () => { teinter(selS); enregistrer(c, { statut: selS.value }); };
-  selP.onchange = () => { teinter(selP); enregistrer(c, { "paiement.statut": selP.value }); };
-
-  el.querySelector(".lienClient").href =
-    "https://wa.me/" + (c.client?.telephone || "").replace(/\D/g, "");
-
-  return el;
-}
-
-function echapper(t) {
-  return String(t ?? "").replace(/[&<>"]/g, x =>
-    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[x]));
-}
-
-/* ---------- Les échéances d'abonnement deviennent des commandes ----------
-   Une échéance sans commande n'est ni imprimable, ni encaissable, ni suivable.
-   L'identifiant est déterministe : relancer la génération ne crée pas de doublon. */
-async function materialiserAbonnements() {
-  // Fenêtre glissante : tout ce qui est dû d'ici dix jours est généré, ainsi
-  // que les échéances en retard — une livraison due ne doit pas disparaître
-  // parce que la page n'a pas été ouverte le bon jour.
-  const limite = new Date(); limite.setHours(0, 0, 0, 0);
-  limite.setDate(limite.getDate() + FENETRE_JOURS);
-  const jusquA = iso(limite);
-
-  // Chaque échéance à traiter est repérée par son rang dans le plan : c'est
-  // ce rang, et non la date, qui fixe l'identifiant de la commande.
-  const aFaire = [];
-  abonnements.forEach(a => {
-    if (a.statut !== "actif") return;
-    (a.echeances || []).forEach((e, i) => {
-      if (e.statut === "planifiee" && e.date && e.date <= jusquA)
-        aFaire.push({ a, rang: i + 1, date: e.date });
+/* ---------- Démarrage ---------- */
+function attendreConnexion() {
+  return new Promise(resolve => {
+    const stop = onAuthStateChanged(auth, async (user) => {
+      stop();
+      if (user) {
+        uidClient = user.uid;
+        try {
+          const s = await getDoc(doc(db, "comptes", user.uid));
+          remise = Number(s.data()?.remise) || 0;
+          solde  = Number(s.data()?.solde) || 0;
+          // Adresse détaillée si le compte en a une, sinon l'ancienne ligne.
+          adresseCompte = s.data()?.adresse_detail || s.data()?.adresse || null;
+        } catch (e) { console.error(e); }
+      }
+      resolve();
     });
   });
+}
 
-  console.log("Abonnements :", abonnements.length,
-    "· actifs :", abonnements.filter(a => a.statut === "actif").length,
-    "· échéances jusqu'au " + jusquA + " :", aFaire.length);
-  if (abonnements.length && !aFaire.length) {
-    abonnements.forEach(a => console.log("  ", a.id, "statut", a.statut,
-      "· échéances", (a.echeances || []).map(e => e.date + "/" + e.statut).join(" ")));
-  }
+let panier = {};
 
-  if (!aFaire.length) return 0;
+(async function () {
+  await attendreConnexion();
+  try { panier = JSON.parse(localStorage.getItem("panier") || "{}"); } catch {}
 
-  let creees = 0;
-  for (const { a, rang, date } of aFaire) {
-    // Rang sur deux chiffres : la commande garde le même identifiant même si
-    // sa date est décalée ensuite, donc pas de doublon à la génération suivante.
-    const id = "ABO-" + a.id + "-" + String(rang).padStart(2, "0");
-    if (commandes.some(c => c.id === id)) continue;   // déjà générée
+  if (!Object.keys(panier).length) return vide("Your basket is empty.");
 
-    const sousTotal = (a.panier || []).reduce((t, l) => t + (l.qte || 0) * (l.prix || 0), 0);
-    const commande = {
-      numero: "ABO-" + date.slice(5).replace("-", "") + "-" +
-              (a.client?.nom || "").slice(0, 3).toUpperCase(),
-      statut: "confirmee",
-      abonnement_id: a.id,
-      abonnement_rang: rang,
-      abonnement_total: (a.echeances || []).length,
-      client: {
-        nom: a.client?.nom || "",
-        telephone: a.client?.telephone || "",
-        adresse: a.client?.adresse || ""
-      },
-      panier: (a.panier || []).map(l => ({ code: l.code, nom: l.nom, qte: l.qte, prix: l.prix })),
-      sous_total: sousTotal,
-      frais_livraison: Number(a.frais_livraison) || 0,
-      frais_a_confirmer: false,
-      total: sousTotal + (Number(a.frais_livraison) || 0),
-      option: a.option || {},
-      date_retrait: date,
-      creneau: "",
-      paiement: {
-        methode: a.paiement?.mode === "credit" ? "credit" : "avance",
-        statut: a.paiement?.mode === "credit" ? "en attente" : "paye"
-      },
-      notes: "Bread plan",
-      cree_le: new Date().toISOString()
-    };
+  try {
+    const [p, catalogue] = await Promise.all([
+      getDoc(doc(db, "parametres", "boutique")),
+      getDocs(collection(db, "boutique_produits"))
+    ]);
+    params  = p.exists() ? p.data() : {};
+    options = params.options_retrait || [];
 
-    try {
-      await setDoc(doc(db, "commandes", id), commande);
-      commandes.push({ id, ...commande });
-      creees += 1;
-    } catch (e) {
-      console.error("Génération de la commande d'abonnement", id, e);
+    const vac = params.vacances || {};
+    if (vac.actif) {
+      return vide(vac.message || "We are closed at the moment. Online orders are paused.");
     }
+
+    // Les prix viennent de la base, jamais du panier gardé sur l'appareil.
+    catalogue.forEach(s => {
+      const d = s.data();
+      let q = panier[s.id];
+      if (!q || d.visible === false || d.disponible === false) return;
+      // Le stock a pu descendre depuis la mise au panier.
+      if (d.mode_stock === "limite") {
+        const reste = Math.max(0, Number(d.stock) || 0);
+        if (reste <= 0) return;
+        if (q > reste) q = reste;
+      }
+      const base = Number(d.prix_vente) || 0;
+      const reste = d.mode_stock === "limite"
+        ? Math.max(0, Number(d.stock) || 0) : null;
+      // prix reste le montant réellement facturé : il est recalculé par
+      // majPrix() une fois le code promo connu.
+      const code = d.code || s.id;
+      capacites[code] = Number(d.capacite_jour) || 0;
+      lignes.push({ id: s.id, code, nom: d.nom, rayon: rayonDe(d),
+                    qte: q, prixBase: base, prix: base, reste, montant: q * base });
+    });
+
+    // Le code saisi sur la vitrine suit le panier : on le revérifie ici,
+    // il a pu être désactivé depuis.
+    await chargerCharges();
+    await reprendreCode();
+    majPrix();
+
+    if (!lignes.length) return vide("The items in your basket are no longer available.");
+    if (!options.length) return vide("Ordering is temporarily unavailable.");
+
+    construire();
+  } catch (e) {
+    console.error(e);
+    $("page").innerHTML =
+      '<div class="message">Something went wrong loading your order. Please refresh.</div>';
   }
-  return creees;
+})();
+
+function vide(texte) {
+  $("page").innerHTML =
+    `<div class="message">${texte}<br><br><a href="./">Back to the menu</a></div>`;
 }
 
-/* ---------- Pont vers la production ----------
-   Publie, pour la prochaine date de livraison, le total par code produit.
-   Aucune donnée client : ce document est lisible par l'ERP sans risque. */
-// Clé de rapprochement par nom, insensible aux accents et à la casse.
-function cle(t) {
-  return String(t || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase().replace(/[^a-z0-9]/g, "");
+/* ---------- Formulaire ---------- */
+function construire() {
+  const memo = lireMemo();
+  const creneaux = params.creneaux || [];
+
+  $("page").innerHTML = `
+    <div class="bloc">
+      <h2>Your order</h2>
+      <div class="recap" id="recap"></div>
+      <div class="promo">
+        <div class="saisie" id="saisieCode">
+          <input type="text" id="champCode" placeholder="Promo code"
+                 autocomplete="off" autocapitalize="characters" spellcheck="false"
+                 aria-label="Promo code">
+          <button type="button" class="appliquer" id="btnCode">Apply</button>
+        </div>
+        <p class="etat" id="etatPromo"></p>
+      </div>
+    </div>
+
+    <div class="bloc">
+      <h2>Your details</h2>
+      <label class="champ"><span>Full name</span>
+        <input type="text" id="nom" autocomplete="name"></label>
+      <label class="champ"><span>WhatsApp number</span>
+        <input type="tel" id="tel" inputmode="tel" placeholder="0917 123 4567"
+               autocomplete="tel"></label>
+      <div id="zoneMemo"></div>
+    </div>
+
+    <div class="bloc">
+      <h2>Where would you like to get it?</h2>
+      <div id="listeOptions"></div>
+      <div id="blocAdresse" hidden style="margin-top:14px">
+        <label class="champ"><span>Unit / floor / building <span class="option">optional</span></span>
+          <input type="text" id="adrUnite" autocomplete="address-line2"
+                 placeholder="Unit 5B, Solstice Tower"></label>
+        <label class="champ"><span>House number and street</span>
+          <input type="text" id="adrRue" autocomplete="address-line1"
+                 placeholder="128 Rada Street"></label>
+        <label class="champ"><span>Barangay</span>
+          <input type="text" id="adrBarangay" autocomplete="address-level3"
+                 placeholder="San Lorenzo"></label>
+        <div id="blocVille"></div>
+      </div>
+    </div>
+
+    <div class="bloc">
+      <h2>When?</h2>
+      <div class="champ"><span class="etiq">Date</span>
+        <div class="cal" id="calendrier"></div>
+        <p class="choisie" id="dateChoisie"></p>
+      </div>
+      ${creneaux.length ? `
+      <label class="champ"><span>Time</span>
+        <select id="creneau">${creneaux.map(c => `<option>${c}</option>`).join("")}</select>
+      </label>` : ""}
+      <div class="note" id="noteDate"></div>
+    </div>
+
+    <div class="bloc" id="blocCredit" hidden>
+      <h2>Store credit</h2>
+      <label class="choix" id="choixCredit">
+        <input type="checkbox" id="utiliserCredit">
+        <span class="corps">
+          <span class="t"><span id="titreCredit"></span></span>
+          <span class="d" id="detailCredit"></span>
+        </span>
+      </label>
+    </div>
+
+    <div class="bloc">
+      <h2>Payment</h2>
+      <div id="listePaiements"></div>
+      <div class="note" id="instrPaiement"></div>
+    </div>
+
+    <div class="bloc">
+      <h2>Anything else?</h2>
+      <textarea id="notes" placeholder="Allergies, a message on the cake, landmarks…"></textarea>
+    </div>
+
+    <div class="erreur" id="erreur"></div>
+  `;
+
+  // Options de retrait
+  const liste = $("listeOptions");
+  options.forEach((o, i) => {
+    const tarif = o.tarif_variable ? "Confirmed later"
+                : (o.tarif > 0 ? peso(o.tarif) : "Free");
+    const jours = (o.jours || []).length
+      ? (o.jours || []).map(n => JOURS_COURTS[n]).join(", ")
+      : "";
+    const l = document.createElement("label");
+    l.className = "choix";
+    l.dataset.i = i;
+    l.innerHTML = `
+      <input type="radio" name="option" value="${i}" ${i === 0 ? "checked" : ""}>
+      <span class="corps">
+        <span class="t"><span></span><span class="tarif">${tarif}</span></span>
+        ${o.lieu ? '<span class="d"></span>' : ""}
+        ${jours ? `<span class="j">${jours} only</span>` : ""}
+      </span>`;
+    l.querySelector(".t span").textContent = o.nom;
+    if (o.lieu) l.querySelector(".d").textContent = o.lieu;
+    l.querySelector("input").onchange = majOption;
+    liste.appendChild(l);
+  });
+
+  construireVille();
+
+  if (memo.nom) $("nom").value = memo.nom;
+  if (memo.tel) $("tel").value = memo.tel;
+  // L'adresse du compte prime sur celle de l'appareil : c'est la plus sûre
+  // quand le client commande depuis un téléphone partagé.
+  ecrireAdresse(adresseCompte || memo.adresse_detail || memo.adresse || "");
+  if (memo.nom || memo.tel) {
+    $("zoneMemo").innerHTML =
+      '<button class="retour" id="oublier">Not you? Clear these details</button>';
+    $("oublier").onclick = () => {
+      localStorage.removeItem("client");
+      $("nom").value = ""; $("tel").value = "";
+      ecrireAdresse("");
+      $("zoneMemo").innerHTML = "";
+    };
+  }
+
+  construireCredit();
+  construirePaiements();
+  construirePromo();
+
+  majOption();
+  $("pied").hidden = false;
 }
 
-// Le code de la ligne, ou à défaut celui retrouvé d'après le nom du produit.
-function codeLigne(l) {
-  return l.code || nomVersCode[cle(l.nom)] || null;
+
+/* ---------- Capacité de production ----------
+   Un document par jour dans la collection charge, publié et corrigé par
+   l'administration des commandes : { produits: { "BUT-CRO": 12 } }.
+   La vitrine ne peut pas compter les commandes des autres clients, ces
+   compteurs sont sa seule vue sur ce qui est déjà pris. */
+async function chargerCharges() {
+  try {
+    const s = await getDocs(collection(db, "charge"));
+    charges = {};
+    s.forEach(d => charges[d.id] = d.data().produits || {});
+  } catch (e) {
+    // Sans charges connues, on laisse commander : mieux vaut une journée
+    // un peu trop chargée qu'une boutique qui refuse tout.
+    console.error(e);
+    charges = {};
+  }
 }
 
+/* Ce qui manque pour que le panier tienne dans une journée donnée.
+   Renvoie [] si tout passe, sinon la liste des produits en cause. */
+function depassements(date) {
+  const pris = charges[date] || {};
+  const trop = [];
+  lignes.forEach(l => {
+    const plafond = Number(capacites[l.code]) || 0;
+    if (!plafond) return;                       // pas de limite sur ce produit
+    const reste = plafond - (Number(pris[l.code]) || 0);
+    if (l.qte > reste) trop.push({ nom: l.nom, reste: Math.max(0, reste) });
+  });
+  return trop;
+}
+
+function jourComplet(date) {
+  return depassements(date).length > 0;
+}
+
+// Message nommant ce qui bloque, plutôt qu'un refus sans explication.
+function messageComplet(trop) {
+  if (trop.length === 1) {
+    const p = trop[0];
+    return p.reste > 0
+      ? "Only " + p.reste + " × " + p.nom + " left for that day."
+      : p.nom + " is fully booked that day.";
+  }
+  // Plusieurs produits : certains peuvent avoir un reste, « fully booked »
+  // serait faux. On reste sur ce qui est vrai des deux.
+  const noms = trop.map(x => x.nom);
+  return "We don't have enough " +
+         noms.slice(0, -1).join(", ") + " and " + noms[noms.length - 1] +
+         " for that day.";
+}
+
+/* ---------- Adresse de livraison ----------
+   Saisie en champs séparés, mais enregistrée AUSSI sur une seule ligne dans
+   client.adresse : l'administration des commandes, la confirmation et la page
+   d'abonnement lisent ce champ tel quel et n'ont pas à changer. */
+function construireVille() {
+  const villes = (params.villes_livrees || []).filter(Boolean);
+  const zone = $("blocVille");
+
+  // Liste vide côté administration : on retombe sur un champ libre.
+  if (!villes.length) {
+    zone.innerHTML = `
+      <label class="champ"><span>City</span>
+        <input type="text" id="adrVille" autocomplete="address-level2"></label>`;
+    return;
+  }
+
+  zone.innerHTML = `
+    <label class="champ"><span>City</span>
+      <select id="adrVille">
+        <option value="">Choose your city…</option>
+        ${villes.map(v => `<option value="${echapper(v)}">${echapper(v)}</option>`).join("")}
+      </select></label>
+    <div class="note">We deliver to these cities only. Ask us if yours isn't listed.</div>`;
+}
+
+function lireAdresse() {
+  const v = (id) => { const e = $(id); return e ? e.value.trim() : ""; };
+  return {
+    unite:    v("adrUnite"),
+    rue:      v("adrRue"),
+    barangay: v("adrBarangay"),
+    ville:    v("adrVille")
+  };
+}
+
+// Une seule ligne, pour l'administration et les messages.
+function adresseUneLigne(a) {
+  return [a.unite, a.rue, a.barangay, a.ville].filter(Boolean).join(", ");
+}
+
+/* Remplit les champs à partir d'une adresse détaillée, ou d'une simple
+   ligne écrite avant ce découpage : dans ce cas tout part dans la rue,
+   au client de répartir. La ville n'est reprise que si elle figure encore
+   dans la liste livrée. */
+function ecrireAdresse(source) {
+  const a = (source && typeof source === "object") ? source : null;
+  const poser = (id, val) => { const e = $(id); if (e) e.value = val || ""; };
+
+  poser("adrUnite",    a ? a.unite : "");
+  poser("adrRue",      a ? a.rue : (typeof source === "string" ? source : ""));
+  poser("adrBarangay", a ? a.barangay : "");
+
+  const champVille = $("adrVille");
+  if (!champVille) return;
+  const voulue = a ? (a.ville || "") : "";
+  if (champVille.tagName === "SELECT") {
+    const dispo = [...champVille.options].some(o => o.value === voulue);
+    champVille.value = dispo ? voulue : "";
+  } else {
+    champVille.value = voulue;
+  }
+}
+
+/* ---------- Code promo ----------
+   Le code suit le panier : celui saisi sur la vitrine est déjà chargé,
+   et celui saisi ici sera retrouvé au retour sur la vitrine. */
+function construirePromo() {
+  $("btnCode").onclick = appliquerCode;
+  $("champCode").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") { e.preventDefault(); appliquerCode(); }
+  });
+  majPromo();
+}
+
+function etatPromo(texte, type = "", html = false) {
+  const e = $("etatPromo");
+  if (!e) return;
+  if (html) e.innerHTML = texte; else e.textContent = texte;
+  e.className = "etat " + type;
+}
+
+function majPromo() {
+  if (!$("saisieCode")) return;
+
+  if (!promo) {
+    $("saisieCode").hidden = false;
+    if (!uidClient) {
+      etatPromo('Have a code? <a href="compte.html">Sign in</a> to use it.', "", true);
+    }
+    return;
+  }
+
+  $("saisieCode").hidden = true;
+  const e = $("etatPromo");
+  const portee = libellePortee(promo);
+  e.className = "etat ok";
+  if (sourceRemise === "promo") {
+    e.textContent = promo.id + " applied — " + libelleCode(promo);
+  } else if (portee && eligible === 0) {
+    e.className = "etat";
+    e.textContent = promo.id + " applies to " + portee +
+                    " only — nothing in your basket qualifies";
+  } else {
+    e.textContent = promo.id +
+      " saved for later — your trade price is a better deal today";
+  }
+
+  const b = document.createElement("button");
+  b.className = "retirer";
+  b.type = "button";
+  b.textContent = "Remove";
+  b.onclick = () => {
+    promo = null;
+    oublierCode();
+    $("champCode").value = "";
+    etatPromo("");
+    majPrix();
+    majTotaux();
+  };
+  e.appendChild(b);
+}
+
+async function appliquerCode() {
+  const saisie = normaliserCode($("champCode").value);
+  if (!saisie) { etatPromo("Enter a code first.", "err"); return; }
+
+  $("btnCode").disabled = true;
+  etatPromo("Checking…");
+  try {
+    const fiche = await chargerCode(db, saisie);
+    const v = verifierCode(fiche, { connecte: !!uidClient });
+    if (!v.ok) {
+      promo = null;
+      oublierCode();
+      etatPromo(v.connexion
+        ? 'Please <a href="compte.html">sign in</a> to use a promo code.'
+        : v.message, "err", !!v.connexion);
+      majPrix();
+      majTotaux();
+      return;
+    }
+    promo = fiche;
+    memoriserCode(fiche.id);
+    $("champCode").value = "";
+    majPrix();
+    majTotaux();
+  } catch (e) {
+    console.error(e);
+    etatPromo("We couldn't check that code. Please try again.", "err");
+  } finally {
+    $("btnCode").disabled = false;
+  }
+}
+
+// Reprise du code mémorisé, revérifié sur le serveur.
+async function reprendreCode() {
+  const memorise = lireCodeMemorise();
+  if (!memorise) return;
+  try {
+    const fiche = await chargerCode(db, memorise);
+    const v = verifierCode(fiche, { connecte: !!uidClient });
+    promo = v.ok ? fiche : null;
+    if (!v.ok && !v.connexion) oublierCode();
+  } catch (e) {
+    console.error(e);
+    promo = null;
+  }
+}
+
+/* Prix facturés : le module tranche entre tarif de groupe et code promo,
+   la vitrine et cette page appliquent donc la même règle. */
+function majPrix() {
+  const calcul = calculerPrix(
+    lignes.map(l => ({ qte: l.qte, prixBase: l.prixBase, rayon: l.rayon })),
+    remise, promo);
+  sourceRemise = calcul.source;
+  economie = calcul.economie;
+  eligible = calcul.eligible;
+  lignes.forEach(l => {
+    l.prix = prixUnitaire(l.prixBase, remise, sourceRemise);
+    l.montant = l.qte * l.prix;
+  });
+  sousTotal = calcul.sousTotal;
+}
+
+/* ---------- Panier modifiable depuis le checkout ---------- */
+function modifierLigne(id, delta) {
+  const l = lignes.find(x => x.id === id);
+  if (!l) return;
+  const nouvelle = l.qte + delta;
+
+  if (nouvelle <= 0) {
+    lignes = lignes.filter(x => x.id !== id);
+    delete panier[id];
+  } else {
+    if (l.reste !== null && nouvelle > l.reste) return;
+    l.qte = nouvelle;
+    l.montant = l.qte * l.prix;
+    panier[id] = l.qte;
+  }
+
+  try { localStorage.setItem("panier", JSON.stringify(panier)); } catch {}
+  majPrix();
+
+  if (!lignes.length) return vide("Your basket is empty.");
+  majTotaux();
+  verifierDate();   // une quantité en hausse peut dépasser la capacité du jour
+}
+
+// Reprise de la dernière commande passée sur cet appareil.
+function derniereCommande() {
+  try { return JSON.parse(localStorage.getItem("derniere_commande") || "null"); }
+  catch { return null; }
+}
+
+function brancherDerniere() {
+  const b = $("btnDerniere");
+  if (!b) return;
+  const d = derniereCommande();
+  const utile = d && (d.lignes || []).some(x => !panier[x.id]);
+  b.hidden = !utile;
+  if (!utile) return;
+  b.onclick = () => {
+    (d.lignes || []).forEach(x => {
+      if (!panier[x.id]) panier[x.id] = x.qte;
+    });
+    try { localStorage.setItem("panier", JSON.stringify(panier)); } catch {}
+    location.reload();
+  };
+}
+
+/* ---------- Crédit en boutique ----------
+   Le client décide d'utiliser tout ou partie de son solde ; le reste
+   se règle normalement. Le prélèvement réel a lieu à la confirmation. */
+function construireCredit() {
+  if (!(solde > 0)) return;
+  $("blocCredit").hidden = false;
+  $("utiliserCredit").onchange = () => { majTotaux(); majPaiement(); };
+  majCredit();
+}
+
+function majCredit() {
+  if (!(solde > 0)) { creditUtilise = 0; return; }
+  const total = sousTotal + fraisOption();
+  const possible = Math.min(solde, total);
+  creditUtilise = $("utiliserCredit").checked ? possible : 0;
+
+  $("titreCredit").textContent = "Use my credit — " + peso(solde) + " available";
+  $("detailCredit").textContent = creditUtilise > 0
+    ? (creditUtilise >= total
+        ? "Your order is fully covered by your credit."
+        : peso(creditUtilise) + " applied · " + peso(total - creditUtilise) + " left to pay")
+    : "Apply up to " + peso(possible) + " to this order.";
+  $("choixCredit").classList.toggle("actif", creditUtilise > 0);
+}
+
+function fraisOption() {
+  const o = choisie();
+  return o.tarif_variable ? 0 : (Number(o.tarif) || 0);
+}
+
+/* ---------- Moyens de paiement ---------- */
+function construirePaiements() {
+  const pay = params.paiement || {};
+  const g = pay.gcash  || { nom: pay.gcash_nom, numero: pay.gcash_numero };
+  const m = pay.maya   || {};
+  const b = pay.banque || { nom: pay.banque_nom,
+                            titulaire: pay.banque_titulaire,
+                            numero: pay.banque_numero };
+  const choix = [];
+
+  if (g.numero || g.qr) choix.push({
+    code: "gcash", titre: "GCash", qr: g.qr,
+    detail: [g.numero, g.nom].filter(Boolean).join(" — ")
+  });
+  if (m.numero || m.qr) choix.push({
+    code: "maya", titre: "Maya", qr: m.qr,
+    detail: [m.numero, m.nom].filter(Boolean).join(" — ")
+  });
+  if (b.numero || b.qr) choix.push({
+    code: "virement", titre: "Bank transfer", qr: b.qr,
+    detail: [b.nom, b.titulaire, b.numero].filter(Boolean).join(" — ")
+  });
+  choix.push({
+    code: "especes", titre: "Cash", qr: "",
+    detail: "Pay when you collect or receive your order."
+  });
+
+  const zone = $("listePaiements");
+  zone.innerHTML = "";
+  choix.forEach((c, i) => {
+    const l = document.createElement("label");
+    l.className = "choix";
+    l.dataset.paiement = c.code;
+    l.innerHTML = `
+      <input type="radio" name="paiement" value="${c.code}" ${i === 0 ? "checked" : ""}>
+      <span class="corps"><span class="t"><span></span></span>
+      <span class="d"></span>
+      <span class="qr" hidden></span></span>`;
+    l.querySelector(".t span").textContent = c.titre;
+    l.querySelector(".d").textContent = c.detail;
+
+    if (c.qr) {
+      const boite = l.querySelector(".qr");
+      const img = document.createElement("img");
+      img.src = c.qr;
+      img.alt = c.titre + " QR code";
+      img.loading = "lazy";
+      const lien = document.createElement("a");
+      lien.href = c.qr;
+      lien.download = "";
+      lien.textContent = "Save QR code";
+      lien.onclick = (e) => e.stopPropagation();
+      boite.append(img, lien);
+      boite.dataset.actif = "1";
+    }
+
+    l.querySelector("input").onchange = majPaiement;
+    zone.appendChild(l);
+  });
+
+  majPaiement();
+}
+
+function majPaiement() {
+  const total = sousTotal + fraisOption();
+  const couvert = creditUtilise >= total && total > 0;
+  const zone = $("listePaiements");
+  if (zone) zone.style.opacity = couvert ? ".45" : "";
+  const instr = $("instrPaiement");
+  if (couvert && instr) { instr.textContent = "Nothing more to pay — thank you!"; return; }
+
+  const v = document.querySelector('input[name="paiement"]:checked').value;
+  document.querySelectorAll(".choix[data-paiement]").forEach(c => {
+    const actif = c.dataset.paiement === v;
+    c.classList.toggle("actif", actif);
+    const qr = c.querySelector(".qr");
+    if (qr) qr.hidden = !(actif && qr.dataset.actif);
+  });
+
+  const instructions = (params.paiement || {}).instructions || "";
+  $("instrPaiement").textContent = v === "especes" ? "" : instructions;
+}
+
+/* ---------- Option choisie ---------- */
+function choisie() {
+  const r = document.querySelector('input[name="option"]:checked');
+  return options[Number(r.value)];
+}
+
+function majOption() {
+  const o = choisie();
+  document.querySelectorAll(".choix[data-i]").forEach(c =>
+    c.classList.toggle("actif", options[Number(c.dataset.i)] === o));
+
+  $("blocAdresse").hidden = !o.demander_adresse;
+
+  // Le calendrier repart du premier jour compatible avec cette option.
+  const delai = Number(params.delai_min_heures) || 0;
+  dateMin = new Date(Date.now() + delai * 3600000);
+  dateMin.setHours(0, 0, 0, 0);
+
+  const premier = premierJourPossible(new Date(Date.now() + delai * 3600000), o);
+  dateChoisie = premier ? iso(premier) : "";
+  moisVu = premier ? new Date(premier.getFullYear(), premier.getMonth(), 1)
+                   : new Date(dateMin.getFullYear(), dateMin.getMonth(), 1);
+  dessinerCalendrier();
+
+  const bouts = [];
+  if (delai) bouts.push("We need at least " + delai + " hours' notice.");
+  if ((o.jours || []).length)
+    bouts.push(o.nom + " is available on " +
+      o.jours.map(n => JOURS_COURTS[n]).join(", ") + " only.");
+  $("noteDate").textContent = bouts.join(" ");
+
+  verifierDate();
+  majTotaux();
+}
+
+/* ---------- Calendrier ---------- */
+function dessinerCalendrier() {
+  const o = choisie();
+  const premierDuMois = new Date(moisVu.getFullYear(), moisVu.getMonth(), 1);
+  const nbJours = new Date(moisVu.getFullYear(), moisVu.getMonth() + 1, 0).getDate();
+  const decalage = indexJour(premierDuMois);   // 0 = lundi
+
+  const moisNom = premierDuMois.toLocaleDateString("en-GB",
+    { month: "long", year: "numeric" });
+
+  // Un mois entièrement passé n'a pas à être atteignable.
+  const finDuMoisPrecedent = new Date(moisVu.getFullYear(), moisVu.getMonth(), 0);
+  const reculPossible = finDuMoisPrecedent >= dateMin;
+
+  let cases = "";
+  for (let i = 0; i < decalage; i++) cases += '<div class="case vide"></div>';
+
+  for (let n = 1; n <= nbJours; n++) {
+    const d = new Date(moisVu.getFullYear(), moisVu.getMonth(), n);
+    const cle = iso(d);
+    const ouvert = d >= dateMin && jourPossible(d, o);
+    const complet = ouvert && jourComplet(cle);
+    const libre = ouvert && !complet;
+    const prise = cle === dateChoisie;
+    cases += libre
+      ? `<button type="button" class="case libre ${prise ? "prise" : ""}"
+           data-jour="${cle}">${n}</button>`
+      : `<div class="case ${complet ? "complet" : ""}" aria-disabled="true"
+           ${complet ? 'title="Fully booked"' : ""}>${n}</div>`;
+  }
+
+  $("calendrier").innerHTML = `
+    <div class="tete">
+      <button type="button" class="nav" id="calPrec" ${reculPossible ? "" : "disabled"}
+        aria-label="Previous month">&#8249;</button>
+      <span class="mois">${moisNom}</span>
+      <button type="button" class="nav" id="calSuiv" aria-label="Next month">&#8250;</button>
+    </div>
+    <div class="grille">
+      ${JOURS_COURTS.map(j => `<div class="jour-nom">${j[0]}</div>`).join("")}
+      ${cases}
+    </div>`;
+
+  $("calPrec").onclick = () => { moisVu.setMonth(moisVu.getMonth() - 1); dessinerCalendrier(); };
+  $("calSuiv").onclick = () => { moisVu.setMonth(moisVu.getMonth() + 1); dessinerCalendrier(); };
+
+  $("calendrier").querySelectorAll(".case.libre").forEach(b => {
+    b.onclick = () => {
+      dateChoisie = b.dataset.jour;
+      dessinerCalendrier();
+      verifierDate();
+    };
+  });
+
+  $("dateChoisie").textContent = dateChoisie
+    ? new Date(dateChoisie + "T12:00:00").toLocaleDateString("en-GB",
+        { weekday: "long", day: "numeric", month: "long" })
+    : "";
+}
+
+/* ---------- Dates ---------- */
 function iso(d) {
   return new Date(d.getTime() - d.getTimezoneOffset() * 60000)
     .toISOString().slice(0, 10);
 }
+function indexJour(d) { return (d.getDay() + 6) % 7; }   // 0 = lundi
 
-function prochaineLivraison() {
-  const d = new Date(); d.setHours(0, 0, 0, 0);
-  for (let i = 0; i < 14; i++) {
-    if (!joursFermes.includes((d.getDay() + 6) % 7)) return iso(d);
-    d.setDate(d.getDate() + 1);
+function jourPossible(d, o) {
+  const jours = o.jours || [];
+  // Une option limitée à certains jours impose ses propres jours.
+  if (jours.length) return jours.includes(indexJour(d));
+  return !(params.jours_fermes || []).includes(indexJour(d));
+}
+function premierJourPossible(depuis, o) {
+  const j = new Date(depuis);
+  for (let i = 0; i < 21; i++) {
+    // Un jour ouvert mais déjà plein pour ce panier n'est pas proposé d'office.
+    if (jourPossible(j, o) && !jourComplet(iso(j))) return j;
+    j.setDate(j.getDate() + 1);
   }
-  return iso(new Date());
+  return null;
 }
-
-// Une commande entre en production dès qu'elle est confirmée par vous.
-const RETENUS = ["confirmee", "en production", "prete"];
-
-async function publierProduction() {
-  try {
-    const date = prochaineLivraison();
-  const totaux = {}, noms = {};
-
-  commandes
-    .filter(c => c.date_retrait === date && RETENUS.includes(c.statut))
-    .forEach(c => (c.panier || []).forEach(l => {
-      const code = codeLigne(l);
-      if (!code) { console.warn("Ligne sans code produit :", l.nom); return; }
-      totaux[code] = (totaux[code] || 0) + (l.qte || 0);
-      noms[code] = l.nom || code;
-    }));
-
-    const nbAbos = commandes.filter(c =>
-      c.date_retrait === date && c.abonnement_id && RETENUS.includes(c.statut)).length;
-
-    await setDoc(doc(db, "production", "commandes_boutique"), {
-      date, totaux, noms,
-      nb_commandes: commandes.filter(c => c.date_retrait === date && RETENUS.includes(c.statut)).length,
-      nb_abonnements: nbAbos,
-      maj: new Date().toISOString()
-    });
-    console.log("Production publiée :", date, totaux, "dont", nbAbos, "abonnement(s)");
-  } catch (e) {
-    console.error("Publication production", e);
-    signaler("Publication vers l'ERP impossible.", "err");
+function verifierDate() {
+  if (!dateChoisie) {
+    $("erreur").textContent =
+      "No date is available for this basket in the coming weeks. " +
+      "Try removing an item or ordering a smaller quantity.";
+    $("btnEnvoyer").disabled = true;
+    return;
   }
-}
-
-
-/* ---------- Charge de production ----------
-   La vitrine ne peut pas additionner les commandes des autres clients :
-   depuis les règles Firestore, chacun ne lit que les siennes. On publie donc,
-   pour chaque jour à venir, ce qui est déjà commandé par produit — un document
-   par date, en lecture publique.
-
-   Le checkout incrémente ces compteurs au moment de la commande, mais c'est
-   ici que se fait la vérité : à chaque ouverture de cette page, tout est
-   recalculé depuis les commandes réelles. Un incrément manqué, une annulation,
-   une modification à la main : tout se corrige tout seul.
-
-   Attention au filtre : contrairement à la production, une commande reçue mais
-   pas encore confirmée occupe déjà le four. Elle compte donc. */
-const OCCUPANTS = ["nouvelle", "confirmee", "en production", "prete"];
-
-// Deux inventaires identiques doivent produire le même texte, quel que soit
-// l'ordre d'insertion des produits : sinon on réécrit pour rien.
-function empreinte(produits) {
-  return JSON.stringify(Object.keys(produits).sort().map(k => [k, produits[k]]));
-}
-
-async function publierCharges() {
-  try {
-    const aujourdhui = iso(new Date());
-
-    // Un inventaire vide par jour de la fenêtre : les jours sans commande
-    // doivent être publiés à zéro, sinon une annulation laisserait
-    // l'ancienne charge en place.
-    const parJour = {};
-    for (let i = 0; i <= FENETRE_JOURS; i++) {
-      const d = new Date();
-      d.setDate(d.getDate() + i);
-      parJour[iso(d)] = {};
-    }
-
-    commandes.forEach(c => {
-      const jour = parJour[c.date_retrait];
-      if (!jour || !OCCUPANTS.includes(c.statut)) return;
-      (c.panier || []).forEach(l => {
-        const code = codeLigne(l);
-        if (!code) return;
-        jour[code] = (jour[code] || 0) + (Number(l.qte) || 0);
-      });
-    });
-
-    const s = await getDocs(collection(db, "charge"));
-    const publie = {};
-    s.forEach(d => publie[d.id] = d.data());
-
-    const paquet = writeBatch(db);
-    let ecrits = 0;
-
-    Object.entries(parJour).forEach(([date, produits]) => {
-      const avant = publie[date] ? (publie[date].produits || {}) : null;
-      if (avant && empreinte(avant) === empreinte(produits)) return;   // inchangé
-      paquet.set(doc(db, "charge", date),
-                 { date, produits, maj: new Date().toISOString() });
-      ecrits++;
-    });
-
-    // Les jours passés n'intéressent plus personne : on garde la collection courte.
-    Object.keys(publie).forEach(date => {
-      if (date < aujourdhui) { paquet.delete(doc(db, "charge", date)); ecrits++; }
-    });
-
-    if (ecrits) await paquet.commit();
-    console.log("Charges publiées :", ecrits, "jour(s) mis à jour.");
-  } catch (e) {
-    console.error("Publication des charges", e);
-    signaler("Publication des capacités impossible.", "err");
+  // La date choisie peut s'être remplie pendant que le client hésitait,
+  // ou le panier avoir grossi depuis.
+  const trop = depassements(dateChoisie);
+  if (trop.length) {
+    $("erreur").textContent = messageComplet(trop) + " Please pick another day.";
+    $("btnEnvoyer").disabled = true;
+    return;
   }
+  $("erreur").textContent = "";
+  $("btnEnvoyer").disabled = false;
 }
 
-/* ---------- Décompte du stock ----------
-   Confirmer une commande retire ses pièces du stock ; l'annuler les rend.
-   Le drapeau stock_deduit évite tout double décompte. */
-function ajustementsStock(c, nouveauStatut) {
-  const dejaDeduit = !!c.stock_deduit;
-  const doitDeduire = nouveauStatut === "confirmee" && !dejaDeduit;
-  const doitRendre  = nouveauStatut === "annulee" && dejaDeduit;
-  if (!doitDeduire && !doitRendre) return null;
+/* ---------- Totaux ---------- */
+function majTotaux() {
+  const o = choisie();
+  const frais = o.tarif_variable ? 0 : (Number(o.tarif) || 0);
+  const total = sousTotal + frais;
 
-  const signe = doitDeduire ? -1 : 1;
-  const lignes = (c.panier || [])
-    .map(l => Object.assign({}, l, { code: codeLigne(l) }))
-    .filter(l => l.code && stockLimite[l.code]);
-  return { lignes, signe, drapeau: doitDeduire };
-}
+  let html = lignes.map(l =>
+    `<div class="l ligne-panier" data-id="${l.id}">
+       <span class="compteur-mini">
+         <button type="button" data-d="-1" aria-label="Remove one">−</button>
+         <span class="qn">${l.qte}</span>
+         <button type="button" data-d="1" aria-label="Add one"
+           ${l.reste !== null && l.qte >= l.reste ? "disabled" : ""}>+</button>
+       </span>
+       <span class="nom-panier">${echapper(l.nom)}</span>
+       <span>${peso(l.montant)}</span></div>`).join("");
 
-// Un crédit annoncé au checkout n'est réellement débité qu'à la confirmation,
-// et restitué si la commande est annulée.
-function appliquerCredit(paquet, c, nouveauStatut) {
-  const montant = Number(c.credit_utilise) || 0;
-  if (!montant || !c.compte_uid) return null;
+  html += `<div class="ajouter-plus"><a href="./">+ Add more items</a>
+           <button type="button" id="btnDerniere" hidden>Add my last order</button></div>`;
 
-  const deja = !!c.credit_deduit;
-  const debiter = nouveauStatut === "confirmee" && !deja;
-  const rendre  = nouveauStatut === "annulee" && deja;
-  if (!debiter && !rendre) return null;
+  // Avec un code promo la réduction porte sur le total : les lignes
+  // gardent leur prix catalogue et l'écart s'affiche ici.
+  if (sourceRemise === "promo") {
+    const portee = libellePortee(promo);
+    html += `<div class="l remise"><span>Promo code ${echapper(promo.id)}${
+      portee ? " (" + echapper(portee) + ")" : ""}</span>
+             <span>−${peso(economie)}</span></div>`;
+  }
 
-  const signe = debiter ? -1 : 1;
-  paquet.set(doc(collection(db, "comptes", c.compte_uid, "mouvements")), {
-    type: debiter ? "depense" : "remboursement",
-    montant: signe * montant,
-    note: "Commande " + (c.numero || c.id),
-    quand: new Date().toISOString(),
-    par: auth.currentUser.email
+  if (o.tarif_variable)
+    html += `<div class="l"><span>${echapper(o.nom)}</span><span>Confirmed later</span></div>`;
+  else if (frais > 0)
+    html += `<div class="l"><span>${echapper(o.nom)}</span><span>${peso(frais)}</span></div>`;
+
+  html += `<div class="l somme"><span>Total</span><span>${peso(total)}</span></div>`;
+
+  majCredit();
+  if (creditUtilise > 0) {
+    html += `<div class="l"><span>Store credit</span><span>−${peso(creditUtilise)}</span></div>`;
+    html += `<div class="l somme"><span>Left to pay</span>
+             <span>${peso(Math.max(0, total - creditUtilise))}</span></div>`;
+  }
+
+  $("recap").innerHTML = html;
+  $("totalPied").textContent = peso(Math.max(0, total - creditUtilise));
+
+  $("recap").querySelectorAll(".ligne-panier").forEach(el => {
+    el.querySelectorAll("button[data-d]").forEach(b => {
+      b.onclick = () => modifierLigne(el.dataset.id, Number(b.dataset.d));
+    });
   });
-  paquet.update(doc(db, "comptes", c.compte_uid), { solde: increment(signe * montant) });
-  return debiter;
+  brancherDerniere();
+  // Le gagnant peut changer avec les quantités : le message suit.
+  majPromo();
+}
+function echapper(t) {
+  return String(t).replace(/[&<>"]/g, c =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 }
 
-function appliquerStock(paquet, c, nouveauStatut) {
-  const a = ajustementsStock(c, nouveauStatut);
-  if (!a) return false;
-  a.lignes.forEach(l => {
-    paquet.update(doc(db, "boutique_produits", l.code),
-      { stock: increment(a.signe * (l.qte || 0)) });
-  });
-  return a.drapeau;
+/* ---------- Mémoire de l'appareil ---------- */
+function lireMemo() {
+  try { return JSON.parse(localStorage.getItem("client") || "{}"); }
+  catch { return {}; }
 }
 
-/* ---------- Traitement par lot ---------- */
-$("lotStatut").innerHTML = '<option value="">Avancement…</option>' +
-  STATUTS.map(v => `<option value="${v}">${LIBELLES[v]}</option>`).join("");
-$("lotPaiement").innerHTML = '<option value="">Paiement…</option>' +
-  Object.entries(PAIEMENTS).map(([v, t]) => `<option value="${v}">${t}</option>`).join("");
+/* ---------- Envoi ---------- */
+$("btnEnvoyer").onclick = async () => {
+  const o   = choisie();
+  const nom = $("nom").value.trim();
+  const tel = $("tel").value.replace(/\D/g, "");
+  const detail  = o.demander_adresse ? lireAdresse() : null;
+  const adresse = detail ? adresseUneLigne(detail) : "";
 
-function majLot() {
-  const n = selection.size;
-  $("lot").classList.toggle("vu", n > 0);
-  $("lotN").textContent = n + (n > 1 ? " commandes sélectionnées" : " commande sélectionnée");
-  majBoutonLot();
-}
-function majBoutonLot() {
-  $("lotAppliquer").disabled =
-    !selection.size || (!$("lotStatut").value && !$("lotPaiement").value);
-}
-$("lotStatut").onchange = majBoutonLot;
-$("lotPaiement").onchange = majBoutonLot;
-
-$("lotAnnuler").onclick = () => {
-  selection.clear();
-  $("lotStatut").value = "";
-  $("lotPaiement").value = "";
-  afficher();
-};
-
-$("lotImprimer").onclick = () => {
-  const choisies = commandes.filter(c => selection.has(c.id));
-  if (!choisies.length) return;
-  try {
-    sessionStorage.setItem("etiquettes", JSON.stringify(choisies));
-    window.open("etiquettes.html", "_blank");
-  } catch (e) {
-    console.error(e);
-    signaler("Impossible d'ouvrir les étiquettes.", "err");
+  if (nom.length < 2)  return echec("Please enter your name.");
+  if (tel.length < 10) return echec("Please enter a valid mobile number.");
+  if (o.demander_adresse) {
+    if (!detail.rue)      return echec("Please enter your house number and street.");
+    if (!detail.barangay) return echec("Please enter your barangay.");
+    if (!detail.ville)    return echec("Please choose your city.");
   }
-};
+  if (!dateChoisie) return echec("Please choose a date.");
 
-$("lotSupprimer").onclick = async () => {
-  const ids = [...selection];
-  if (!ids.length) return;
+  $("btnEnvoyer").disabled = true;
+  $("erreur").textContent = "";
 
-  const choisies = ids.map(id => commandes.find(c => c.id === id)).filter(Boolean);
-  const validees = choisies.filter(c => !["nouvelle", "annulee"].includes(c.statut));
-  const issuesAbo = choisies.filter(c => c.abonnement_id);
-
-  let message = `Supprimer définitivement ${ids.length} commande(s) ?\n\n` +
-    "Cette action est irréversible.";
-  if (validees.length) {
-    message += `\n\n${validees.length} commande(s) déjà validée(s) : le stock et ` +
-      "les avoirs déjà décomptés ne seront pas rendus.";
-  }
-  if (issuesAbo.length) {
-    message += `\n\n${issuesAbo.length} commande(s) d'abonnement : l'échéance reste ` +
-      "planifiée, la commande sera regénérée au prochain chargement. Sautez " +
-      "l'échéance dans Abonnements pour l'éviter.";
-  }
-  if (!confirm(message)) return;
-
-  $("lotSupprimer").disabled = true;
-  signaler("Suppression…");
-
-  try {
-    // Firestore limite un lot à 500 écritures ; on découpe par prudence.
-    for (let i = 0; i < ids.length; i += 400) {
-      const paquet = writeBatch(db);
-      ids.slice(i, i + 400).forEach(id => paquet.delete(doc(db, "commandes", id)));
-      await paquet.commit();
-    }
-
-    commandes = commandes.filter(c => !selection.has(c.id));
-    selection.clear();
-    afficher();
-    publierProduction();
-    signaler(ids.length + " commande(s) supprimée(s).", "ok");
-  } catch (e) {
-    console.error(e);
-    signaler("La suppression a échoué.", "err");
-  } finally {
-    $("lotSupprimer").disabled = false;
-  }
-};
-
-$("lotAppliquer").onclick = async () => {
-  const statut = $("lotStatut").value;
-  const paiement = $("lotPaiement").value;
-  const ids = [...selection];
-  if (!ids.length || (!statut && !paiement)) return;
-
-  const quoi = [statut ? LIBELLES[statut] : null, paiement ? PAIEMENTS[paiement] : null]
-    .filter(Boolean).join(" et ");
-  if (!confirm(`Appliquer « ${quoi} » à ${ids.length} commande(s) ?`)) return;
-
-  $("lotAppliquer").disabled = true;
-  signaler("Application…");
-
-  try {
-    // Firestore limite un lot à 500 écritures ; on découpe par prudence.
-    for (let i = 0; i < ids.length; i += 400) {
-      const paquet = writeBatch(db);
-      ids.slice(i, i + 400).forEach(id => {
-        const c = commandes.find(x => x.id === id);
-        const champs = {};
-        if (statut)   champs.statut = statut;
-        if (paiement) champs["paiement.statut"] = paiement;
-        if (statut && c) {
-          const a = ajustementsStock(c, statut);
-          if (a) champs.stock_deduit = appliquerStock(paquet, c, statut);
-          const credit = appliquerCredit(paquet, c, statut);
-          if (credit !== null) champs.credit_deduit = credit;
-        }
-        paquet.update(doc(db, "commandes", id), champs);
-      });
-      await paquet.commit();
-    }
-
-    ids.forEach(id => {
-      const c = commandes.find(x => x.id === id);
-      if (!c) return;
-      if (statut) {
-        const a = ajustementsStock(c, statut);
-        if (a) c.stock_deduit = a.drapeau;
-        c.statut = statut;
+  // Dernière vérification du code au moment de valider : il a pu être
+  // désactivé pendant que le client remplissait le formulaire.
+  if (promo) {
+    try {
+      const fiche = await chargerCode(db, promo.id);
+      const v = verifierCode(fiche, { connecte: !!uidClient });
+      if (!v.ok) {
+        promo = null;
+        oublierCode();
+        majPrix();
+        majTotaux();
+        return echec(v.message + " Your total has been updated — please check it before ordering.");
       }
-      if (paiement) { c.paiement = c.paiement || {}; c.paiement.statut = paiement; }
-    });
+      promo = fiche;
+      majPrix();
+      majTotaux();
+    } catch (e) {
+      console.error(e);
+      return echec("We couldn't confirm your promo code. Please try again.");
+    }
+  }
 
-    selection.clear();
-    $("lotStatut").value = "";
-    $("lotPaiement").value = "";
-    afficher();
-    publierProduction();
-    signaler(ids.length + " commande(s) mise(s) à jour.", "ok");
+  /* Dernière vérification de la capacité, sur la valeur du serveur : la
+     journée a pu se remplir pendant que le client remplissait le formulaire. */
+  try {
+    const s = await getDoc(doc(db, "charge", dateChoisie));
+    charges[dateChoisie] = s.exists() ? (s.data().produits || {}) : {};
+  } catch (e) {
+    console.error(e);   // on garde la valeur connue plutôt que de bloquer
+  }
+  const trop = depassements(dateChoisie);
+  if (trop.length) {
+    dessinerCalendrier();
+    verifierDate();
+    return echec(messageComplet(trop) + " Please pick another day.");
+  }
+
+  const frais  = o.tarif_variable ? 0 : (Number(o.tarif) || 0);
+  const numero = reference();
+
+  const commande = {
+    numero,
+    statut: "nouvelle",
+    // adresse reste la ligne complète, lue telle quelle par l'administration
+    // et la confirmation ; adresse_detail porte le découpage.
+    client: { nom, telephone: tel, adresse, adresse_detail: detail },
+    panier: lignes.map(l => ({ code: l.code, nom: l.nom, qte: l.qte, prix: l.prix })),
+    remise,
+    // Quelle remise a réellement joué : "groupe", "promo" ou "aucune".
+    remise_source: sourceRemise,
+    code_promo: sourceRemise === "promo"
+      ? { code: promo.id, type: promo.type, valeur: Number(promo.valeur) || 0,
+          rayons: Array.isArray(promo.rayons) ? promo.rayons : [],
+          montant: economie }
+      : null,
+    compte_uid: uidClient,
+    credit_utilise: creditUtilise,
+    // sous_total est le montant facturé ; sous_total_brut est le tarif
+    // catalogue avant toute remise.
+    sous_total_brut: lignes.reduce((t, l) => t + l.qte * l.prixBase, 0),
+    remise_montant: economie,
+    sous_total: sousTotal,
+    frais_livraison: frais,
+    frais_a_confirmer: !!o.tarif_variable,
+    total: sousTotal + frais,
+    option: { nom: o.nom, type: o.type, lieu: o.lieu || "" },
+    date_retrait: dateChoisie,
+    creneau: $("creneau") ? $("creneau").value : "",
+    paiement: {
+      methode: document.querySelector('input[name="paiement"]:checked').value,
+      statut: "en attente"
+    },
+    notes: $("notes").value.trim(),
+    cree_le: new Date().toISOString()
+  };
+
+  try {
+    await setDoc(doc(db, "commandes", numero), commande);
+
+    /* Capacité consommée. L'administration recalcule ces compteurs depuis les
+       commandes réelles à chaque ouverture : un incrément perdu ici se répare
+       tout seul, il ne justifie pas de faire échouer une commande enregistrée. */
+    try {
+      const pas = {};
+      lignes.forEach(l => { pas["produits." + l.code] = increment(l.qte); });
+      await setDoc(doc(db, "charge", dateChoisie),
+                   { date: dateChoisie, maj: new Date().toISOString() }, { merge: true });
+      await updateDoc(doc(db, "charge", dateChoisie), pas);
+    } catch (e) { console.error(e); }
+
+    // L'adresse est gardée sur le compte pour les prochaines commandes.
+    // merge : le solde, la remise et le groupe ne sont pas touchés.
+    if (uidClient && detail && adresse) {
+      try {
+        await setDoc(doc(db, "comptes", uidClient),
+                     { adresse, adresse_detail: detail }, { merge: true });
+      } catch (e) { console.error(e); }   // sans effet sur la commande
+    }
+    try {
+      localStorage.setItem("client",
+        JSON.stringify({ nom, tel, adresse, adresse_detail: detail }));
+      localStorage.setItem("derniere_commande", JSON.stringify({
+        quand: new Date().toISOString(),
+        lignes: lignes.map(l => ({ id: l.id, nom: l.nom, qte: l.qte }))
+      }));
+      localStorage.removeItem("panier");
+      // Le code ne doit pas se rappliquer tout seul à la commande suivante.
+      oublierCode();
+      sessionStorage.setItem("commande", JSON.stringify(commande));
+    } catch {}
+    window.location.href = "confirmation.html";
   } catch (e) {
     console.error(e);
-    signaler("Échec de la mise à jour groupée.", "err");
-    majBoutonLot();
+    echec("Your order could not be sent. Please check your connection and try again.");
   }
 };
 
-/* ---------- Enregistrement ---------- */
-async function enregistrer(c, champs) {
-  try {
-    if (champs.statut) {
-      const paquet = writeBatch(db);
-      const deduit = appliquerStock(paquet, c, champs.statut);
-      const maj = Object.assign({}, champs);
-      const a = ajustementsStock(c, champs.statut);
-      if (a) maj.stock_deduit = deduit;
-      const credit = appliquerCredit(paquet, c, champs.statut);
-      if (credit !== null) maj.credit_deduit = credit;
-      paquet.update(doc(db, "commandes", c.id), maj);
-      await paquet.commit();
-      if (a) c.stock_deduit = deduit;
-    } else {
-      await updateDoc(doc(db, "commandes", c.id), champs);
-    }
-    if (champs.statut) c.statut = champs.statut;
-    if (champs["paiement.statut"]) {
-      c.paiement = c.paiement || {};
-      c.paiement.statut = champs["paiement.statut"];
-    }
-    afficher();
-    publierProduction();
-    signaler("Enregistré");
-  } catch (e) {
-    console.error(e);
-    signaler("Échec de l'enregistrement");
-  }
+function echec(texte) {
+  $("erreur").textContent = texte;
+  $("btnEnvoyer").disabled = false;
+  $("erreur").scrollIntoView({ behavior: "smooth", block: "center" });
 }
 
-let minuteur;
-function signaler(texte) {
-  $("etat").textContent = texte;
-  $("etat").classList.add("vu");
-  clearTimeout(minuteur);
-  minuteur = setTimeout(() => $("etat").classList.remove("vu"), 2200);
+function reference() {
+  const d = new Date();
+  const j = String(d.getDate()).padStart(2, "0");
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  return `${j}${m}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
 }
+
 </script>
 </body>
 </html>
