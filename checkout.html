@@ -66,6 +66,30 @@
     color:var(--alerte);opacity:.6;
     text-decoration:line-through;text-decoration-thickness:1px;
   }
+  /* Bloc dépliable plutôt qu'infobulle : une infobulle au survol n'existe
+     pas sur téléphone, et c'est là que commandent la plupart des clients. */
+  .compte-avantages{
+    margin-top:14px;border:1px solid var(--trait);border-radius:var(--r);
+    background:var(--creme);
+  }
+  .compte-avantages .tete{
+    display:flex;align-items:center;justify-content:space-between;gap:10px;
+    width:100%;background:none;border:none;padding:12px 14px;
+    font:inherit;font-size:14.5px;font-weight:600;color:var(--accent);
+    cursor:pointer;text-align:left;
+  }
+  .compte-avantages .chevron{transition:transform .15s}
+  .compte-avantages .tete[aria-expanded="true"] .chevron{transform:rotate(180deg)}
+  .compte-avantages .corps{padding:0 14px 14px}
+  .compte-avantages ul{margin:0 0 12px;padding-left:20px;font-size:14.5px;line-height:1.6}
+  .compte-avantages .lien-compte{
+    display:inline-block;background:var(--accent);color:#fff;text-decoration:none;
+    padding:10px 18px;border-radius:var(--r);font-size:15px;font-weight:600;
+  }
+  .compte-avantages .sous{
+    margin:9px 0 0;font-size:13px;color:var(--encre-doux);
+  }
+
   .champ .option{font-weight:400;opacity:.65}
   .champ .etiq{display:block;font-size:13px;color:var(--encre-doux);margin-bottom:5px}
   .cal{border:1px solid var(--trait);border-radius:var(--r);background:#fff;padding:11px}
@@ -329,6 +353,25 @@ function construire() {
         <input type="tel" id="tel" inputmode="tel" placeholder="0917 123 4567"
                autocomplete="tel"></label>
       <div id="zoneMemo"></div>
+
+      <div class="compte-avantages" id="blocCompte" hidden>
+        <button type="button" class="tete" id="btnAvantages" aria-expanded="false">
+          <span>Why create an account?</span>
+          <span class="chevron">&#9662;</span>
+        </button>
+        <div class="corps" id="corpsAvantages" hidden>
+          <ul>
+            <li>Follow your order and see when it's paid</li>
+            <li>Find your last orders with full details</li>
+            <li>Check your store credit and its history</li>
+            <li>Use promo codes — they need an account</li>
+            <li>Your address filled in next time</li>
+            <li>Subscribe to a bread plan</li>
+          </ul>
+          <a class="lien-compte" href="compte.html">Sign in with Google</a>
+          <p class="sous">Takes two taps. You can order without one.</p>
+        </div>
+      </div>
     </div>
 
     <div class="bloc">
@@ -431,6 +474,7 @@ function construire() {
   construireCredit();
   construirePaiements();
   construirePromo();
+  construireAvantages();
 
   majOption();
   $("pied").hidden = false;
@@ -487,6 +531,23 @@ function messageComplet(trop) {
   return "We don't have enough " +
          noms.slice(0, -1).join(", ") + " and " + noms[noms.length - 1] +
          " for that day.";
+}
+
+/* ---------- Pourquoi un compte ----------
+   Montré seulement à qui n'est pas connecté : inutile de vanter un compte
+   à quelqu'un qui en a déjà un. */
+function construireAvantages() {
+  const bloc = $("blocCompte");
+  if (!bloc) return;
+  bloc.hidden = !!uidClient;
+
+  const tete = $("btnAvantages");
+  const corps = $("corpsAvantages");
+  tete.onclick = () => {
+    const ouvrir = corps.hidden;
+    corps.hidden = !ouvrir;
+    tete.setAttribute("aria-expanded", String(ouvrir));
+  };
 }
 
 /* ---------- Adresse de livraison ----------
