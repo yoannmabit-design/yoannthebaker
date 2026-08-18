@@ -158,6 +158,36 @@
     font-size:15.5px;font-weight:600;cursor:pointer;
   }
 
+  /* ---------- Code promo ---------- */
+  .promo{
+    max-width:760px;margin:0 auto 26px;padding:16px;
+    background:var(--papier);border:1px solid var(--trait);border-radius:var(--r);
+  }
+  .promo .titre{
+    font-size:13px;letter-spacing:.08em;text-transform:uppercase;
+    color:var(--encre-doux);margin:0 0 10px;
+  }
+  .promo .saisie{display:flex;gap:9px;flex-wrap:wrap}
+  .promo input{
+    flex:1;min-width:150px;padding:11px 12px;border:1px solid var(--trait);
+    border-radius:var(--r);background:#fff;font:inherit;font-size:15px;
+    text-transform:uppercase;letter-spacing:.06em;color:var(--encre);
+  }
+  .promo button{
+    background:var(--accent);color:#fff;border:none;padding:11px 20px;
+    border-radius:var(--r);font-size:15px;font-weight:600;cursor:pointer;
+  }
+  .promo button:disabled{opacity:.5;cursor:default}
+  .promo .etat{margin:10px 0 0;font-size:14px;color:var(--encre-doux)}
+  .promo .etat.ok{color:#3d6b3d}
+  .promo .etat.err{color:#8c2f22}
+  .promo .etat a{color:var(--accent)}
+  .promo .retirer{
+    background:none;border:none;color:var(--accent);padding:0;
+    font-size:14px;text-decoration:underline;cursor:pointer;margin-left:8px;
+  }
+  .panier .economie{font-size:12.5px;opacity:.8}
+
   .message{padding:52px 20px;text-align:center;color:var(--encre-doux)}
   footer{
     text-align:center;padding:24px 20px 34px;
@@ -194,12 +224,24 @@
   <div class="message">Loading the bakery…</div>
 </main>
 
+<section class="promo" id="promo" hidden>
+  <p class="titre">Promo code</p>
+  <div class="saisie">
+    <input type="text" id="champCode" placeholder="Enter your code"
+           autocomplete="off" autocapitalize="characters" spellcheck="false"
+           aria-label="Promo code">
+    <button type="button" id="btnCode">Apply</button>
+  </div>
+  <p class="etat" id="etatPromo"></p>
+</section>
+
 <footer id="pied"></footer>
 
 <div class="panier" id="panier">
   <div class="resume">
     <div class="articles" id="panierArticles"></div>
     <div class="total" id="panierTotal"></div>
+    <div class="economie" id="panierEconomie" hidden></div>
   </div>
   <button id="btnCommander">Checkout</button>
 </div>
@@ -210,6 +252,9 @@ import { getFirestore, collection, getDocs, doc, getDoc }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import { getAuth, onAuthStateChanged }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { normaliserCode, lireCodeMemorise, memoriserCode, oublierCode,
+         chargerCode, verifierCode, calculerPrix, prixUnitaire, libelleCode }
+  from "./promo.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDuq8KS8M_Z8U7BlSp6MvE-6Y9OYYaDujE",
@@ -240,7 +285,10 @@ function rayon(p) {
 let produits = [];
 let panier   = {};   // { idProduit: quantité }
 let ferme    = false;   // mode vacances
-let remise   = 0;       // remise du client connecté, en pourcentage
+let remise   = 0;       // tarif de groupe du client connecté, en pourcentage
+let connecte = false;   // un code promo suppose un compte
+let promo    = null;    // fiche du code promo appliqué
+let sourceRemise = "aucune";   // "groupe" | "promo" | "aucune"
 
 /* ---------- Panier conservé sur l'appareil du client ---------- */
 function chargerPanier() {
@@ -253,10 +301,21 @@ function sauverPanier() {
 
 const peso = (n) => "₱" + Number(n).toLocaleString("en-PH");
 
-// Le prix client tient compte de la remise éventuelle, arrondie au peso.
+// Le prix affiché par produit dépend de la remise retenue : au tarif de
+// groupe la réduction est dans la ligne, avec un code promo elle porte
+// sur le total et les lignes gardent leur prix catalogue.
 function prixClient(p) {
-  const base = Number(p.prix_vente) || 0;
-  return remise > 0 ? Math.round(base * (1 - remise / 100)) : base;
+  return prixUnitaire(p.prix_vente, remise, sourceRemise);
+}
+
+// Lignes du panier, dans la forme attendue par le module de calcul.
+function lignesPanier() {
+  const l = [];
+  produits.forEach(p => {
+    const q = panier[p.id];
+    if (q) l.push({ qte: q, prixBase: Number(p.prix_vente) || 0 });
+  });
+  return l;
 }
 
 /* ---------- Chargement ---------- */
@@ -352,6 +411,10 @@ function proposerDerniere() {
 /* ---------- Affichage ---------- */
 function afficher() {
   const zone = $("catalogue");
+
+  // La remise retenue décide de l'affichage des prix : on tranche avant
+  // de dessiner les lignes.
+  sourceRemise = calculerPrix(lignesPanier(), remise, promo).source;
 
   if (!produits.length) {
     zone.innerHTML =
@@ -451,7 +514,7 @@ function ligneProduit(p) {
 
   const prix = document.createElement("div");
   prix.className = "prix";
-  if (remise > 0) {
+  if (sourceRemise === "groupe") {
     prix.innerHTML = `<span style="text-decoration:line-through;color:var(--epuise)">${
       peso(p.prix_vente || 0)}</span> <strong>${peso(prixClient(p))}</strong>`;
   } else {
@@ -522,15 +585,130 @@ function apresChangement() {
 
 /* ---------- Barre du panier ---------- */
 function majPanier() {
-  let articles = 0, total = 0;
-  produits.forEach(p => {
-    const q = panier[p.id];
-    if (q) { articles += q; total += q * prixClient(p); }
-  });
+  let articles = 0;
+  produits.forEach(p => { articles += panier[p.id] || 0; });
+
+  const calcul = calculerPrix(lignesPanier(), remise, promo);
+  sourceRemise = calcul.source;
 
   $("panier").classList.toggle("visible", articles > 0 && !ferme);
   $("panierArticles").textContent = articles + (articles === 1 ? " item" : " items");
-  $("panierTotal").textContent = peso(total);
+  $("panierTotal").textContent = peso(calcul.sousTotal);
+
+  const eco = $("panierEconomie");
+  if (calcul.source === "promo") {
+    eco.textContent = promo.id + " applied — you save " + peso(calcul.economie);
+    eco.hidden = false;
+  } else if (calcul.source === "groupe") {
+    eco.textContent = "Trade price applied — you save " + peso(calcul.economie);
+    eco.hidden = false;
+  } else {
+    eco.hidden = true;
+  }
+
+  majPromo();
+}
+
+/* ---------- Code promo ---------- */
+function etatPromo(texte, type = "", html = false) {
+  const e = $("etatPromo");
+  if (html) e.innerHTML = texte; else e.textContent = texte;
+  e.className = "etat " + type;
+}
+
+function majPromo() {
+  const zone = $("promo");
+  zone.hidden = ferme;
+  if (ferme) return;
+
+  if (!promo) {
+    $("champCode").hidden = false;
+    $("btnCode").hidden = false;
+    if (!connecte && $("champCode").value.trim()) {
+      etatPromo('Please <a href="compte.html">sign in</a> to use a promo code.',
+                "err", true);
+    }
+    return;
+  }
+
+  // Un code appliqué se remplace par sa ligne d'état.
+  $("champCode").hidden = true;
+  $("btnCode").hidden = true;
+
+  const calcul = calculerPrix(lignesPanier(), remise, promo);
+  const texte = calcul.source === "promo"
+    ? promo.id + " applied — " + libelleCode(promo)
+    : promo.id + " saved for later — your trade price is a better deal today";
+
+  etatPromo("", "ok");
+  const e = $("etatPromo");
+  e.textContent = texte;
+  const b = document.createElement("button");
+  b.className = "retirer";
+  b.type = "button";
+  b.textContent = "Remove";
+  b.onclick = retirerCode;
+  e.appendChild(b);
+}
+
+async function appliquerCode() {
+  const saisie = normaliserCode($("champCode").value);
+  if (!saisie) { etatPromo("Enter a code first.", "err"); return; }
+
+  $("btnCode").disabled = true;
+  etatPromo("Checking…");
+  try {
+    const fiche = await chargerCode(db, saisie);
+    const v = verifierCode(fiche, { connecte });
+    if (!v.ok) {
+      promo = null;
+      oublierCode();
+      etatPromo(v.connexion
+        ? 'Please <a href="compte.html">sign in</a> to use a promo code.'
+        : v.message, "err", !!v.connexion);
+      afficher();
+      return;
+    }
+    promo = fiche;
+    memoriserCode(fiche.id);
+    $("champCode").value = "";
+    afficher();
+  } catch (e) {
+    console.error(e);
+    etatPromo("We couldn't check that code. Please try again.", "err");
+  } finally {
+    $("btnCode").disabled = false;
+  }
+}
+
+function retirerCode() {
+  promo = null;
+  oublierCode();
+  $("champCode").value = "";
+  etatPromo("");
+  afficher();
+}
+
+$("btnCode").onclick = appliquerCode;
+$("champCode").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") { e.preventDefault(); appliquerCode(); }
+});
+
+/* Le code saisi lors d'une visite précédente est revérifié sur le serveur :
+   il a pu être désactivé entre-temps. */
+async function reprendreCode() {
+  const memorise = lireCodeMemorise();
+  if (!memorise) { majPromo(); return; }
+  try {
+    const fiche = await chargerCode(db, memorise);
+    const v = verifierCode(fiche, { connecte });
+    promo = v.ok ? fiche : null;
+    if (!v.ok && !v.connexion) oublierCode();   // un code refusé faute de compte est gardé
+  } catch (e) {
+    console.error(e);
+    promo = null;
+  }
+  afficher();
 }
 
 $("btnCommander").onclick = () => {
@@ -539,12 +717,18 @@ $("btnCommander").onclick = () => {
 
 onAuthStateChanged(auth, async (user) => {
   remise = 0;
+  connecte = !!user;
   if (user) {
     try {
       const s = await getDoc(doc(db, "comptes", user.uid));
       remise = Number(s.data()?.remise) || 0;
     } catch (e) { console.error(e); }
+  } else {
+    promo = null;   // sans compte, aucun code ne s'applique
   }
+  // Le code est revérifié à chaque changement d'état : la connexion peut
+  // arriver après le premier affichage.
+  await reprendreCode();
   if (produits.length) afficher();   // les prix changent si la remise arrive après
   if (remise > 0) {
     const b = $("avis");
