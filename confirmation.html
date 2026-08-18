@@ -63,6 +63,7 @@
     border-radius:var(--r);font:inherit;font-size:14.5px;color:var(--accent);
     cursor:pointer;margin-top:9px;
   }
+  .invite .sous{margin-top:12px;font-size:13px;color:var(--encre-doux);line-height:1.5}
   .retour{display:block;text-align:center;margin-top:26px;color:var(--accent);font-size:15px}
   .message{padding:60px 20px;text-align:center;color:var(--encre-doux)}
   .message a{color:var(--accent)}
@@ -200,6 +201,21 @@ function afficher() {
       </div>
       <button class="copier" id="copier">Copy order details</button>
     </div>
+
+    ${c.compte_uid ? "" : `
+    <div class="bloc invite">
+      <h2>Want to follow this order?</h2>
+      <p class="info">
+        With an account you can check where your order stands and whether we've
+        recorded your payment, find your past orders, keep your store credit and
+        use promo codes. Signing in takes two taps.
+      </p>
+      <a class="canal principal" href="compte.html">Create an account<span class="fleche">&#8250;</span></a>
+      <p class="info sous">
+        This order stays linked to the details you gave us — creating an account
+        now won't attach it, but the next one will follow you.
+      </p>
+    </div>`}
 
     <a class="retour" href="./">Back to the menu</a>
   `;
