@@ -188,6 +188,31 @@
   }
   .panier .economie{font-size:12.5px;opacity:.8}
 
+  /* ---------- Partage ---------- */
+  .partage{
+    max-width:760px;margin:0 auto 26px;padding:16px;text-align:center;
+    background:var(--papier);border:1px solid var(--trait);border-radius:var(--r);
+  }
+  .partage .titre{
+    font-size:13px;letter-spacing:.08em;text-transform:uppercase;
+    color:var(--encre-doux);margin:0 0 12px;
+  }
+  .partage .rangee{display:flex;gap:9px;flex-wrap:wrap;justify-content:center}
+  .partage button{
+    background:var(--accent);color:#fff;border:none;padding:10px 18px;
+    border-radius:var(--r);font-size:15px;font-weight:600;cursor:pointer;
+  }
+  .partage button.mineur{
+    background:none;border:1px solid var(--trait);color:var(--accent);font-weight:400;
+  }
+  .partage .code{margin-top:16px}
+  .partage .code svg{
+    width:200px;height:200px;display:block;margin:0 auto;
+    border:1px solid var(--trait);border-radius:var(--r);
+  }
+  .partage .sous{font-size:13px;color:var(--encre-doux);margin:8px 0 0}
+  .partage .etat{font-size:13.5px;color:var(--ok);margin:10px 0 0;min-height:1em}
+
   .message{padding:52px 20px;text-align:center;color:var(--encre-doux)}
   footer{
     text-align:center;padding:24px 20px 34px;
@@ -235,6 +260,20 @@
   <p class="etat" id="etatPromo"></p>
 </section>
 
+<section class="partage" id="partage">
+  <p class="titre">Share the bakery</p>
+  <div class="rangee">
+    <button type="button" id="btnPartager">Share</button>
+    <button type="button" class="mineur" id="btnCopier">Copy link</button>
+    <button type="button" class="mineur" id="btnQr">Show QR code</button>
+  </div>
+  <div class="code" id="zoneQr" hidden>
+    <div id="dessinQr"></div>
+    <p class="sous">Have a friend scan this</p>
+  </div>
+  <p class="etat" id="etatPartage" role="status"></p>
+</section>
+
 <footer id="pied"></footer>
 
 <div class="panier" id="panier">
@@ -252,6 +291,7 @@ import { getFirestore, collection, getDocs, doc, getDoc }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import { getAuth, onAuthStateChanged }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { qrSvg } from "./qr.js";
 import { normaliserCode, lireCodeMemorise, memoriserCode, oublierCode,
          chargerCode, verifierCode, calculerPrix, prixUnitaire, libelleCode,
          RAYONS, rayonDe, libellePortee }
@@ -577,6 +617,70 @@ function apresChangement() {
   sauverPanier();
   afficher();
 }
+
+
+/* ---------- Partage ----------
+   Le QR est fabriqué dans la page : aucun service extérieur n'est appelé,
+   et le client peut le montrer même sans réseau une fois la page ouverte. */
+const LIEN = location.origin + location.pathname.replace(/index\.html$/, "");
+
+function direPartage(texte) {
+  const e = $("etatPartage");
+  e.textContent = texte;
+  clearTimeout(direPartage.minuteur);
+  direPartage.minuteur = setTimeout(() => e.textContent = "", 2600);
+}
+
+// Le partage natif du téléphone quand il existe, sinon la copie du lien.
+$("btnPartager").onclick = async () => {
+  const contenu = {
+    title: "Yoann's French Bakery",
+    text: "Real French bread, baked overnight in Manila.",
+    url: LIEN
+  };
+  if (navigator.share) {
+    try { await navigator.share(contenu); }
+    catch (e) { if (e.name !== "AbortError") console.error(e); }
+    return;
+  }
+  copier();
+};
+
+async function copier() {
+  try {
+    await navigator.clipboard.writeText(LIEN);
+    direPartage("Link copied.");
+  } catch (e) {
+    // Sans presse-papiers — navigateur ancien ou page non sécurisée — on
+    // sélectionne le lien pour que le client le copie lui-même.
+    console.error(e);
+    const champ = document.createElement("input");
+    champ.value = LIEN;
+    champ.style.cssText = "position:fixed;opacity:0";
+    document.body.appendChild(champ);
+    champ.select();
+    const ok = document.execCommand && document.execCommand("copy");
+    champ.remove();
+    direPartage(ok ? "Link copied." : LIEN);
+  }
+}
+$("btnCopier").onclick = copier;
+
+$("btnQr").onclick = () => {
+  const zone = $("zoneQr");
+  const montrer = zone.hidden;
+  if (montrer && !$("dessinQr").innerHTML) {
+    try {
+      $("dessinQr").innerHTML = qrSvg(LIEN, { niveau: "M", taille: 400 });
+    } catch (e) {
+      console.error(e);
+      direPartage("The QR code could not be created.");
+      return;
+    }
+  }
+  zone.hidden = !montrer;
+  $("btnQr").textContent = montrer ? "Hide QR code" : "Show QR code";
+};
 
 /* ---------- Barre du panier ---------- */
 function majPanier() {
