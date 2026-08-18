@@ -253,7 +253,8 @@ import { getFirestore, collection, getDocs, doc, getDoc }
 import { getAuth, onAuthStateChanged }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import { normaliserCode, lireCodeMemorise, memoriserCode, oublierCode,
-         chargerCode, verifierCode, calculerPrix, prixUnitaire, libelleCode }
+         chargerCode, verifierCode, calculerPrix, prixUnitaire, libelleCode,
+         RAYONS, rayonDe, libellePortee }
   from "./promo.js";
 
 const firebaseConfig = {
@@ -270,17 +271,11 @@ const db   = getFirestore(appF);
 const auth = getAuth(appF);
 const $  = (id) => document.getElementById(id);
 
-/* Rayons de la vitrine, dans l'ordre d'affichage. */
-const ORDRE = ["Breads", "Pastries", "Cakes", "Frozen", "Other"];
-
-// Repli pour les produits publiés avant l'existence des rayons.
-function rayon(p) {
-  if (p.rayon && ORDRE.includes(p.rayon)) return p.rayon;
-  const c = (p.categorie || "").toLowerCase();
-  if (c.includes("pain")) return "Breads";
-  if (c.includes("viennoiserie")) return "Pastries";
-  return "Other";
-}
+/* Rayons de la vitrine : la liste et le repli viennent du module partagé,
+   pour que le classement du catalogue et la portée des codes promo
+   reposent sur la même règle. */
+const ORDRE = RAYONS;
+const rayon = rayonDe;
 
 let produits = [];
 let panier   = {};   // { idProduit: quantité }
@@ -313,7 +308,7 @@ function lignesPanier() {
   const l = [];
   produits.forEach(p => {
     const q = panier[p.id];
-    if (q) l.push({ qte: q, prixBase: Number(p.prix_vente) || 0 });
+    if (q) l.push({ qte: q, prixBase: Number(p.prix_vente) || 0, rayon: rayon(p) });
   });
   return l;
 }
@@ -636,9 +631,18 @@ function majPromo() {
   $("btnCode").hidden = true;
 
   const calcul = calculerPrix(lignesPanier(), remise, promo);
-  const texte = calcul.source === "promo"
-    ? promo.id + " applied — " + libelleCode(promo)
-    : promo.id + " saved for later — your trade price is a better deal today";
+  const portee = libellePortee(promo);
+
+  let texte;
+  if (calcul.source === "promo") {
+    texte = promo.id + " applied — " + libelleCode(promo);
+  } else if (portee && calcul.eligible === 0) {
+    // Le code est bon, le panier ne contient simplement rien du rayon visé.
+    texte = promo.id + " applies to " + portee + " only — add " +
+            portee.toLowerCase() + " to use it";
+  } else {
+    texte = promo.id + " saved for later — your trade price is a better deal today";
+  }
 
   etatPromo("", "ok");
   const e = $("etatPromo");
