@@ -179,7 +179,8 @@ import { getFirestore, collection, getDocs, doc, getDoc, setDoc }
 import { getAuth, onAuthStateChanged }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import { normaliserCode, lireCodeMemorise, memoriserCode, oublierCode,
-         chargerCode, verifierCode, calculerPrix, prixUnitaire, libelleCode }
+         chargerCode, verifierCode, calculerPrix, prixUnitaire, libelleCode,
+         rayonDe, libellePortee }
   from "./promo.js";
 
 const firebaseConfig = {
@@ -204,6 +205,7 @@ let remise = 0, uidClient = "", solde = 0, creditUtilise = 0;
 let promo = null;              // fiche du code promo appliqué
 let sourceRemise = "aucune";   // "groupe" | "promo" | "aucune"
 let economie = 0;              // écart avec le tarif catalogue
+let eligible = 0;              // part du panier concernée par le code
 let dateChoisie = "", moisVu = null, dateMin = null;
 
 /* ---------- Démarrage ---------- */
@@ -261,7 +263,7 @@ let panier = {};
         ? Math.max(0, Number(d.stock) || 0) : null;
       // prix reste le montant réellement facturé : il est recalculé par
       // majPrix() une fois le code promo connu.
-      lignes.push({ id: s.id, code: d.code || s.id, nom: d.nom,
+      lignes.push({ id: s.id, code: d.code || s.id, nom: d.nom, rayon: rayonDe(d),
                     qte: q, prixBase: base, prix: base, reste, montant: q * base });
     });
 
@@ -439,10 +441,18 @@ function majPromo() {
 
   $("saisieCode").hidden = true;
   const e = $("etatPromo");
+  const portee = libellePortee(promo);
   e.className = "etat ok";
-  e.textContent = sourceRemise === "promo"
-    ? promo.id + " applied — " + libelleCode(promo)
-    : promo.id + " saved for later — your trade price is a better deal today";
+  if (sourceRemise === "promo") {
+    e.textContent = promo.id + " applied — " + libelleCode(promo);
+  } else if (portee && eligible === 0) {
+    e.className = "etat";
+    e.textContent = promo.id + " applies to " + portee +
+                    " only — nothing in your basket qualifies";
+  } else {
+    e.textContent = promo.id +
+      " saved for later — your trade price is a better deal today";
+  }
 
   const b = document.createElement("button");
   b.className = "retirer";
@@ -510,9 +520,11 @@ async function reprendreCode() {
    la vitrine et cette page appliquent donc la même règle. */
 function majPrix() {
   const calcul = calculerPrix(
-    lignes.map(l => ({ qte: l.qte, prixBase: l.prixBase })), remise, promo);
+    lignes.map(l => ({ qte: l.qte, prixBase: l.prixBase, rayon: l.rayon })),
+    remise, promo);
   sourceRemise = calcul.source;
   economie = calcul.economie;
+  eligible = calcul.eligible;
   lignes.forEach(l => {
     l.prix = prixUnitaire(l.prixBase, remise, sourceRemise);
     l.montant = l.qte * l.prix;
@@ -823,9 +835,12 @@ function majTotaux() {
 
   // Avec un code promo la réduction porte sur le total : les lignes
   // gardent leur prix catalogue et l'écart s'affiche ici.
-  if (sourceRemise === "promo")
-    html += `<div class="l remise"><span>Promo code ${echapper(promo.id)}</span>
+  if (sourceRemise === "promo") {
+    const portee = libellePortee(promo);
+    html += `<div class="l remise"><span>Promo code ${echapper(promo.id)}${
+      portee ? " (" + echapper(portee) + ")" : ""}</span>
              <span>−${peso(economie)}</span></div>`;
+  }
 
   if (o.tarif_variable)
     html += `<div class="l"><span>${echapper(o.nom)}</span><span>Confirmed later</span></div>`;
@@ -914,6 +929,7 @@ $("btnEnvoyer").onclick = async () => {
     remise_source: sourceRemise,
     code_promo: sourceRemise === "promo"
       ? { code: promo.id, type: promo.type, valeur: Number(promo.valeur) || 0,
+          rayons: Array.isArray(promo.rayons) ? promo.rayons : [],
           montant: economie }
       : null,
     compte_uid: uidClient,
