@@ -1,1 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Order received — Yoann's French Bakery</title>
+<meta name="theme-color" content="#1a1a1a">
+<link rel="icon" href="logo.jpg">
+<style>
+  :root{
+    --creme:#fdf6ec;--papier:#fffdf9;--encre:#1a1a1a;
+    --encre-doux:#6b6157;--trait:#e2d7c6;--accent:#2f4858;--r:6px;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;background:var(--creme);color:var(--encre);
+    font:18px/1.55 ui-sans-serif,-apple-system,"Segoe UI",Roboto,sans-serif;
+  }
+  header{background:var(--encre);color:var(--creme);padding:26px 18px;text-align:center}
+  header .coche{
+    width:46px;height:46px;border-radius:50%;border:1.5px solid var(--creme);
+    display:flex;align-items:center;justify-content:center;
+    margin:0 auto 13px;font-size:25px;
+  }
+  header h1{
+    font-family:"Iowan Old Style",Georgia,serif;
+    font-size:27px;font-weight:400;margin:0;
+  }
+  header .ref{margin:7px 0 0;font-size:16px;opacity:.78;letter-spacing:.05em}
 
+  main{max-width:620px;margin:0 auto;padding:22px 16px 50px}
+  .bloc{
+    background:var(--papier);border:1px solid var(--trait);
+    border-radius:var(--r);padding:18px;margin-bottom:16px;
+  }
+  .bloc h2{font-size:17px;margin:0 0 13px}
+
+  .l{display:flex;justify-content:space-between;gap:14px;padding:4px 0;font-size:17px}
+  .l .q{color:var(--encre-doux)}
+  .l.somme{
+    border-top:1px solid var(--trait);margin-top:9px;padding-top:11px;
+    font-weight:600;font-size:20px;
+  }
+  .info{font-size:16.5px;color:var(--encre-doux);margin:3px 0}
+  .info b{color:var(--encre);font-weight:600}
+
+  .paiement img{
+    display:block;width:190px;max-width:100%;height:auto;margin-top:12px;
+    border:1px solid var(--trait);border-radius:var(--r);background:#fff;
+  }
+  .paiement a.sauver{display:inline-block;margin-top:8px;font-size:15px;color:var(--accent)}
+
+  .canaux{display:flex;flex-direction:column;gap:9px;margin-top:4px}
+  .canal{
+    display:flex;align-items:center;gap:11px;padding:13px 15px;
+    border:1px solid var(--trait);border-radius:var(--r);
+    background:#fff;text-decoration:none;color:var(--encre);font-size:17px;
+  }
+  .canal.principal{background:var(--encre);color:var(--creme);border-color:var(--encre)}
+  .canal .fleche{margin-left:auto;opacity:.5}
+  .copier{
+    width:100%;padding:13px;border:1px dashed var(--trait);background:transparent;
+    border-radius:var(--r);font:inherit;font-size:16.5px;color:var(--accent);
+    cursor:pointer;margin-top:9px;
+  }
+  .invite .sous{margin-top:12px;font-size:14.5px;color:var(--encre-doux);line-height:1.5}
+  .retour{display:block;text-align:center;margin-top:26px;color:var(--accent);font-size:17px}
+  .message{padding:60px 20px;text-align:center;color:var(--encre-doux)}
+  .message a{color:var(--accent)}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="coche">&#10003;</div>
+  <h1>Order received</h1>
+  <p class="ref" id="ref"></p>
+</header>
+
+<main id="page">
+  <div class="message">Loading…</div>
+</main>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, doc, getDoc, collection, getDocs }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDuq8KS8M_Z8U7BlSp6MvE-6Y9OYYaDujE",
+  authDomain: "bakertools-ae124.firebaseapp.com",
+  projectId: "bakertools-ae124",
+  storageBucket: "bakertools-ae124.firebasestorage.app",
+  messagingSenderId: "978584667113",
+  appId: "1:978584667113:web:868cc89788aff27717c178"
+};
+
+const db = getFirestore(initializeApp(firebaseConfig));
+const $ = (id) => document.getElementById(id);
+const peso = (n) => "₱" + Number(n).toLocaleString("en-PH");
+const echapper = (t) => String(t).replace(/[&<>"]/g, c =>
+  ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+const NOMS_PAIEMENT = {
+  gcash: "GCash", maya: "Maya", virement: "Bank transfer", especes: "Cash"
+};
+
+let commande = null, params = {};
+
+let notices = [];   // { nom, fichier } des produits commandés
+
+(async function () {
+  try { commande = JSON.parse(sessionStorage.getItem("commande") || "null"); } catch {}
+
+  if (!commande) {
+    $("page").innerHTML =
+      '<div class="message">We could not find your order on this device.<br><br>' +
+      '<a href="./">Back to the menu</a></div>';
+    return;
+  }
+
+  $("ref").textContent = "Reference " + commande.numero;
+
+  try {
+    const p = await getDoc(doc(db, "parametres", "boutique"));
+    params = p.exists() ? p.data() : {};
+  } catch (e) { console.error(e); }
+
+  /* Notices de mise en œuvre : une pâte surgelée ou des croissants prêts à
+     cuire ne se devinent pas. On ne les cherche que pour les produits de
+     cette commande, et leur absence ne bloque rien. */
+  try {
+    const cat = await getDocs(collection(db, "boutique_produits"));
+    const codes = new Set((commande.panier || []).map(l => l.code).filter(Boolean));
+    cat.forEach(d => {
+      const v = d.data();
+      if (codes.has(d.id) && v.notice) {
+        notices.push({ nom: v.nom || d.id, fichier: v.notice });
+      }
+    });
+  } catch (e) { console.error(e); }
+
+  afficher();
+})();
+
+function afficher() {
+  const c = commande;
+
+  /* --- Récapitulatif --- */
+  let recap = c.panier.map(l =>
+    `<div class="l"><span><span class="q">${l.qte} ×</span> ${echapper(l.nom)}</span>
+     <span>${peso(l.qte * l.prix)}</span></div>`).join("");
+  if (c.frais_a_confirmer)
+    recap += `<div class="l"><span>${echapper(c.option.nom)}</span><span>Confirmed later</span></div>`;
+  else if (c.frais_livraison > 0)
+    recap += `<div class="l"><span>${echapper(c.option.nom)}</span><span>${peso(c.frais_livraison)}</span></div>`;
+  recap += `<div class="l somme"><span>Total</span><span>${peso(c.total)}</span></div>`;
+
+  /* --- Paiement --- */
+  const pay = params.paiement || {};
+  const source = { gcash: pay.gcash, maya: pay.maya, virement: pay.banque }[c.paiement.methode];
+  let blocPaiement = "";
+
+  if (c.paiement.methode === "especes") {
+    blocPaiement = `<div class="bloc"><h2>Payment</h2>
+      <p class="info">Pay in cash when you collect or receive your order.</p></div>`;
+  } else if (source) {
+    const details = [source.nom, source.titulaire, source.numero].filter(Boolean).join(" — ");
+    blocPaiement = `<div class="bloc paiement">
+      <h2>Pay by ${NOMS_PAIEMENT[c.paiement.methode]}</h2>
+      <p class="info"><b>${echapper(details)}</b></p>
+      <p class="info">Amount: <b>${peso(c.total)}</b></p>
+      ${source.qr ? `<img src="${echapper(source.qr)}" alt="QR code">
+        <a class="sauver" href="${echapper(source.qr)}" download>Save QR code</a>` : ""}
+      ${pay.instructions ? `<p class="info" style="margin-top:12px">${echapper(pay.instructions)}</p>` : ""}
+    </div>`;
+  }
+
+  /* --- Canaux --- */
+  const texte = messageCommande(c);
+  const canaux = [];
+
+  if (params.whatsapp)
+    canaux.push({ cle: "WhatsApp", url: "https://wa.me/" + params.whatsapp +
+      "?text=" + encodeURIComponent(texte), principal: true });
+  if (params.viber)
+    canaux.push({ cle: "Viber", url: "viber://chat?number=%2B" + params.viber });
+  if (params.messenger)
+    canaux.push({ cle: "Messenger", url: "https://m.me/" + params.messenger });
+  if (params.email)
+    canaux.push({ cle: "Email", url: "mailto:" + params.email +
+      "?subject=" + encodeURIComponent("Order " + c.numero) +
+      "&body=" + encodeURIComponent(texte) });
+
+  $("page").innerHTML = `
+    <div class="bloc">
+      <h2>Your order</h2>
+      ${recap}
+    </div>
+
+    <div class="bloc">
+      <h2>Collection</h2>
+      <p class="info"><b>${echapper(c.option.nom)}</b></p>
+      ${c.option.lieu ? `<p class="info">${echapper(c.option.lieu)}</p>` : ""}
+      ${c.client.adresse ? `<p class="info">${echapper(c.client.adresse)}</p>` : ""}
+      <p class="info">${echapper(c.date_retrait)}${c.creneau ? " — " + echapper(c.creneau) : ""}</p>
+    </div>
+
+    ${blocPaiement}
+
+    <div class="bloc">
+      <h2>Send us your order details</h2>
+      <p class="info" style="margin-bottom:12px">We have your order. Message us to confirm it and settle payment.</p>
+      <div class="canaux">
+        ${canaux.map(x => `<a class="canal ${x.principal ? "principal" : ""}"
+          href="${x.url}">${x.cle}<span class="fleche">&#8250;</span></a>`).join("")}
+      </div>
+      <button class="copier" id="copier">Copy order details</button>
+    </div>
+
+    ${notices.length ? `
+    <div class="bloc">
+      <h2>${notices.length > 1 ? "How to use them" : "How to use it"}</h2>
+      <p class="info" style="margin-bottom:12px">
+        Keep these with you — they explain the baking and the timing.
+      </p>
+      <div class="canaux">
+        ${notices.map(n => `<a class="canal" href="${echapper(n.fichier)}"
+          target="_blank" rel="noopener" download>${echapper(n.nom)}<span
+          class="fleche">&#8681;</span></a>`).join("")}
+      </div>
+    </div>` : ""}
+
+    ${c.compte_uid ? "" : `
+    <div class="bloc invite">
+      <h2>Want to follow this order?</h2>
+      <p class="info">
+        With an account you can check where your order stands and whether we've
+        recorded your payment, find your past orders, keep your store credit and
+        use promo codes. Signing in takes two taps.
+      </p>
+      <a class="canal principal" href="compte.html">Create an account<span class="fleche">&#8250;</span></a>
+      <p class="info sous">
+        This order stays linked to the details you gave us — creating an account
+        now won't attach it, but the next one will follow you.
+      </p>
+    </div>`}
+
+    <a class="retour" href="./">Back to the menu</a>
+  `;
+
+  $("copier").onclick = async () => {
+    try {
+      await navigator.clipboard.writeText(texte);
+      $("copier").textContent = "Copied";
+    } catch {
+      $("copier").textContent = "Press and hold to copy: " + c.numero;
+    }
+  };
+}
+
+function messageCommande(c) {
+  return [
+    `Order ${c.numero}`,
+    "",
+    ...c.panier.map(l => `${l.qte} × ${l.nom} — ${peso(l.qte * l.prix)}`),
+    "",
+    c.frais_a_confirmer ? `${c.option.nom}: fare to confirm`
+      : (c.frais_livraison > 0 ? `${c.option.nom}: ${peso(c.frais_livraison)}` : null),
+    `Total: ${peso(c.total)}`,
+    "",
+    `Name: ${c.client.nom}`,
+    `Option: ${c.option.nom}`,
+    c.client.adresse ? `Address: ${c.client.adresse}` : null,
+    `Date: ${c.date_retrait}${c.creneau ? " — " + c.creneau : ""}`,
+    `Payment: ${NOMS_PAIEMENT[c.paiement.methode]}`,
+    c.notes ? `Notes: ${c.notes}` : null
+  ].filter(Boolean).join("\n");
+}
+</script>
+</body>
+</html>
