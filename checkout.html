@@ -62,6 +62,7 @@
   .choix .qr a{
     display:inline-block;margin-top:7px;font-size:13.5px;color:var(--accent);
   }
+  .champ .option{font-weight:400;opacity:.65}
   .champ .etiq{display:block;font-size:13px;color:var(--encre-doux);margin-bottom:5px}
   .cal{border:1px solid var(--trait);border-radius:var(--r);background:#fff;padding:11px}
   .cal .tete{
@@ -206,6 +207,7 @@ let promo = null;              // fiche du code promo appliqué
 let sourceRemise = "aucune";   // "groupe" | "promo" | "aucune"
 let economie = 0;              // écart avec le tarif catalogue
 let eligible = 0;              // part du panier concernée par le code
+let adresseCompte = null;      // adresse détaillée enregistrée sur le compte
 let dateChoisie = "", moisVu = null, dateMin = null;
 
 /* ---------- Démarrage ---------- */
@@ -219,6 +221,8 @@ function attendreConnexion() {
           const s = await getDoc(doc(db, "comptes", user.uid));
           remise = Number(s.data()?.remise) || 0;
           solde  = Number(s.data()?.solde) || 0;
+          // Adresse détaillée si le compte en a une, sinon l'ancienne ligne.
+          adresseCompte = s.data()?.adresse_detail || s.data()?.adresse || null;
         } catch (e) { console.error(e); }
       }
       resolve();
@@ -322,8 +326,16 @@ function construire() {
       <h2>Where would you like to get it?</h2>
       <div id="listeOptions"></div>
       <div id="blocAdresse" hidden style="margin-top:14px">
-        <label class="champ"><span>Delivery address</span>
-          <textarea id="adresse" autocomplete="street-address"></textarea></label>
+        <label class="champ"><span>Unit / floor / building <span class="option">optional</span></span>
+          <input type="text" id="adrUnite" autocomplete="address-line2"
+                 placeholder="Unit 5B, Solstice Tower"></label>
+        <label class="champ"><span>House number and street</span>
+          <input type="text" id="adrRue" autocomplete="address-line1"
+                 placeholder="128 Rada Street"></label>
+        <label class="champ"><span>Barangay</span>
+          <input type="text" id="adrBarangay" autocomplete="address-level3"
+                 placeholder="San Lorenzo"></label>
+        <div id="blocVille"></div>
       </div>
     </div>
 
@@ -389,15 +401,20 @@ function construire() {
     liste.appendChild(l);
   });
 
+  construireVille();
+
   if (memo.nom) $("nom").value = memo.nom;
   if (memo.tel) $("tel").value = memo.tel;
-  if (memo.adresse) $("adresse").value = memo.adresse;
+  // L'adresse du compte prime sur celle de l'appareil : c'est la plus sûre
+  // quand le client commande depuis un téléphone partagé.
+  ecrireAdresse(adresseCompte || memo.adresse_detail || memo.adresse || "");
   if (memo.nom || memo.tel) {
     $("zoneMemo").innerHTML =
       '<button class="retour" id="oublier">Not you? Clear these details</button>';
     $("oublier").onclick = () => {
       localStorage.removeItem("client");
-      $("nom").value = ""; $("tel").value = ""; $("adresse").value = "";
+      $("nom").value = ""; $("tel").value = "";
+      ecrireAdresse("");
       $("zoneMemo").innerHTML = "";
     };
   }
@@ -408,6 +425,69 @@ function construire() {
 
   majOption();
   $("pied").hidden = false;
+}
+
+/* ---------- Adresse de livraison ----------
+   Saisie en champs séparés, mais enregistrée AUSSI sur une seule ligne dans
+   client.adresse : l'administration des commandes, la confirmation et la page
+   d'abonnement lisent ce champ tel quel et n'ont pas à changer. */
+function construireVille() {
+  const villes = (params.villes_livrees || []).filter(Boolean);
+  const zone = $("blocVille");
+
+  // Liste vide côté administration : on retombe sur un champ libre.
+  if (!villes.length) {
+    zone.innerHTML = `
+      <label class="champ"><span>City</span>
+        <input type="text" id="adrVille" autocomplete="address-level2"></label>`;
+    return;
+  }
+
+  zone.innerHTML = `
+    <label class="champ"><span>City</span>
+      <select id="adrVille">
+        <option value="">Choose your city…</option>
+        ${villes.map(v => `<option value="${echapper(v)}">${echapper(v)}</option>`).join("")}
+      </select></label>
+    <div class="note">We deliver to these cities only. Ask us if yours isn't listed.</div>`;
+}
+
+function lireAdresse() {
+  const v = (id) => { const e = $(id); return e ? e.value.trim() : ""; };
+  return {
+    unite:    v("adrUnite"),
+    rue:      v("adrRue"),
+    barangay: v("adrBarangay"),
+    ville:    v("adrVille")
+  };
+}
+
+// Une seule ligne, pour l'administration et les messages.
+function adresseUneLigne(a) {
+  return [a.unite, a.rue, a.barangay, a.ville].filter(Boolean).join(", ");
+}
+
+/* Remplit les champs à partir d'une adresse détaillée, ou d'une simple
+   ligne écrite avant ce découpage : dans ce cas tout part dans la rue,
+   au client de répartir. La ville n'est reprise que si elle figure encore
+   dans la liste livrée. */
+function ecrireAdresse(source) {
+  const a = (source && typeof source === "object") ? source : null;
+  const poser = (id, val) => { const e = $(id); if (e) e.value = val || ""; };
+
+  poser("adrUnite",    a ? a.unite : "");
+  poser("adrRue",      a ? a.rue : (typeof source === "string" ? source : ""));
+  poser("adrBarangay", a ? a.barangay : "");
+
+  const champVille = $("adrVille");
+  if (!champVille) return;
+  const voulue = a ? (a.ville || "") : "";
+  if (champVille.tagName === "SELECT") {
+    const dispo = [...champVille.options].some(o => o.value === voulue);
+    champVille.value = dispo ? voulue : "";
+  } else {
+    champVille.value = voulue;
+  }
 }
 
 /* ---------- Code promo ----------
@@ -884,11 +964,16 @@ $("btnEnvoyer").onclick = async () => {
   const o   = choisie();
   const nom = $("nom").value.trim();
   const tel = $("tel").value.replace(/\D/g, "");
-  const adresse = o.demander_adresse ? $("adresse").value.trim() : "";
+  const detail  = o.demander_adresse ? lireAdresse() : null;
+  const adresse = detail ? adresseUneLigne(detail) : "";
 
   if (nom.length < 2)  return echec("Please enter your name.");
   if (tel.length < 10) return echec("Please enter a valid mobile number.");
-  if (o.demander_adresse && !adresse) return echec("Please enter your delivery address.");
+  if (o.demander_adresse) {
+    if (!detail.rue)      return echec("Please enter your house number and street.");
+    if (!detail.barangay) return echec("Please enter your barangay.");
+    if (!detail.ville)    return echec("Please choose your city.");
+  }
   if (!dateChoisie) return echec("Please choose a date.");
 
   $("btnEnvoyer").disabled = true;
@@ -922,7 +1007,9 @@ $("btnEnvoyer").onclick = async () => {
   const commande = {
     numero,
     statut: "nouvelle",
-    client: { nom, telephone: tel, adresse },
+    // adresse reste la ligne complète, lue telle quelle par l'administration
+    // et la confirmation ; adresse_detail porte le découpage.
+    client: { nom, telephone: tel, adresse, adresse_detail: detail },
     panier: lignes.map(l => ({ code: l.code, nom: l.nom, qte: l.qte, prix: l.prix })),
     remise,
     // Quelle remise a réellement joué : "groupe", "promo" ou "aucune".
@@ -955,8 +1042,18 @@ $("btnEnvoyer").onclick = async () => {
 
   try {
     await setDoc(doc(db, "commandes", numero), commande);
+
+    // L'adresse est gardée sur le compte pour les prochaines commandes.
+    // merge : le solde, la remise et le groupe ne sont pas touchés.
+    if (uidClient && detail && adresse) {
+      try {
+        await setDoc(doc(db, "comptes", uidClient),
+                     { adresse, adresse_detail: detail }, { merge: true });
+      } catch (e) { console.error(e); }   // sans effet sur la commande
+    }
     try {
-      localStorage.setItem("client", JSON.stringify({ nom, tel, adresse }));
+      localStorage.setItem("client",
+        JSON.stringify({ nom, tel, adresse, adresse_detail: detail }));
       localStorage.setItem("derniere_commande", JSON.stringify({
         quand: new Date().toISOString(),
         lignes: lignes.map(l => ({ id: l.id, nom: l.nom, qte: l.qte }))
