@@ -15,62 +15,62 @@
   *{box-sizing:border-box}
   body{
     margin:0;background:var(--creme);color:var(--encre);
-    font:16px/1.55 ui-sans-serif,-apple-system,"Segoe UI",Roboto,sans-serif;
+    font:18px/1.55 ui-sans-serif,-apple-system,"Segoe UI",Roboto,sans-serif;
   }
   header{
     background:var(--encre);color:var(--creme);
     padding:15px 18px;display:flex;align-items:center;gap:14px;
   }
-  header a{color:var(--creme);text-decoration:none;font-size:22px;line-height:1}
-  header h1{font-size:17px;margin:0;font-weight:600}
+  header a{color:var(--creme);text-decoration:none;font-size:25px;line-height:1}
+  header h1{font-size:19px;margin:0;font-weight:600}
   main{max-width:560px;margin:0 auto;padding:22px 16px 60px}
 
   .bloc{
     background:var(--papier);border:1px solid var(--trait);
     border-radius:var(--r);padding:20px;margin-bottom:16px;
   }
-  .bloc h2{font-size:15px;margin:0 0 12px}
+  .bloc h2{font-size:17px;margin:0 0 12px}
 
   .solde{text-align:center;padding:26px 20px}
   .solde .montant{
-    font-size:38px;font-weight:600;font-variant-numeric:tabular-nums;
+    font-size:43px;font-weight:600;font-variant-numeric:tabular-nums;
     line-height:1.1;
   }
-  .solde .etiq{font-size:13px;color:var(--encre-doux);letter-spacing:.08em;
+  .solde .etiq{font-size:14.5px;color:var(--encre-doux);letter-spacing:.08em;
     text-transform:uppercase;margin-top:6px}
-  .solde .aide{font-size:14px;color:var(--encre-doux);margin-top:14px}
-  .aide{font-size:13.5px;color:var(--encre-doux)}
+  .solde .aide{font-size:16px;color:var(--encre-doux);margin-top:14px}
+  .aide{font-size:15px;color:var(--encre-doux)}
 
   .mvt{display:flex;justify-content:space-between;gap:12px;padding:9px 0;
-    border-bottom:1px solid var(--trait);font-size:15px}
+    border-bottom:1px solid var(--trait);font-size:17px}
   .mvt:last-child{border-bottom:none}
-  .mvt .quand{font-size:13px;color:var(--encre-doux)}
+  .mvt .quand{font-size:14.5px;color:var(--encre-doux)}
   .mvt .val{font-variant-numeric:tabular-nums;font-weight:600;white-space:nowrap}
   .mvt .val.plus{color:var(--ok)}
   .mvt .val.moins{color:var(--alerte)}
 
   button.principal{
     width:100%;background:var(--encre);color:var(--creme);border:none;
-    padding:14px;border-radius:var(--r);font-size:15.5px;font-weight:600;
+    padding:14px;border-radius:var(--r);font-size:17.5px;font-weight:600;
     cursor:pointer;margin-bottom:10px;
   }
   button.secondaire{
     width:100%;background:transparent;color:var(--accent);
     border:1px solid var(--trait);padding:13px;border-radius:var(--r);
-    font-size:15px;cursor:pointer;
+    font-size:17px;cursor:pointer;
   }
   input[type=email]{
     width:100%;padding:13px 12px;border:1px solid var(--trait);
-    border-radius:var(--r);background:#fff;font:inherit;font-size:16px;
+    border-radius:var(--r);background:#fff;font:inherit;font-size:18px;
     color:var(--encre);margin-bottom:10px;
   }
-  .ou{text-align:center;font-size:13px;color:var(--encre-doux);margin:16px 0}
-  .note{font-size:13px;color:var(--encre-doux);line-height:1.5;margin-top:16px}
-  .message{font-size:14.5px;margin-top:12px}
+  .ou{text-align:center;font-size:14.5px;color:var(--encre-doux);margin:16px 0}
+  .note{font-size:14.5px;color:var(--encre-doux);line-height:1.5;margin-top:16px}
+  .message{font-size:16.5px;margin-top:12px}
   .message.ok{color:var(--ok)}
   .message.err{color:var(--alerte)}
-  .lien{display:block;text-align:center;margin-top:22px;color:var(--accent);font-size:15px}
-  .vide{padding:24px;text-align:center;color:var(--encre-doux);font-size:14.5px}
+  .lien{display:block;text-align:center;margin-top:22px;color:var(--accent);font-size:17px}
+  .vide{padding:24px;text-align:center;color:var(--encre-doux);font-size:16.5px}
   .cmd{border-bottom:1px solid var(--trait)}
   .cmd:last-child{border-bottom:none}
   .cmd .tete{
@@ -81,16 +81,16 @@
   .cmd .tete:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
   .cmd .quand{font-weight:600}
   .cmd .num{
-    font-family:ui-monospace,monospace;font-size:12px;color:var(--encre-doux);
+    font-family:ui-monospace,monospace;font-size:13.5px;color:var(--encre-doux);
   }
   .cmd .statut{
-    font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;
+    font-size:13px;letter-spacing:.06em;text-transform:uppercase;
     padding:2px 9px;border-radius:11px;background:#efe6d8;color:var(--encre-doux);
   }
   .cmd .statut.vive{background:#e4efe4;color:var(--ok)}
   .cmd .statut.morte{background:#f6e2de;color:var(--alerte)}
   .cmd .paiement{
-    font-size:11.5px;letter-spacing:.05em;text-transform:uppercase;
+    font-size:13px;letter-spacing:.05em;text-transform:uppercase;
     padding:2px 9px;border-radius:11px;
     border:1px solid var(--trait);color:var(--encre-doux);
   }
@@ -98,18 +98,18 @@
   .cmd .paiement.morte{border-color:#e8c9c2;background:#f6e2de;color:var(--alerte)}
   .cmd .ou.attente{color:var(--encre-doux);font-style:italic}
   .cmd .somme{margin-left:auto;font-weight:600;font-variant-numeric:tabular-nums}
-  .cmd .fleche{color:var(--encre-doux);font-size:12px}
-  .cmd .detail{padding:2px 0 14px;font-size:14.5px}
+  .cmd .fleche{color:var(--encre-doux);font-size:13.5px}
+  .cmd .detail{padding:2px 0 14px;font-size:16.5px}
   .cmd .detail[hidden]{display:none}
   .cmd .l{display:flex;justify-content:space-between;gap:12px;padding:3px 0}
   .cmd .l.total{
     border-top:1px solid var(--trait);margin-top:7px;padding-top:8px;font-weight:600;
   }
   .cmd .l .q{color:var(--encre-doux)}
-  .cmd .ou{color:var(--encre-doux);font-size:13.5px;margin:8px 0 0;line-height:1.45}
-  .qui{font-size:13.5px;color:var(--encre-doux);text-align:center;margin-top:14px}
+  .cmd .ou{color:var(--encre-doux);font-size:15px;margin:8px 0 0;line-height:1.45}
+  .qui{font-size:15px;color:var(--encre-doux);text-align:center;margin-top:14px}
   .qui button{background:none;border:none;color:var(--accent);
-    text-decoration:underline;cursor:pointer;font-size:13.5px;padding:0}
+    text-decoration:underline;cursor:pointer;font-size:15px;padding:0}
 </style>
 </head>
 <body>
@@ -180,7 +180,7 @@ function ecranConnexion() {
   $("page").innerHTML = `
     <div class="bloc">
       <h2>Sign in to your account</h2>
-      <p style="font-size:14.5px;color:var(--encre-doux);margin:0 0 18px">
+      <p style="font-size:16.5px;color:var(--encre-doux);margin:0 0 18px">
         Your account keeps your store credit and your order history.
       </p>
 
