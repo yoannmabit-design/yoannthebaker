@@ -783,16 +783,30 @@ function brancherDerniere() {
 
 /* ---------- Crédit en boutique ----------
    Le client décide d'utiliser tout ou partie de son solde ; le reste
-   se règle normalement. Le prélèvement réel a lieu à la confirmation. */
+   se règle normalement. Le prélèvement réel a lieu à la confirmation.
+
+   En dessous d'un seuil, le bloc n'est pas proposé : quelques pesos
+   résiduels n'achètent rien et n'ajoutent qu'une case à cocher de plus
+   sur un écran déjà chargé. Le seuil vaut le prix du plus petit article,
+   et se règle depuis les paramètres de la boutique. */
+function seuilCredit() {
+  const v = Number(params.credit_min_affichage);
+  return Number.isFinite(v) && v >= 0 ? v : 100;
+}
+
+function creditDisponible() {
+  return solde >= seuilCredit() && solde > 0;
+}
+
 function construireCredit() {
-  if (!(solde > 0)) return;
+  if (!creditDisponible()) return;
   $("blocCredit").hidden = false;
   $("utiliserCredit").onchange = () => { majTotaux(); majPaiement(); };
   majCredit();
 }
 
 function majCredit() {
-  if (!(solde > 0)) { creditUtilise = 0; return; }
+  if (!creditDisponible()) { creditUtilise = 0; return; }
   const total = sousTotal + fraisOption();
   const possible = Math.min(solde, total);
   creditUtilise = $("utiliserCredit").checked ? possible : 0;
