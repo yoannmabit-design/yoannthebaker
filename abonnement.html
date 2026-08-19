@@ -58,6 +58,8 @@
     margin-bottom:9px;cursor:pointer;background:#fff;
   }
   .choix.actif{border-color:var(--accent);background:#f2f6f8}
+  .choix.indispo{opacity:.55}
+  .choix.indispo .t{font-weight:600}
   .choix input{width:auto;margin-top:3px;flex-shrink:0}
   .choix .t{font-weight:600;font-size:17px}
   .choix .d{font-size:14.5px;color:var(--encre-doux);margin-top:3px}
@@ -362,18 +364,18 @@ function construire() {
     lo.appendChild(l);
   });
 
-  // Paiement
-  const solde = Number(compte.solde) || 0;
+  // Paiement. Le détail du crédit est réécrit par majCredit() : ce que le
+  // solde couvre dépend du montant par livraison, qui change avec le panier.
   $("listePaiement").innerHTML = `
     <label class="choix" data-p="avance">
       <input type="radio" name="paiement" value="avance" checked>
       <span style="flex:1"><span class="t">Pay for all deliveries now</span>
       <span class="d">One payment, and your deliveries are secured.</span></span>
     </label>
-    <label class="choix" data-p="credit">
+    <label class="choix" data-p="credit" id="choixCredit">
       <input type="radio" name="paiement" value="credit">
       <span style="flex:1"><span class="t">Use my store credit</span>
-      <span class="d">Each delivery is taken from your balance — currently ${peso(solde)}.</span></span>
+      <span class="d" id="detailCredit"></span></span>
     </label>`;
   document.querySelectorAll('input[name="paiement"]').forEach(r => {
     r.onchange = () => { modePaiement = r.value; majPaiement(); majRecap(); };
@@ -423,6 +425,54 @@ function majOption() {
 function majPaiement() {
   document.querySelectorAll(".choix[data-p]").forEach(c =>
     c.classList.toggle("actif", c.dataset.p === modePaiement));
+}
+
+/* ---------- Disponibilité du crédit ----------
+   Le débit se fait à chaque livraison, pas à la souscription : le solde
+   n'est donc pas réservé et peut servir entre-temps à une commande
+   libre. On dit ce qu'il couvre aujourd'hui, sans le promettre pour la
+   suite. En dessous d'une livraison, l'option n'est pas proposée : la
+   choisir n'aurait produit qu'un abonnement impayable. */
+function soldeClient() {
+  return Number(compte && compte.solde) || 0;
+}
+
+function livraisonsCouvertes(parLivraison) {
+  if (!(parLivraison > 0)) return 0;
+  return Math.floor(soldeClient() / parLivraison);
+}
+
+function majCredit(parLivraison) {
+  const bloc   = $("choixCredit");
+  const detail = $("detailCredit");
+  if (!bloc || !detail) return;
+
+  const solde   = soldeClient();
+  const couvre  = livraisonsCouvertes(parLivraison);
+  const radio   = bloc.querySelector("input");
+  const possible = couvre > 0;
+
+  radio.disabled = !possible;
+  bloc.classList.toggle("indispo", !possible);
+
+  if (!possible) {
+    detail.textContent = solde > 0
+      ? "Your balance of " + peso(solde) + " doesn't cover a delivery yet."
+      : "You have no store credit yet — ask us about topping up.";
+    // L'option a pu devenir indisponible après un changement de panier.
+    if (modePaiement === "credit") {
+      modePaiement = "avance";
+      const autre = document.querySelector('input[name="paiement"][value="avance"]');
+      if (autre) autre.checked = true;
+      majPaiement();
+    }
+    return;
+  }
+
+  detail.textContent = couvre >= nombre
+    ? "Each delivery is taken from your balance of " + peso(solde) + "."
+    : peso(solde) + " covers " + couvre + " of your " + nombre +
+      " deliveries — you can top up along the way.";
 }
 
 function iso(d) {
@@ -504,9 +554,14 @@ function majRecap() {
   $("recap").innerHTML = html +
     (economie > 0 ? `<div class="economie">You save ${peso(economie)} on delivery</div>` : "");
 
-  const solde = Number(compte.solde) || 0;
+  majCredit(parLivraison);
+
+  const solde = soldeClient();
+  const couvre = livraisonsCouvertes(parLivraison);
   $("totalPied").innerHTML = modePaiement === "credit"
-    ? `${peso(total)}<small>from your credit — balance ${peso(solde)}</small>`
+    ? `${peso(total)}<small>${couvre >= nombre
+        ? "from your credit — balance " + peso(solde)
+        : peso(solde) + " covers " + couvre + " of " + nombre}</small>`
     : `${peso(total)}<small>${nombre} × ${peso(parLivraison)}</small>`;
 
   $("btnSouscrire").disabled = !lignes.length || !nombre || !depart;
@@ -529,6 +584,26 @@ $("btnSouscrire").onclick = async () => {
   const parLivraison = lignes.reduce((t, p) => t + p.prix * choix[p.code], 0) + frais;
   const total = parLivraison * nombre;
   const dates = echeances();
+
+  /* Le solde est relu sur le serveur : la page a pu rester ouverte
+     longtemps, et une commande passée entre-temps l'a peut-être vidé.
+     On ne débite rien ici — le débit se fait à chaque livraison — mais
+     souscrire en crédit sans crédit n'aurait aucun sens. */
+  if (modePaiement === "credit") {
+    try {
+      const s = await getDoc(doc(db, "comptes", user.uid));
+      compte = s.exists() ? s.data() : {};
+    } catch (e) {
+      console.error(e);
+      return echec("We couldn't check your store credit. Please try again.");
+    }
+    majRecap();
+    if (livraisonsCouvertes(parLivraison) < 1) {
+      return echec(soldeClient() > 0
+        ? "Your store credit no longer covers a delivery. Please choose the other option."
+        : "Your store credit is empty. Please choose the other option.");
+    }
+  }
 
   if (!confirm(`${nombre} deliveries, ${peso(parLivraison)} each — ${peso(total)} in total.\n\n` +
                `First delivery: ${dates[0]}\n\nStart your bread plan?`)) return;
