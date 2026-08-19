@@ -107,6 +107,44 @@
   }
   .cmd .l .q{color:var(--encre-doux)}
   .cmd .ou{color:var(--encre-doux);font-size:15px;margin:8px 0 0;line-height:1.45}
+  .abo{border-bottom:1px solid var(--trait);padding:12px 0}
+  .abo:last-child{border-bottom:none}
+  .abo .titre{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .abo .quoi{font-weight:600}
+  .abo .rythme{font-size:15px;color:var(--encre-doux)}
+  .abo .puce{
+    font-size:13px;letter-spacing:.06em;text-transform:uppercase;
+    padding:2px 9px;border-radius:11px;background:#efe6d8;color:var(--encre-doux);
+  }
+  .abo .puce.vive{background:#e4efe4;color:var(--ok)}
+  .abo .puce.morte{background:#f6e2de;color:var(--alerte)}
+  .abo h3{
+    font-size:14px;letter-spacing:.06em;text-transform:uppercase;
+    color:var(--encre-doux);margin:14px 0 4px;font-weight:600;
+  }
+  .abo .ech{
+    display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+    padding:7px 0;border-bottom:1px solid var(--trait);font-size:16.5px;
+  }
+  .abo .ech:last-child{border-bottom:none}
+  .abo .ech.faite{color:var(--encre-doux)}
+  .abo .ech .quand{font-variant-numeric:tabular-nums}
+  .abo .ech .rang{font-size:13.5px;color:var(--encre-doux)}
+  .abo .ech .fin{margin-left:auto;display:flex;align-items:center;gap:10px}
+  .abo .ech .aide{font-size:14.5px;text-align:right}
+  .abo button.bouger{
+    background:transparent;color:var(--accent);border:1px solid var(--trait);
+    border-radius:var(--r);padding:5px 12px;font:inherit;font-size:15px;cursor:pointer;
+  }
+  .abo button.bouger[disabled]{opacity:.5;cursor:default}
+  .abo button.replier{
+    background:none;border:none;padding:0;margin-top:12px;
+    color:var(--accent);font:inherit;font-size:15px;cursor:pointer;
+  }
+  .abo .quota{font-size:14.5px;color:var(--encre-doux);margin:10px 0 0}
+  .abo .dit{font-size:15.5px;margin:10px 0 0}
+  .abo .dit.ok{color:var(--ok)}
+  .abo .dit.err{color:var(--alerte)}
   .qui{font-size:15px;color:var(--encre-doux);text-align:center;margin-top:14px}
   .qui button{background:none;border:none;color:var(--accent);
     text-decoration:underline;cursor:pointer;font-size:15px;padding:0}
@@ -131,6 +169,11 @@ import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChang
 import { getFirestore, collection, getDocs, doc, getDoc, setDoc,
          query, orderBy, limit, where }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+/* La règle des reports vit dans abo.js, partagée avec l'administration :
+   elle n'est pas réécrite ici, sans quoi les deux faces divergeraient. */
+import { aVenir, passees, rang, peutReporter, reportsRestants, MAX_REPORTS, reporter }
+  from "./abo.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDuq8KS8M_Z8U7BlSp6MvE-6Y9OYYaDujE",
@@ -331,6 +374,187 @@ function brancherCommandes() {
   });
 }
 
+/* ---------- Abonnements ----------
+   Le client voit ce qui vient, garde la trace de ce qui est passé, et
+   décale lui-même une livraison dans la limite de ses reports. Les
+   décalages dus aux absences de la boulangerie ne consomment pas ce
+   quota : abo.js s'en charge, la page ne fait que présenter. */
+const ETATS_ABO = {
+  "nouveau": { texte: "Being set up", classe: "" },
+  "actif":   { texte: "Active",       classe: "vive" },
+  "arrete":  { texte: "Stopped",      classe: "morte" },
+  "termine": { texte: "Completed",    classe: "" }
+};
+
+const ETATS_ECH = {
+  "planifiee": "Planned",
+  "livree":    "Delivered",
+  "sautee":    "Skipped"
+};
+
+/* Pourquoi le bouton n'est pas disponible, dit sans jargon. Une chaîne
+   vide vaut « ne rien afficher » : le cas ne concerne pas le client. */
+const POURQUOI = {
+  plafond_atteint: "Both changes used",
+  trop_tard:       "Too close — message us",
+  deja_traitee:    "",
+  abonnement_inactif: "",
+  echeance_introuvable: "",
+  date_invalide:   ""
+};
+
+function cadenceTexte(a) {
+  return a.cadence === "quinzaine" ? "Every two weeks" : "Every week";
+}
+
+function ligneEcheance(a, ec, modifiable) {
+  const droit = modifiable
+    ? peutReporter(a, ec.date)
+    : { ok: false, raison: "abonnement_inactif" };
+  const r = rang(a, ec.date);
+  const note = droit.ok ? "" : (POURQUOI[droit.raison] || "");
+
+  return `<div class="ech">
+    <span class="quand">${ech(joliJour(ec.date))}</span>
+    ${r ? `<span class="rang">${r.position} of ${r.total}</span>` : ""}
+    ${ec.decalee ? '<span class="rang">· moved</span>' : ""}
+    <span class="fin">
+      ${droit.ok
+        ? `<button class="bouger" data-abo="${ech(a.id)}" data-date="${ech(ec.date)}"
+             >Move this one</button>`
+        : (note ? `<span class="aide">${ech(note)}</span>` : "")}
+    </span>
+  </div>`;
+}
+
+function lignePassee(a, ec) {
+  const r = rang(a, ec.date);
+  return `<div class="ech faite">
+    <span class="quand">${ech(joliJour(ec.date))}</span>
+    ${r ? `<span class="rang">${r.position} of ${r.total}</span>` : ""}
+    <span class="fin"><span class="aide">${ech(ETATS_ECH[ec.statut] || ec.statut || "")}</span></span>
+  </div>`;
+}
+
+/* Le contenu seul, sans son enveloppe : après un report on redessine ce
+   bloc-là et pas la page entière, pour ne pas replier les commandes que
+   le client venait d'ouvrir. */
+function contenuAbonnement(a) {
+  const e = ETATS_ABO[a.statut] || { texte: a.statut || "", classe: "" };
+  const articles = (a.panier || [])
+    .map(l => `${Number(l.qte) || 0} × ${l.nom || l.code || ""}`)
+    .join(", ");
+
+  const suite = aVenir(a);
+  const vues  = passees(a);
+  const modifiable = a.statut === "actif";
+  const restants = reportsRestants(a);
+
+  const listeSuite = suite.length
+    ? suite.map(ec => ligneEcheance(a, ec, modifiable)).join("")
+    : '<div class="aide" style="padding:7px 0">Nothing planned right now.</div>';
+
+  const listeVues = vues.length
+    ? `<button class="replier" type="button" aria-expanded="false">
+         Past deliveries (${vues.length}) &#9662;</button>
+       <div class="vues" hidden>${vues.map(ec => lignePassee(a, ec)).join("")}</div>`
+    : "";
+
+  return `
+    <div class="titre">
+      <span class="quoi">${ech(articles || "Your bread plan")}</span>
+      <span class="puce ${e.classe}">${ech(e.texte)}</span>
+    </div>
+    <div class="rythme">${ech(cadenceTexte(a))}</div>
+
+    <h3>Coming next</h3>
+    ${listeSuite}
+    ${modifiable
+      ? `<p class="quota">${restants > 0
+          ? `You can move ${restants} more ${restants === 1 ? "delivery" : "deliveries"} yourself (${MAX_REPORTS} per plan). A moved delivery is added back at the end.`
+          : "You've used both of your changes — message us if you need another."}</p>`
+      : ""}
+
+    ${listeVues}
+    <div class="dit" data-dit></div>`;
+}
+
+function blocAbonnement(a) {
+  return `<div class="abo" id="abo-${ech(a.id)}">${contenuAbonnement(a)}</div>`;
+}
+
+/* Les abonnements chargés, gardés en mémoire pour redessiner un bloc
+   sans relire toute la page. */
+let abonnements = [];
+
+function brancherAbonnements() {
+  document.querySelectorAll(".abo .replier").forEach(b => {
+    b.onclick = () => {
+      const liste = b.parentElement.querySelector(".vues");
+      const ouvert = liste.hidden;
+      liste.hidden = !ouvert;
+      b.setAttribute("aria-expanded", String(ouvert));
+      b.innerHTML = b.innerHTML.replace(ouvert ? "&#9662;" : "&#9652;",
+                                        ouvert ? "&#9652;" : "&#9662;")
+                   .replace(ouvert ? "▾" : "▴", ouvert ? "▴" : "▾");
+    };
+  });
+
+  document.querySelectorAll(".abo button.bouger").forEach(b => {
+    b.onclick = () => demanderReport(b.dataset.abo, b.dataset.date, b);
+  });
+}
+
+function redessinerAbonnement(a, message, type) {
+  const bloc = $("abo-" + a.id);
+  if (!bloc) return;
+  bloc.innerHTML = contenuAbonnement(a);
+  brancherAbonnements();
+  if (message) {
+    const dit = bloc.querySelector("[data-dit]");
+    if (dit) {
+      dit.textContent = message;
+      dit.className = "dit " + (type || "");
+    }
+  }
+}
+
+async function demanderReport(id, date, bouton) {
+  const a = abonnements.find(x => x.id === id);
+  if (!a) return;
+
+  const restants = reportsRestants(a);
+  if (!confirm(
+    `Move the delivery of ${joliJour(date)}?\n\n` +
+    "It will be added back at the end of your plan.\n" +
+    `This uses ${restants === 1 ? "your last change" : "one of your " + restants + " remaining changes"}.`
+  )) return;
+
+  bouton.disabled = true;
+  bouton.textContent = "Moving…";
+
+  const r = await reporter(db, id, date, { origine: "client" });
+
+  if (!r.ok) {
+    // L'abonnement a pu changer côté fournil pendant que la page était
+    // ouverte : on repart de la version que le serveur vient de rendre.
+    if (r.abo) {
+      Object.assign(a, r.abo);
+      redessinerAbonnement(a,
+        POURQUOI[r.raison] || "That change could not be made. Please message us.", "err");
+    } else {
+      bouton.disabled = false;
+      bouton.textContent = "Move this one";
+    }
+    return;
+  }
+
+  Object.assign(a, r.abo);
+  redessinerAbonnement(a,
+    r.jusquA ? "Moved — it now comes on " + joliJour(r.jusquA) + "."
+             : "That delivery has been skipped.", "ok");
+}
+
 /* ---------- Écran du compte ---------- */
 async function ecranCompte(user) {
   $("page").innerHTML = '<div class="vide">Loading your account…</div>';
@@ -392,6 +616,29 @@ async function ecranCompte(user) {
     commandesLues = false;   // règles Firestore, le plus souvent
   }
 
+  /* Abonnements du client. Même parti pris que pour les commandes : un
+     where seul, puis tri en mémoire, pour ne pas imposer d'index
+     composite à Firestore. Le volume par client est de toute façon
+     minuscule. */
+  let abonnementsLus = true;
+  try {
+    const q = query(collection(db, "abonnements"),
+                    where("client.uid", "==", user.uid), limit(20));
+    const s = await getDocs(q);
+    abonnements = [];
+    s.forEach(d => abonnements.push({ id: d.id, ...d.data() }));
+    // Les plans en cours d'abord, les terminés ensuite, puis du plus
+    // récent au plus ancien.
+    const ordre = { actif: 0, nouveau: 1, termine: 2, arrete: 3 };
+    abonnements.sort((a, b) =>
+      (ordre[a.statut] ?? 9) - (ordre[b.statut] ?? 9) ||
+      String(b.cree_le || "").localeCompare(String(a.cree_le || "")));
+  } catch (e) {
+    console.error(e);
+    abonnements = [];
+    abonnementsLus = false;
+  }
+
   const histo = mouvements.length
     ? mouvements.map(m => {
         const plus = m.montant >= 0;
@@ -402,6 +649,18 @@ async function ecranCompte(user) {
         </div>`;
       }).join("")
     : '<div class="vide">No activity yet.</div>';
+
+  /* Un client sans abonnement ne voit pas de bloc vide : la place est
+     rendue au reste de la page. */
+  const listeAbonnements = !abonnementsLus
+    ? `<div class="bloc"><h2>Your bread plan</h2>
+         <div class="vide">Your plan could not be loaded right now.</div></div>`
+    : (abonnements.length
+        ? `<div class="bloc">
+             <h2>${abonnements.length > 1 ? "Your bread plans" : "Your bread plan"}</h2>
+             ${abonnements.map(blocAbonnement).join("")}
+           </div>`
+        : "");
 
   const listeCommandes = !commandesLues
     ? '<div class="vide">Your orders could not be loaded right now.</div>'
@@ -417,6 +676,8 @@ async function ecranCompte(user) {
         ? "You can use this at checkout."
         : "Ask us about topping up your account — pay once, order as you go."}</p>
     </div>
+
+    ${listeAbonnements}
 
     <div class="bloc">
       <h2>Your last orders</h2>
@@ -436,6 +697,7 @@ async function ecranCompte(user) {
       <button id="btnSortir">sign out</button></p>`;
 
   brancherCommandes();
+  brancherAbonnements();
   $("btnSortir").onclick = () => signOut(auth);
 }
 </script>
