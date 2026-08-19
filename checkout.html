@@ -203,7 +203,8 @@
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getFirestore, collection, getDocs, doc, getDoc, setDoc, updateDoc, increment }
+import { getFirestore, collection, getDocs, doc, getDoc, setDoc, updateDoc, increment,
+         query, where, limit }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import { getAuth, onAuthStateChanged }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
@@ -231,6 +232,7 @@ const JOURS_COURTS = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
 
 let params = {}, options = [], lignes = [], sousTotal = 0;
 let remise = 0, uidClient = "", solde = 0, creditUtilise = 0;
+let creditEngage = 0;          // crédit annoncé sur des commandes non encore réglées
 let promo = null;              // fiche du code promo appliqué
 let sourceRemise = "aucune";   // "groupe" | "promo" | "aucune"
 let economie = 0;              // écart avec le tarif catalogue
@@ -254,10 +256,38 @@ function attendreConnexion() {
           // Adresse détaillée si le compte en a une, sinon l'ancienne ligne.
           adresseCompte = s.data()?.adresse_detail || s.data()?.adresse || null;
         } catch (e) { console.error(e); }
+        await lireCreditEngage(user.uid);
       }
       resolve();
     });
   });
+}
+
+/* Le solde n'est débité qu'à la confirmation en boutique : entre-temps,
+   le crédit annoncé sur une commande en attente est déjà promis. Sans ce
+   calcul, un client pourrait couvrir trois commandes avec le crédit d'une
+   seule, de bonne foi, et découvrir l'écart à la livraison.
+
+   Même parti pris que sur la page du compte : un where seul, tri et somme
+   en mémoire, pour ne pas imposer d'index composite. */
+async function lireCreditEngage(uid) {
+  creditEngage = 0;
+  try {
+    const q = query(collection(db, "commandes"),
+                    where("compte_uid", "==", uid), limit(50));
+    const s = await getDocs(q);
+    s.forEach(d => {
+      const c = d.data();
+      const enAttente = (c.paiement?.statut || "en attente") !== "paye";
+      const vivante   = c.statut !== "annulee";
+      if (enAttente && vivante) creditEngage += Number(c.credit_utilise) || 0;
+    });
+  } catch (e) {
+    // Lecture refusée ou hors ligne : on ne bloque pas la commande, mais
+    // on ne prétend pas non plus connaître le disponible.
+    console.error(e);
+    creditEngage = 0;
+  }
 }
 
 let panier = {};
@@ -794,29 +824,55 @@ function seuilCredit() {
   return Number.isFinite(v) && v >= 0 ? v : 100;
 }
 
+/* Le solde réellement disponible : ce qui reste une fois retiré le crédit
+   déjà promis à des commandes en attente de règlement. */
+function soldeLibre() {
+  return Math.max(0, solde - creditEngage);
+}
+
 function creditDisponible() {
-  return solde >= seuilCredit() && solde > 0;
+  return soldeLibre() >= seuilCredit() && soldeLibre() > 0;
 }
 
 function construireCredit() {
-  if (!creditDisponible()) return;
+  // Le bloc reste visible quand tout le solde est engagé : mieux vaut
+  // expliquer pourquoi il n'est pas utilisable que de le faire disparaître.
+  if (!(solde > 0) || solde < seuilCredit()) return;
   $("blocCredit").hidden = false;
   $("utiliserCredit").onchange = () => { majTotaux(); majPaiement(); };
   majCredit();
 }
 
 function majCredit() {
-  if (!creditDisponible()) { creditUtilise = 0; return; }
+  const libre = soldeLibre();
   const total = sousTotal + fraisOption();
-  const possible = Math.min(solde, total);
+
+  if (!creditDisponible()) {
+    creditUtilise = 0;
+    const c = $("utiliserCredit");
+    c.checked = false;
+    c.disabled = true;
+    $("titreCredit").textContent = "Store credit — " + peso(solde);
+    $("detailCredit").textContent = creditEngage > 0
+      ? peso(creditEngage) + " is already applied to an order awaiting payment."
+      : "Not enough to apply to this order.";
+    $("choixCredit").classList.remove("actif");
+    return;
+  }
+
+  $("utiliserCredit").disabled = false;
+  const possible = Math.min(libre, total);
   creditUtilise = $("utiliserCredit").checked ? possible : 0;
 
-  $("titreCredit").textContent = "Use my credit — " + peso(solde) + " available";
+  $("titreCredit").textContent = "Use my credit — " + peso(libre) + " available";
   $("detailCredit").textContent = creditUtilise > 0
     ? (creditUtilise >= total
         ? "Your order is fully covered by your credit."
         : peso(creditUtilise) + " applied · " + peso(total - creditUtilise) + " left to pay")
-    : "Apply up to " + peso(possible) + " to this order.";
+    : (creditEngage > 0
+        ? "Apply up to " + peso(possible) + " · " + peso(creditEngage) +
+          " is held for an order awaiting payment."
+        : "Apply up to " + peso(possible) + " to this order.");
   $("choixCredit").classList.toggle("actif", creditUtilise > 0);
 }
 
