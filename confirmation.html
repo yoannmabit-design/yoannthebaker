@@ -35,6 +35,30 @@
   }
   .bloc h2{font-size:17px;margin:0 0 13px}
 
+  /* Étapes numérotées : le paiement, l'envoi des détails, et le
+     téléchargement quand il y a lieu. Le numéro est dans le titre pour que
+     l'ordre de lecture et l'ordre de la page ne puissent pas diverger. */
+  .bloc h2.etape{display:flex;align-items:center;gap:10px}
+  .num{
+    flex-shrink:0;width:26px;height:26px;border-radius:50%;
+    background:var(--encre);color:var(--creme);
+    display:inline-flex;align-items:center;justify-content:center;
+    font-size:15px;font-weight:600;line-height:1;
+  }
+
+  /* Notices : le seul bloc de la page dont on repart avec quelque chose,
+     d'où le liseré jaune et le pictogramme. */
+  .bloc.notices{border-left:5px solid #e6a817;background:#fffcf2}
+  .bloc.notices .num{background:#e6a817;color:#3a2c05}
+  .canal.pdf{align-items:flex-start;gap:13px}
+  .canal.pdf .pict{flex-shrink:0;width:26px;height:32px;margin-top:1px}
+  .canal.pdf .intitule{display:flex;flex-direction:column;gap:2px;min-width:0}
+  .canal.pdf .intitule .titre{overflow-wrap:anywhere}
+  .canal.pdf .intitule .format{
+    font-size:13.5px;color:var(--encre-doux);letter-spacing:.04em;
+  }
+  .canal.pdf .fleche{align-self:center}
+
   .l{display:flex;justify-content:space-between;gap:14px;padding:4px 0;font-size:17px}
   .l .q{color:var(--encre-doux)}
   .l.somme{
@@ -107,7 +131,20 @@ const NOMS_PAIEMENT = {
 
 let commande = null, params = {};
 
-let notices = [];   // { nom, fichier } des produits commandés
+let notices = [];   // { nom, fichier, taille } des produits commandés
+
+/* Pictogramme PDF : une feuille cornée portant la mention. Dessiné ici plutôt
+   qu'appelé en image — un fichier de moins à charger, et il suit la couleur
+   du texte. */
+const PICTO_PDF = `
+  <svg class="pict" viewBox="0 0 24 30" aria-hidden="true">
+    <path d="M2 1h13l7 7v20a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1z"
+          fill="#fff" stroke="#c9a227" stroke-width="1.4"/>
+    <path d="M15 1v7h7" fill="none" stroke="#c9a227" stroke-width="1.4"/>
+    <text x="12" y="23" text-anchor="middle" font-size="7.5"
+          font-family="ui-sans-serif,sans-serif" font-weight="700"
+          fill="#b3891a">PDF</text>
+  </svg>`;
 
 (async function () {
   try { commande = JSON.parse(sessionStorage.getItem("commande") || "null"); } catch {}
@@ -135,9 +172,24 @@ let notices = [];   // { nom, fichier } des produits commandés
     cat.forEach(d => {
       const v = d.data();
       if (codes.has(d.id) && v.notice) {
-        notices.push({ nom: v.nom || d.id, fichier: v.notice });
+        notices.push({ nom: v.nom || d.id, fichier: v.notice, taille: "" });
       }
     });
+
+    /* Poids du fichier, quand le serveur veut bien le dire : sur données
+       mobiles, savoir ce qu'on télécharge avant de l'ouvrir compte. Une
+       requête qui échoue laisse simplement la mention « PDF » seule. */
+    await Promise.all(notices.map(async n => {
+      try {
+        const r = await fetch(n.fichier, { method: "HEAD" });
+        const octets = Number(r.headers.get("content-length")) || 0;
+        if (octets > 0) {
+          n.taille = octets >= 1048576
+            ? (octets / 1048576).toFixed(1).replace(".", ",") + " MB"
+            : Math.max(1, Math.round(octets / 1024)) + " KB";
+        }
+      } catch {}
+    }));
   } catch (e) { console.error(e); }
 
   afficher();
@@ -156,18 +208,25 @@ function afficher() {
     recap += `<div class="l"><span>${echapper(c.option.nom)}</span><span>${peso(c.frais_livraison)}</span></div>`;
   recap += `<div class="l somme"><span>Total</span><span>${peso(c.total)}</span></div>`;
 
+  /* --- Étapes --- */
+  /* Le numéro se calcule sur les blocs réellement affichés : un règlement en
+     espèces ou une commande sans notice ne doit pas laisser de trou dans la
+     suite. */
+  let etape = 0;
+  const num = () => `<span class="num">${++etape}</span>`;
+
   /* --- Paiement --- */
   const pay = params.paiement || {};
   const source = { gcash: pay.gcash, maya: pay.maya, virement: pay.banque }[c.paiement.methode];
   let blocPaiement = "";
 
   if (c.paiement.methode === "especes") {
-    blocPaiement = `<div class="bloc"><h2>Payment</h2>
+    blocPaiement = `<div class="bloc"><h2 class="etape">${num()}Payment</h2>
       <p class="info">Pay in cash when you collect or receive your order.</p></div>`;
   } else if (source) {
     const details = [source.nom, source.titulaire, source.numero].filter(Boolean).join(" — ");
     blocPaiement = `<div class="bloc paiement">
-      <h2>Pay by ${NOMS_PAIEMENT[c.paiement.methode]}</h2>
+      <h2 class="etape">${num()}Pay by ${NOMS_PAIEMENT[c.paiement.methode]}</h2>
       <p class="info"><b>${echapper(details)}</b></p>
       <p class="info">Amount: <b>${peso(c.total)}</b></p>
       ${source.qr ? `<img src="${echapper(source.qr)}" alt="QR code">
@@ -209,7 +268,7 @@ function afficher() {
     ${blocPaiement}
 
     <div class="bloc">
-      <h2>Send us your order details</h2>
+      <h2 class="etape">${num()}Send us your order details</h2>
       <p class="info" style="margin-bottom:12px">We have your order. Message us to confirm it and settle payment.</p>
       <div class="canaux">
         ${canaux.map(x => `<a class="canal ${x.principal ? "principal" : ""}"
@@ -219,15 +278,20 @@ function afficher() {
     </div>
 
     ${notices.length ? `
-    <div class="bloc">
-      <h2>${notices.length > 1 ? "How to use them" : "How to use it"}</h2>
+    <div class="bloc notices">
+      <h2 class="etape">${num()}Download your instructions</h2>
       <p class="info" style="margin-bottom:12px">
-        Keep these with you — they explain the baking and the timing.
+        Keep ${notices.length > 1 ? "these" : "this"} with you — ${notices.length > 1 ? "they explain" : "it explains"} the baking and the timing.
       </p>
       <div class="canaux">
-        ${notices.map(n => `<a class="canal" href="${echapper(n.fichier)}"
-          target="_blank" rel="noopener" download>${echapper(n.nom)}<span
-          class="fleche">&#8681;</span></a>`).join("")}
+        ${notices.map(n => `<a class="canal pdf" href="${echapper(n.fichier)}"
+          target="_blank" rel="noopener" download>
+          ${PICTO_PDF}
+          <span class="intitule">
+            <span class="titre">${echapper(n.nom)}</span>
+            <span class="format">PDF${n.taille ? " · " + n.taille : ""}</span>
+          </span>
+          <span class="fleche">&#8681;</span></a>`).join("")}
       </div>
     </div>` : ""}
 
