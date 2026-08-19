@@ -36,6 +36,7 @@
     font-size:43px;font-weight:600;font-variant-numeric:tabular-nums;
     line-height:1.1;
   }
+  .solde .montant.du{color:var(--alerte)}
   .solde .etiq{font-size:14.5px;color:var(--encre-doux);letter-spacing:.08em;
     text-transform:uppercase;margin-top:6px}
   .solde .aide{font-size:16px;color:var(--encre-doux);margin-top:14px}
@@ -670,11 +671,14 @@ async function ecranCompte(user) {
 
   $("page").innerHTML = `
     <div class="bloc solde">
-      <div class="montant">${peso(solde)}</div>
-      <div class="etiq">Store credit</div>
-      <p class="aide">${solde > 0
-        ? "You can use this at checkout."
-        : "Ask us about topping up your account — pay once, order as you go."}</p>
+      <div class="montant${solde < 0 ? " du" : ""}">${peso(solde)}</div>
+      <div class="etiq">${solde < 0 ? "Amount due" : "Store credit"}</div>
+      <p class="aide">${
+        solde < 0
+          ? "This is what's owed on your account. Settle it whenever suits you — send us your proof of payment and we'll update it right away."
+          : (solde > 0
+              ? "You can use this at checkout."
+              : "Ask us about topping up your account — pay once, order as you go.")}</p>
     </div>
 
     ${listeAbonnements}
