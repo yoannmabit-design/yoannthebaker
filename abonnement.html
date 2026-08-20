@@ -46,6 +46,25 @@
   .produit .nom{flex:1;min-width:0}
   .produit .prix{font-size:16px;color:var(--encre-doux)}
   .produit .prix .plein{text-decoration:line-through;opacity:.6;margin-right:3px}
+  .promo{margin-top:13px;padding-top:12px;border-top:1px dashed var(--trait)}
+  .promo .saisie{display:flex;gap:9px;flex-wrap:wrap}
+  .promo input{
+    flex:1;min-width:140px;padding:10px 12px;border:1px solid var(--trait);
+    border-radius:var(--r);background:#fff;font:inherit;font-size:17px;
+    text-transform:uppercase;letter-spacing:.06em;color:var(--encre);
+  }
+  .promo button.appliquer{
+    background:var(--accent);color:#fff;border:none;padding:10px 18px;
+    border-radius:var(--r);font-size:17px;font-weight:600;cursor:pointer;
+  }
+  .promo button.appliquer:disabled{opacity:.5;cursor:default}
+  .promo .etat{margin:9px 0 0;font-size:16px;color:var(--encre-doux)}
+  .promo .etat.ok{color:var(--ok, #3d6b3d)}
+  .promo .etat.err{color:var(--alerte)}
+  .promo .retirer{
+    background:none;border:none;color:var(--accent);padding:0;margin-left:8px;
+    font-size:16px;text-decoration:underline;cursor:pointer;
+  }
   .compteur{display:flex;align-items:center;gap:9px}
   .compteur button{
     width:36px;height:36px;border-radius:50%;border:1px solid var(--trait);
@@ -84,6 +103,7 @@
 
   .recap .l{display:flex;justify-content:space-between;gap:14px;padding:5px 0;font-size:17px}
   .recap .l.sous{border-top:1px solid var(--trait);margin-top:9px;padding-top:10px;font-weight:600}
+  .recap .l.remise span:last-child{color:var(--ok, #3d6b3d)}
   .recap .l.somme{
     border-top:2px solid var(--encre);margin-top:9px;padding-top:11px;
     font-weight:600;font-size:21.5px;
@@ -136,6 +156,14 @@ import { getAuth, onAuthStateChanged }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import { getFirestore, collection, getDocs, doc, getDoc, addDoc }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+/* La règle d'arbitrage vit dans promo.js, partagée avec la vitrine et le
+   checkout. Ici, le pourcentage mis en concurrence avec le code n'est pas
+   un tarif de groupe mais la remise abonnement : le calcul est le même,
+   seul le taux change. */
+import { normaliserCode, chargerCode, verifierCode,
+         calculerPrix, prixUnitaire, libelleCode, libellePortee }
+  from "./promo.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDuq8KS8M_Z8U7BlSp6MvE-6Y9OYYaDujE",
@@ -273,6 +301,92 @@ function prixAbonne(plein) {
   return Math.round(plein * (100 - t) / 100);
 }
 
+/* ---------- Code promo ----------
+   Même règle que partout : pas de cumul, le plus avantageux l'emporte.
+   La seule particularité de l'abonnement est la durée — un code peut
+   ne valoir que pour la première livraison, ou courir sur tout le plan
+   selon le champ plan_entier de sa fiche. Un code à 15 % sur huit
+   livraisons coûte huit fois ; le défaut est donc la première seule. */
+let promo = null;
+
+function planEntier() {
+  return !!(promo && promo.plan_entier === true);
+}
+
+function livraisonsCouvertes_promo() {
+  if (!promo) return 0;
+  return planEntier() ? nombre : 1;
+}
+
+/* Le calcul est délégué à promo.js en lui passant la remise abonnement
+   là où il attend un tarif de groupe : la mécanique d'arbitrage est
+   identique, et rien n'est réécrit ici. */
+function arbitrage() {
+  const lignes = produits.filter(p => choix[p.code]).map(p => ({
+    qte: choix[p.code], prixBase: p.prix_plein, rayon: p.rayon
+  }));
+  return calculerPrix(lignes, tauxAbonnement(), promo);
+}
+
+function etatPromo(texte, type = "", html = false) {
+  const e = $("etatPromo");
+  if (!e) return;
+  if (html) e.innerHTML = texte; else e.textContent = texte;
+  e.className = "etat " + type;
+}
+
+function majPromo(calc) {
+  if (!$("saisieCode")) return;
+
+  if (!promo) { $("saisieCode").hidden = false; etatPromo(""); return; }
+
+  $("saisieCode").hidden = true;
+  const e = $("etatPromo");
+  const portee = libellePortee(promo);
+  e.className = "etat ok";
+
+  if (calc.source === "promo") {
+    e.textContent = promo.id + " applied — " + libelleCode(promo) +
+      (planEntier() ? " on every delivery" : " on your first delivery");
+  } else if (portee && calc.eligible === 0) {
+    e.className = "etat";
+    e.textContent = promo.id + " applies to " + portee +
+                    " only — nothing in your plan qualifies";
+  } else {
+    e.textContent = promo.id +
+      " saved for later — your subscriber price is a better deal today";
+  }
+
+  const b = document.createElement("button");
+  b.className = "retirer";
+  b.type = "button";
+  b.textContent = "Remove";
+  b.onclick = () => { promo = null; $("champCode").value = ""; etatPromo(""); majRecap(); };
+  e.appendChild(b);
+}
+
+async function appliquerCode() {
+  const saisie = normaliserCode($("champCode").value);
+  if (!saisie) { etatPromo("Enter a code first.", "err"); return; }
+
+  $("btnCode").disabled = true;
+  etatPromo("Checking…");
+  try {
+    const fiche = await chargerCode(db, saisie);
+    // Le client est nécessairement connecté sur cette page.
+    const v = verifierCode(fiche, { connecte: true });
+    if (!v.ok) { promo = null; etatPromo(v.message, "err"); majRecap(); return; }
+    promo = fiche;
+    $("champCode").value = "";
+    majRecap();
+  } catch (e) {
+    console.error(e);
+    etatPromo("We couldn't check that code. Please try again.", "err");
+  } finally {
+    $("btnCode").disabled = false;
+  }
+}
+
 /* ---------- Formulaire ---------- */
 function construire() {
   const cadences = abo.cadences || ["hebdo", "quinzaine"];
@@ -332,6 +446,15 @@ function construire() {
     <div class="bloc">
       <h2>Summary</h2>
       <div class="recap" id="recap"></div>
+      <div class="promo">
+        <div class="saisie" id="saisieCode">
+          <input type="text" id="champCode" placeholder="Promo code"
+                 autocomplete="off" autocapitalize="characters" spellcheck="false"
+                 aria-label="Promo code">
+          <button type="button" class="appliquer" id="btnCode">Apply</button>
+        </div>
+        <p class="etat" id="etatPromo"></p>
+      </div>
     </div>
 
     <div class="erreur" id="erreur"></div>`;
@@ -429,6 +552,11 @@ function construire() {
 
   document.querySelector('#cadences button')?.click();
   document.querySelector(`#nombres button[data-n="${nombre}"]`)?.click();
+  $("btnCode").onclick = appliquerCode;
+  $("champCode").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") { e.preventDefault(); appliquerCode(); }
+  });
+
   majOption();
   majPaiement();
   $("pied").hidden = false;
@@ -575,17 +703,27 @@ function majDates() {
 function majRecap() {
   const o = optionChoisie();
   const lignes = produits.filter(p => choix[p.code]);
-  const panier = lignes.reduce((t, p) => t + p.prix * choix[p.code], 0);
+  const calc = arbitrage();
+
   const frais = tarifAbonne(o);
   const normal = o.tarif_variable ? 0 : (Number(o.tarif) || 0);
-  const parLivraison = panier + frais;
-  const total = parLivraison * nombre;
-  // L'économie annoncée couvre les deux volets : la remise sur les
-  // produits et, le cas échéant, le tarif de livraison abonné.
-  const panierPlein = lignes.reduce((t, p) => t + p.prix_plein * choix[p.code], 0);
-  const economieProduits = Math.max(0, panierPlein - panier) * nombre;
+
+  /* Le panier récurrent reste au tarif abonné : le code ne remplace ce
+     tarif que sur les livraisons qu'il couvre. Quand il porte sur tout
+     le plan, les deux se confondent. */
+  const panierAbonne = calc.groupe;
+  const remiseCode = calc.source === "promo" ? Math.max(0, calc.groupe - calc.promo) : 0;
+  const couvertes = remiseCode > 0 ? Math.min(livraisonsCouvertes_promo(), nombre) : 0;
+
+  const parLivraison = panierAbonne + frais;
+  const total = parLivraison * nombre - remiseCode * couvertes;
+
+  // L'économie annoncée couvre les trois volets : remise abonnement,
+  // code promo, et tarif de livraison abonné.
+  const economieProduits = Math.max(0, calc.base - calc.groupe) * nombre;
+  const economieCode = remiseCode * couvertes;
   const economiePort = Math.max(0, normal - frais) * nombre;
-  const economie = economieProduits + economiePort;
+  const economie = economieProduits + economieCode + economiePort;
 
   let html = lignes.map(p =>
     `<div class="l"><span><span class="q">${choix[p.code]} ×</span> ${ech(p.nom)}</span>
@@ -596,16 +734,19 @@ function majRecap() {
   html += `<div class="l"><span>Delivery${frais > 0 ? " (subscriber rate)" : ""}</span>
            <span>${frais > 0 ? peso(frais) : "free"}</span></div>`;
   html += `<div class="l sous"><span>Per delivery</span><span>${peso(parLivraison)}</span></div>`;
+
+  if (remiseCode > 0) {
+    html += `<div class="l remise"><span>${ech(promo.id)}${
+      couvertes > 1 ? " × " + couvertes + " deliveries" : " (first delivery)"}</span>
+      <span>−${peso(remiseCode * couvertes)}</span></div>`;
+  }
+
   html += `<div class="l somme"><span>${nombre} deliveries</span><span>${peso(total)}</span></div>`;
 
   $("recap").innerHTML = html +
-    (economie > 0
-      ? `<div class="economie">You save ${peso(economie)}${
-          economieProduits > 0 && economiePort > 0 ? " on this plan"
-          : economieProduits > 0 ? ` — ${tauxAbonnement()}% subscriber discount`
-          : " on delivery"}</div>`
-      : "");
+    (economie > 0 ? `<div class="economie">You save ${peso(economie)} on this plan</div>` : "");
 
+  majPromo(calc);
   majCredit(parLivraison);
 
   const solde = soldeClient();
@@ -633,8 +774,12 @@ $("btnSouscrire").onclick = async () => {
   if (!lignes.length) return echec("Please choose at least one item.");
 
   const frais = tarifAbonne(o);
-  const parLivraison = lignes.reduce((t, p) => t + p.prix * choix[p.code], 0) + frais;
-  const total = parLivraison * nombre;
+  // Mêmes valeurs que le récapitulatif : un seul calcul, pas deux.
+  const calc = arbitrage();
+  const remiseCode = calc.source === "promo" ? Math.max(0, calc.groupe - calc.promo) : 0;
+  const couvertes = remiseCode > 0 ? Math.min(livraisonsCouvertes_promo(), nombre) : 0;
+  const parLivraison = calc.groupe + frais;
+  const total = parLivraison * nombre - remiseCode * couvertes;
   const dates = echeances();
 
   /* Le solde est relu sur le serveur : la page a pu rester ouverte
@@ -673,6 +818,20 @@ $("btnSouscrire").onclick = async () => {
       panier: lignes.map(p => ({ code: p.code, nom: p.nom, qte: choix[p.code],
                                  prix: p.prix, prix_plein: p.prix_plein })),
       remise_abonnement: tauxAbonnement(),
+      /* Instantané du code retenu, pour que la génération des commandes
+         sache quelles échéances il couvre et de combien, sans avoir à
+         relire la fiche du code — qui aura pu changer entre-temps.
+         remise_livraison est le montant à déduire, en pesos, sur chacune
+         des livraisons couvertes. */
+      promo: remiseCode > 0 ? {
+        code: promo.id,
+        type: promo.type || "pourcentage",
+        valeur: Number(promo.valeur) || 0,
+        rayons: Array.isArray(promo.rayons) ? promo.rayons.filter(Boolean) : [],
+        plan_entier: planEntier(),
+        remise_livraison: remiseCode,
+        livraisons_couvertes: couvertes
+      } : null,
       option: { nom: o.nom, type: o.type || "", lieu: o.lieu || "" },
       cadence,
       nb_livraisons: nombre,
