@@ -303,14 +303,15 @@ function prixAbonne(plein) {
 
 /* ---------- Code promo ----------
    Même règle que partout : pas de cumul, le plus avantageux l'emporte.
-   La seule particularité de l'abonnement est la durée — un code peut
-   ne valoir que pour la première livraison, ou courir sur tout le plan
-   selon le champ plan_entier de sa fiche. Un code à 15 % sur huit
-   livraisons coûte huit fois ; le défaut est donc la première seule. */
+   La seule particularité de l'abonnement est la durée. Un code couvre
+   tout le plan par défaut, ce qui correspond à des codes durables liés
+   à une population — le tarif des profs, par exemple. Le champ
+   premiere_livraison_seulement permet de restreindre un code ponctuel
+   (bienvenue, geste commercial) à sa seule première échéance. */
 let promo = null;
 
 function planEntier() {
-  return !!(promo && promo.plan_entier === true);
+  return !(promo && promo.premiere_livraison_seulement === true);
 }
 
 function livraisonsCouvertes_promo() {
@@ -828,7 +829,7 @@ $("btnSouscrire").onclick = async () => {
         type: promo.type || "pourcentage",
         valeur: Number(promo.valeur) || 0,
         rayons: Array.isArray(promo.rayons) ? promo.rayons.filter(Boolean) : [],
-        plan_entier: planEntier(),
+        premiere_livraison_seulement: !planEntier(),
         remise_livraison: remiseCode,
         livraisons_couvertes: couvertes
       } : null,
