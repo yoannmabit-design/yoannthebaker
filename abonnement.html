@@ -45,6 +45,7 @@
   .rayon-groupe:first-child .rayon-titre{margin-top:4px}
   .produit .nom{flex:1;min-width:0}
   .produit .prix{font-size:16px;color:var(--encre-doux)}
+  .produit .prix .plein{text-decoration:line-through;opacity:.6;margin-right:3px}
   .compteur{display:flex;align-items:center;gap:9px}
   .compteur button{
     width:36px;height:36px;border-radius:50%;border:1px solid var(--trait);
@@ -214,6 +215,20 @@ async function charger() {
       return;
     }
 
+    /* Les abonnements s'adressent aux particuliers. Un compte porteur
+       d'une remise professionnelle — Reseller, Bulk order — relève d'un
+       accord négocié de vive voix, pas d'un plan en libre-service : on
+       le renvoie vers la boulangerie plutôt que de lui proposer un
+       tarif qui ne correspond pas à son usage. */
+    if (Number(compte.remise) > 0) {
+      $("page").innerHTML =
+        '<div class="message">Bread plans are for individual customers.<br><br>' +
+        "If you'd like a regular order for your business, just message us — " +
+        'we\'ll set up something that fits.<br><br>' +
+        '<a href="./">Back to the menu</a></div>';
+      return;
+    }
+
     produits = [];
     cat.forEach(s => {
       const d = s.data();
@@ -221,7 +236,9 @@ async function charger() {
       // Champ absent = proposé : un produit publié avant l'existence de ce
       // réglage reste disponible à l'abonnement.
       if (d.abonnement === false) return;
-      produits.push({ code: d.code || s.id, nom: d.nom, prix: Number(d.prix_vente) || 0,
+      produits.push({ code: d.code || s.id, nom: d.nom,
+                      prix_plein: Number(d.prix_vente) || 0,
+                      prix: prixAbonne(Number(d.prix_vente) || 0),
                       categorie: d.categorie || "Autres", rayon: rayon(d) });
     });
     produits.sort((a, b) =>
@@ -234,6 +251,26 @@ async function charger() {
     console.error(e);
     $("page").innerHTML = '<div class="message">Something went wrong. Please refresh.</div>';
   }
+}
+
+/* ---------- Remise abonnement ----------
+   Contrepartie de l'engagement, accordée sur tout ce qui est proposé à
+   l'abonnement. Elle ne se cumule avec rien : les comptes porteurs d'une
+   remise professionnelle n'accèdent pas à cette page, et la question de
+   l'arbitrage ne se pose donc pas.
+
+   Le taux se règle dans parametres/boutique (abonnements.remise), pour
+   pouvoir être ajusté sans retoucher au code. */
+function tauxAbonnement() {
+  const v = Number(abo.remise);
+  return Number.isFinite(v) && v >= 0 && v < 100 ? v : 5;
+}
+
+function prixAbonne(plein) {
+  const t = tauxAbonnement();
+  if (!t) return plein;
+  // Arrondi au peso : les prix affichés au client restent entiers.
+  return Math.round(plein * (100 - t) / 100);
 }
 
 /* ---------- Formulaire ---------- */
@@ -315,8 +352,13 @@ function construire() {
     }
     const el = document.createElement("div");
     el.className = "produit";
+    // Le prix plein barré rend la remise visible là où elle s'applique,
+    // plutôt que dans une ligne de total que personne ne rapproche.
     el.innerHTML = `
-      <div class="nom"><div></div><div class="prix">${peso(p.prix)}</div></div>
+      <div class="nom"><div></div><div class="prix">${
+        p.prix < p.prix_plein
+          ? `<span class="plein">${peso(p.prix_plein)}</span> ${peso(p.prix)}`
+          : peso(p.prix)}</div></div>
       <div class="compteur">
         <button type="button" class="moins">−</button>
         <span class="n">0</span>
@@ -538,7 +580,12 @@ function majRecap() {
   const normal = o.tarif_variable ? 0 : (Number(o.tarif) || 0);
   const parLivraison = panier + frais;
   const total = parLivraison * nombre;
-  const economie = Math.max(0, (normal - frais)) * nombre;
+  // L'économie annoncée couvre les deux volets : la remise sur les
+  // produits et, le cas échéant, le tarif de livraison abonné.
+  const panierPlein = lignes.reduce((t, p) => t + p.prix_plein * choix[p.code], 0);
+  const economieProduits = Math.max(0, panierPlein - panier) * nombre;
+  const economiePort = Math.max(0, normal - frais) * nombre;
+  const economie = economieProduits + economiePort;
 
   let html = lignes.map(p =>
     `<div class="l"><span><span class="q">${choix[p.code]} ×</span> ${ech(p.nom)}</span>
@@ -552,7 +599,12 @@ function majRecap() {
   html += `<div class="l somme"><span>${nombre} deliveries</span><span>${peso(total)}</span></div>`;
 
   $("recap").innerHTML = html +
-    (economie > 0 ? `<div class="economie">You save ${peso(economie)} on delivery</div>` : "");
+    (economie > 0
+      ? `<div class="economie">You save ${peso(economie)}${
+          economieProduits > 0 && economiePort > 0 ? " on this plan"
+          : economieProduits > 0 ? ` — ${tauxAbonnement()}% subscriber discount`
+          : " on delivery"}</div>`
+      : "");
 
   majCredit(parLivraison);
 
@@ -615,7 +667,12 @@ $("btnSouscrire").onclick = async () => {
     const ref = await addDoc(collection(db, "abonnements"), {
       statut: "nouveau",
       client: { uid: user.uid, nom, telephone: tel, email: user.email || "", adresse },
-      panier: lignes.map(p => ({ code: p.code, nom: p.nom, qte: choix[p.code], prix: p.prix })),
+      // Le prix appliqué est figé ici : une évolution ultérieure du taux
+      // ou du tarif ne doit pas modifier un plan déjà souscrit. Le prix
+      // plein et le taux sont conservés pour la trace.
+      panier: lignes.map(p => ({ code: p.code, nom: p.nom, qte: choix[p.code],
+                                 prix: p.prix, prix_plein: p.prix_plein })),
+      remise_abonnement: tauxAbonnement(),
       option: { nom: o.nom, type: o.type || "", lieu: o.lieu || "" },
       cadence,
       nb_livraisons: nombre,
