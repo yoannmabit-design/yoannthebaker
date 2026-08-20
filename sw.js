@@ -11,7 +11,7 @@
    hors-ligne.
    ============================================================ */
 
-const VERSION = 'yfb-boutique-v6';
+const VERSION = 'yfb-boutique-v7';
 
 const ESSENTIELS = [
   './',
