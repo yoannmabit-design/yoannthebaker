@@ -88,6 +88,17 @@
     cursor:pointer;margin-top:9px;
   }
   .invite .sous{margin-top:12px;font-size:14.5px;color:var(--encre-doux);line-height:1.5}
+  /* Volontairement plus discret que .canal.principal : une ligne fine,
+     pas un bloc avec titre/texte, pour rester secondaire à toute autre
+     information de la page — teinte WhatsApp à peine posée, juste assez
+     pour être reconnaissable au premier coup d'œil. */
+  .bandeau-whatsapp{
+    display:flex;align-items:center;gap:10px;
+    margin-top:22px;padding:12px 15px;
+    background:#e9f6ee;border:1px solid #cfe9d9;border-radius:var(--r);
+    color:#1f6e42;text-decoration:none;font-size:15.5px;
+  }
+  .bandeau-whatsapp .fleche{margin-left:auto;opacity:.6}
   .retour{display:block;text-align:center;margin-top:26px;color:var(--accent);font-size:17px}
   .message{padding:60px 20px;text-align:center;color:var(--encre-doux)}
   .message a{color:var(--accent)}
@@ -309,6 +320,12 @@ function afficher() {
         now won't attach it, but the next one will follow you.
       </p>
     </div>`}
+
+    <a class="bandeau-whatsapp"
+       href="https://chat.whatsapp.com/DjFlCWcoaZBIXZcXugACLy?mode=ems_copy_t"
+       target="_blank" rel="noopener">
+      Stay updated — join our WhatsApp group<span class="fleche">&#8250;</span>
+    </a>
 
     <a class="retour" href="./">Back to the menu</a>
   `;
