@@ -261,6 +261,15 @@
   @media (max-width:420px){
     .compteur button{width:36px;height:36px}
   }
+  .recherche-produits{margin:0 0 22px}
+  .recherche-produits input{
+    width:100%;box-sizing:border-box;padding:11px 14px;
+    border:1px solid var(--trait);border-radius:var(--r);
+    font:inherit;font-size:16px;color:var(--encre);background:#fff;
+  }
+  .recherche-produits input:focus{
+    outline:2px solid var(--accent);outline-offset:1px;
+  }
 </style>
 </head>
 <body>
@@ -278,6 +287,11 @@
 <div class="avis" id="avis" hidden></div>
 
 <nav class="rayons" id="rayons" hidden></nav>
+
+<div class="recherche-produits">
+  <input type="search" id="rechercheProduits"
+         placeholder="Search a product…" aria-label="Search a product">
+</div>
 
 <div class="reprise" id="reprise" hidden></div>
 
@@ -445,6 +459,19 @@ async function demarrer() {
 
     afficher();
     proposerDerniere();
+
+    // Champ de recherche : posé une fois le catalogue chargé (les produits
+    // existent déjà). Léger anti-rebond pour ne pas re-filtrer à chaque
+    // frappe sur les catalogues un peu longs.
+    const champRecherche = $("rechercheProduits");
+    let attente;
+    champRecherche.addEventListener("input", () => {
+      clearTimeout(attente);
+      attente = setTimeout(() => {
+        filtreRecherche = champRecherche.value;
+        afficher();
+      }, 120);
+    });
   } catch (e) {
     console.error(e);
     $("catalogue").innerHTML =
@@ -480,6 +507,20 @@ function proposerDerniere() {
 }
 
 /* ---------- Affichage ---------- */
+let filtreRecherche = "";
+
+// Insensible aux accents : "eclair" doit trouver "éclair".
+function normaliser(s) {
+  return String(s || "").toLowerCase()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+}
+
+function correspond(p, terme) {
+  if (!terme) return true;
+  return normaliser(p.nom).includes(terme) ||
+         normaliser(p.description_client).includes(terme);
+}
+
 function afficher() {
   const zone = $("catalogue");
 
@@ -494,8 +535,18 @@ function afficher() {
     return;
   }
 
+  const terme = normaliser(filtreRecherche.trim());
+  const visibles = produits.filter(p => correspond(p, terme));
+
+  if (terme && !visibles.length) {
+    zone.innerHTML = '<div class="message">No product matches your search.</div>';
+    $("rayons").hidden = true;
+    majPanier();
+    return;
+  }
+
   const groupes = {};
-  produits.forEach(p => {
+  visibles.forEach(p => {
     const c = rayon(p);
     (groupes[c] = groupes[c] || []).push(p);
   });
