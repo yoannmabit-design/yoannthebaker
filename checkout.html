@@ -408,16 +408,18 @@ function construire() {
       <h2>Where would you like to get it?</h2>
       <div id="listeOptions"></div>
       <div id="blocAdresse" hidden style="margin-top:14px">
-        <label class="champ"><span>Unit / floor / building <span class="option">optional</span></span>
+        <label class="champ"><span id="labelUnite">Unit / floor / building <span class="option">optional</span></span>
           <input type="text" id="adrUnite" autocomplete="address-line2"
                  placeholder="Unit 5B, Solstice Tower"></label>
-        <label class="champ"><span>House number and street</span>
-          <input type="text" id="adrRue" autocomplete="address-line1"
-                 placeholder="128 Rada Street"></label>
-        <label class="champ"><span>Barangay</span>
-          <input type="text" id="adrBarangay" autocomplete="address-level3"
-                 placeholder="San Lorenzo"></label>
-        <div id="blocVille"></div>
+        <div id="blocAdresseComplete">
+          <label class="champ"><span>House number and street</span>
+            <input type="text" id="adrRue" autocomplete="address-line1"
+                   placeholder="128 Rada Street"></label>
+          <label class="champ"><span>Barangay</span>
+            <input type="text" id="adrBarangay" autocomplete="address-level3"
+                   placeholder="San Lorenzo"></label>
+          <div id="blocVille"></div>
+        </div>
       </div>
     </div>
 
@@ -976,6 +978,13 @@ function majOption() {
     c.classList.toggle("actif", options[Number(c.dataset.i)] === o));
 
   $("blocAdresse").hidden = !o.demander_adresse;
+  // Adresse déjà connue (ex: point de livraison fixe dans un immeuble) :
+  // seul le numéro d'unité identifie le destinataire, le reste ne sert à
+  // rien puisque la rue/barangay/ville ne varient pas d'un client à l'autre.
+  $("blocAdresseComplete").hidden = !!o.adresse_connue;
+  $("labelUnite").innerHTML = o.adresse_connue
+    ? "Unit / floor number"
+    : 'Unit / floor / building <span class="option">optional</span>';
 
   // Le calendrier repart du premier jour compatible avec cette option.
   const delai = Number(params.delai_min_heures) || 0;
@@ -1178,9 +1187,13 @@ $("btnEnvoyer").onclick = async () => {
   if (nom.length < 2)  return echec("Please enter your name.");
   if (tel.length < 10) return echec("Please enter a valid mobile number.");
   if (o.demander_adresse) {
-    if (!detail.rue)      return echec("Please enter your house number and street.");
-    if (!detail.barangay) return echec("Please enter your barangay.");
-    if (!detail.ville)    return echec("Please choose your city.");
+    if (o.adresse_connue) {
+      if (!detail.unite) return echec("Please enter your unit / floor number.");
+    } else {
+      if (!detail.rue)      return echec("Please enter your house number and street.");
+      if (!detail.barangay) return echec("Please enter your barangay.");
+      if (!detail.ville)    return echec("Please choose your city.");
+    }
   }
   if (!dateChoisie) return echec("Please choose a date.");
 
