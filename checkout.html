@@ -1313,7 +1313,12 @@ $("btnEnvoyer").onclick = async () => {
     window.location.href = "confirmation.html";
   } catch (e) {
     console.error(e);
-    echec("Your order could not be sent. Please check your connection and try again.");
+    // Un refus des règles Firestore ("permission-denied") n'est pas un
+    // problème de réseau : le dire clairement évite au client de
+    // s'acharner à recharger la page pour rien.
+    echec(e && e.code === "permission-denied"
+      ? "Your order could not be sent — please try again, or sign in if the problem continues."
+      : "Your order could not be sent. Please check your connection and try again.");
   }
 };
 
