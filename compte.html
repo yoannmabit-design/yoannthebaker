@@ -11,6 +11,7 @@
     --creme:#fdf6ec;--papier:#fffdf9;--encre:#1a1a1a;
     --encre-doux:#6b6157;--trait:#e2d7c6;--accent:#2f4858;
     --ok:#3d6b3d;--alerte:#8c2f22;--r:6px;
+    --vide:#5a5285;--recent:#a85a1c;
   }
   *{box-sizing:border-box}
   body{
@@ -30,6 +31,11 @@
     border-radius:var(--r);padding:20px;margin-bottom:16px;
   }
   .bloc h2{font-size:17px;margin:0 0 12px}
+  /* Liseré : violet quand le bloc n'a rien à montrer, orange quand son
+     contenu le plus récent date de moins d'une semaine. Un seul état à
+     la fois — le plus significatif (récent) l'emporte s'il s'applique. */
+  .bloc.liserE-vide{border-left:4px solid var(--vide)}
+  .bloc.liserE-recent{border-left:4px solid var(--recent)}
 
   .solde{text-align:center;padding:26px 20px}
   .solde .montant{
@@ -651,6 +657,20 @@ async function ecranCompte(user) {
       }).join("")
     : '<div class="vide">No activity yet.</div>';
 
+  // Violet si rien à montrer, orange si le plus récent élément date de
+  // moins d'une semaine — sur les deux seuls blocs qui ont une vraie
+  // notion de contenu/liste datée (commandes, mouvements de crédit).
+  // Un échec de lecture (commandesLues = false) n'est pas un contenu
+  // vide : pas de liseré dans ce cas, pour ne pas afficher un violet
+  // trompeur alors que la vraie cause est un problème de chargement.
+  const ilYA7JOURS = new Date(Date.now() - 7 * 86400000).toISOString();
+  function classeListe(items, champDate) {
+    if (!items.length) return "liserE-vide";
+    return String(items[0][champDate] || "") >= ilYA7JOURS ? "liserE-recent" : "";
+  }
+  const classeCommandes = commandesLues ? classeListe(commandes, "cree_le") : "";
+  const classeMouvements = classeListe(mouvements, "quand");
+
   /* Un client sans abonnement ne voit pas de bloc vide : la place est
      rendue au reste de la page. */
   const listeAbonnements = !abonnementsLus
@@ -683,7 +703,7 @@ async function ecranCompte(user) {
 
     ${listeAbonnements}
 
-    <div class="bloc">
+    <div class="bloc ${classeCommandes}">
       <h2>Your last orders</h2>
       ${listeCommandes}
       ${commandes.length >= DERNIERES
@@ -691,7 +711,7 @@ async function ecranCompte(user) {
         : ""}
     </div>
 
-    <div class="bloc">
+    <div class="bloc ${classeMouvements}">
       <h2>Store credit activity</h2>
       ${histo}
     </div>
