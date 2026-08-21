@@ -83,6 +83,14 @@
   .choix input{width:auto;margin-top:3px;flex-shrink:0}
   .choix .t{font-weight:600;font-size:17px}
   .choix .d{font-size:14.5px;color:var(--encre-doux);margin-top:3px}
+  .choix .qr{display:block;margin-top:11px}
+  .choix .qr img{
+    display:block;width:172px;max-width:100%;height:auto;
+    border:1px solid var(--trait);border-radius:var(--r);background:#fff;
+  }
+  .choix .qr a{
+    display:inline-block;margin-top:7px;font-size:15px;color:var(--accent);
+  }
 
   .pastilles{display:flex;gap:9px;flex-wrap:wrap}
   .pastilles button{
@@ -857,19 +865,96 @@ $("btnSouscrire").onclick = async () => {
           ${nombre} deliveries, starting ${dates[0]}.<br><br>
           ${modePaiement === "credit"
             ? "Each delivery will be taken from your store credit."
-            : "We will contact you to arrange the payment of " + peso(total) + "."}
+            : "Please pay " + peso(total) + " using one of the options below."}
         </p>
-        <p style="margin-top:22px">
+      </div>
+      ${modePaiement === "credit" ? "" : `
+      <div class="bloc" id="blocPaiementAbo"></div>`}
+      <div class="bloc" style="text-align:center">
+        <p>
           <a href="compte.html" style="color:var(--accent)">See my account</a> ·
           <a href="./" style="color:var(--accent)">Back to the menu</a>
         </p>
       </div>`;
     $("pied").hidden = true;
+    // Le bouton promettait "Pay for all deliveries now" : sans cet écran,
+    // la cliente se retrouvait avec un simple texte "on vous recontacte"
+    // et aucun moyen d'agir tout de suite — d'où la confusion signalée.
+    if (modePaiement !== "credit") construirePaiementAbonnement(total);
   } catch (e) {
     console.error(e);
     echec("Your bread plan could not be saved. Please try again.");
   }
 };
+
+/* Écran de paiement affiché après souscription en mode "avance" — mêmes
+   moyens et mêmes données que le checkout (params.paiement), sans le
+   cash à la livraison : un abonnement se paie d'avance pour plusieurs
+   livraisons futures, la remise à la livraison n'a pas de sens ici.
+   Purement informatif, rien n'est ré-écrit en Firestore depuis cet
+   écran — vous confirmez le paiement manuellement depuis l'admin. */
+function construirePaiementAbonnement(total) {
+  const pay = params.paiement || {};
+  const g = pay.gcash  || { nom: pay.gcash_nom, numero: pay.gcash_numero };
+  const m = pay.maya   || {};
+  const b = pay.banque || { nom: pay.banque_nom,
+                            titulaire: pay.banque_titulaire,
+                            numero: pay.banque_numero };
+  const choix = [];
+
+  if (g.numero || g.qr) choix.push({
+    titre: "GCash", qr: g.qr, detail: [g.numero, g.nom].filter(Boolean).join(" — ")
+  });
+  if (m.numero || m.qr) choix.push({
+    titre: "Maya", qr: m.qr, detail: [m.numero, m.nom].filter(Boolean).join(" — ")
+  });
+  if (b.numero || b.qr) choix.push({
+    titre: "Bank transfer", qr: b.qr,
+    detail: [b.nom, b.titulaire, b.numero].filter(Boolean).join(" — ")
+  });
+
+  const zone = $("blocPaiementAbo");
+  if (!choix.length) {
+    zone.innerHTML =
+      '<p style="color:var(--encre-doux)">We will contact you to arrange the payment of '
+      + peso(total) + ".</p>";
+    return;
+  }
+
+  zone.innerHTML = '<h2 style="font-size:17px;margin:0 0 12px">How to pay</h2>' +
+    (pay.instructions
+      ? `<p style="color:var(--encre-doux);font-size:15px;margin:0 0 14px">${
+          echapperTexte(pay.instructions)}</p>` : "");
+
+  choix.forEach(c => {
+    const l = document.createElement("div");
+    l.className = "choix";
+    l.innerHTML = `
+      <span style="flex:1"><span class="t"></span>
+      <span class="d"></span>
+      ${c.qr ? '<span class="qr"></span>' : ""}</span>`;
+    l.querySelector(".t").textContent = c.titre;
+    l.querySelector(".d").textContent = c.detail;
+    if (c.qr) {
+      const boite = l.querySelector(".qr");
+      const img = document.createElement("img");
+      img.src = c.qr;
+      img.alt = c.titre + " QR code";
+      img.loading = "lazy";
+      const lien = document.createElement("a");
+      lien.href = c.qr;
+      lien.download = "";
+      lien.textContent = "Save QR code";
+      boite.append(img, lien);
+    }
+    zone.appendChild(l);
+  });
+}
+
+function echapperTexte(t) {
+  return String(t ?? "").replace(/[&<>"]/g, x =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[x]));
+}
 
 function echec(texte) {
   $("erreur").textContent = texte;
