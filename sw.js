@@ -23,6 +23,7 @@ const ESSENTIELS = [
   './compte.html',
   './abonnement.html',
   './confirmation.html',
+  './confirmation-abonnement.html',
   './manifest.json',
   './logo.jpg'
 ];
