@@ -13,6 +13,8 @@
    code pour le même prix.
 
    La remise ne porte jamais sur les frais de retrait ou de livraison.
+
+   Un code ne vaut qu'une fois par client — voir usagesClient().
    ============================================================ */
 
 import { doc, getDoc }
@@ -96,7 +98,60 @@ export async function chargerCode(db, saisie) {
    Les bornes de dates sont vides tant que l'étape suivante n'est pas
    livrée : le test est sans effet aujourd'hui, mais un code daté saisi
    à la main dans Firestore sera déjà respecté. */
-export function verifierCode(fiche, { connecte = false, quand = new Date() } = {}) {
+/* ---------- Usage par client ----------
+   Un code ne vaut qu'une fois par personne. Le comptage porte sur ce que
+   le client a déjà engagé : ses commandes libres portant ce code, et ses
+   abonnements l'ayant retenu.
+
+   Un abonnement ne compte que pour un usage, même s'il produit huit
+   commandes : celles-ci portent un abonnement_id et sont donc écartées,
+   l'usage étant déjà porté par l'abonnement lui-même.
+
+   Les commandes annulées et les abonnements arrêtés ne consomment rien :
+   un client dont la commande n'a pas abouti n'a pas usé son droit.
+
+   Les fonctions Firestore sont passées en paramètre plutôt qu'importées
+   ici : ce module est chargé par des pages qui ont déjà leur propre jeu
+   d'imports, et rien ne justifie d'en tirer un second.
+
+   Ce contrôle vit côté client et se contournerait en trafiquant la page.
+   C'est une barrière, pas un coffre-fort — suffisant pour des codes
+   distribués à des populations connues.
+
+   Renvoie le nombre d'usages déjà consommés. En cas d'échec de lecture,
+   renvoie 0 : mieux vaut laisser passer un code que bloquer un client
+   sur une panne réseau. */
+export async function usagesClient(db, uid, code, fs) {
+  const id = normaliserCode(code);
+  if (!db || !uid || !id || !fs) return 0;
+  const { collection, query, where, getDocs, limit } = fs;
+  let n = 0;
+
+  try {
+    const s = await getDocs(query(collection(db, "commandes"),
+                                  where("compte_uid", "==", uid), limit(100)));
+    s.forEach(d => {
+      const c = d.data() || {};
+      if (c.abonnement_id) return;
+      if (c.statut === "annulee") return;
+      if (c.code_promo && c.code_promo.code === id) n += 1;
+    });
+  } catch (e) { console.error(e); }
+
+  try {
+    const s = await getDocs(query(collection(db, "abonnements"),
+                                  where("client.uid", "==", uid), limit(50)));
+    s.forEach(d => {
+      const a = d.data() || {};
+      if (a.statut === "arrete") return;
+      if (a.promo && a.promo.code === id) n += 1;
+    });
+  } catch (e) { console.error(e); }
+
+  return n;
+}
+
+export function verifierCode(fiche, { connecte = false, quand = new Date(), usages = 0 } = {}) {
   if (!fiche)            return { ok: false, message: "We don't recognise that code." };
   if (fiche.actif === false)
     return { ok: false, message: "That code is no longer available." };
@@ -113,6 +168,12 @@ export function verifierCode(fiche, { connecte = false, quand = new Date() } = {
 
   const valeur = Number(fiche.valeur) || 0;
   if (valeur <= 0) return { ok: false, message: "That code is no longer available." };
+
+  // Une fois par personne. Le refus est prononcé dès l'application du
+  // code, pas au moment de valider : inutile de composer tout un panier
+  // pour apprendre ensuite que le code ne vaut plus.
+  if (Number(usages) > 0)
+    return { ok: false, message: "You've already used this code." };
 
   return { ok: true };
 }
