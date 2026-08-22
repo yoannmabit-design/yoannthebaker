@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Order received — Yoann's French Bakery</title>
+<title>Bread plan set — Yoann's French Bakery</title>
 <meta name="theme-color" content="#1a1a1a">
 <link rel="icon" href="logo.jpg">
 <style>
@@ -35,9 +35,8 @@
   }
   .bloc h2{font-size:17px;margin:0 0 13px}
 
-  /* Étapes numérotées : le paiement, l'envoi des détails, et le
-     téléchargement quand il y a lieu. Le numéro est dans le titre pour que
-     l'ordre de lecture et l'ordre de la page ne puissent pas diverger. */
+  /* Étapes numérotées : même convention que la confirmation de commande,
+     pour que le client reconnaisse le même guidage d'un flux à l'autre. */
   .bloc h2.etape{display:flex;align-items:center;gap:10px}
   .num{
     flex-shrink:0;width:26px;height:26px;border-radius:50%;
@@ -46,21 +45,9 @@
     font-size:15px;font-weight:600;line-height:1;
   }
 
-  /* Notices : le seul bloc de la page dont on repart avec quelque chose,
-     d'où le liseré jaune et le pictogramme. */
-  .bloc.notices{border-left:5px solid #e6a817;background:#fffcf2}
-  .bloc.notices .num{background:#e6a817;color:#3a2c05}
-  .canal.pdf{align-items:flex-start;gap:13px}
-  .canal.pdf .pict{flex-shrink:0;width:26px;height:32px;margin-top:1px}
-  .canal.pdf .intitule{display:flex;flex-direction:column;gap:2px;min-width:0}
-  .canal.pdf .intitule .titre{overflow-wrap:anywhere}
-  .canal.pdf .intitule .format{
-    font-size:13.5px;color:var(--encre-doux);letter-spacing:.04em;
-  }
-  .canal.pdf .fleche{align-self:center}
-
   .l{display:flex;justify-content:space-between;gap:14px;padding:4px 0;font-size:17px}
   .l .q{color:var(--encre-doux)}
+  .l.remise span:last-child{color:#3d6b3d}
   .l.somme{
     border-top:1px solid var(--trait);margin-top:9px;padding-top:11px;
     font-weight:600;font-size:20px;
@@ -88,10 +75,6 @@
     cursor:pointer;margin-top:9px;
   }
   .invite .sous{margin-top:12px;font-size:14.5px;color:var(--encre-doux);line-height:1.5}
-  /* Volontairement plus discret que .canal.principal : une ligne fine,
-     pas un bloc avec titre/texte, pour rester secondaire à toute autre
-     information de la page — teinte WhatsApp à peine posée, juste assez
-     pour être reconnaissable au premier coup d'œil. */
   .bandeau-whatsapp{
     display:flex;align-items:center;gap:10px;
     margin-top:22px;padding:12px 15px;
@@ -108,7 +91,7 @@
 
 <header>
   <div class="coche">&#10003;</div>
-  <h1>Order received</h1>
+  <h1>Bread plan set</h1>
   <p class="ref" id="ref"></p>
 </header>
 
@@ -118,7 +101,7 @@
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getFirestore, doc, getDoc, collection, getDocs }
+import { getFirestore, doc, getDoc }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -136,120 +119,101 @@ const peso = (n) => "₱" + Number(n).toLocaleString("en-PH");
 const echapper = (t) => String(t).replace(/[&<>"]/g, c =>
   ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
-const NOMS_PAIEMENT = {
-  gcash: "GCash", maya: "Maya", virement: "Bank transfer", especes: "Cash"
-};
-
-let commande = null, params = {};
-
-let notices = [];   // { nom, fichier, taille } des produits commandés
-
-/* Pictogramme PDF : une feuille cornée portant la mention. Dessiné ici plutôt
-   qu'appelé en image — un fichier de moins à charger, et il suit la couleur
-   du texte. */
-const PICTO_PDF = `
-  <svg class="pict" viewBox="0 0 24 30" aria-hidden="true">
-    <path d="M2 1h13l7 7v20a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1z"
-          fill="#fff" stroke="#c9a227" stroke-width="1.4"/>
-    <path d="M15 1v7h7" fill="none" stroke="#c9a227" stroke-width="1.4"/>
-    <text x="12" y="23" text-anchor="middle" font-size="7.5"
-          font-family="ui-sans-serif,sans-serif" font-weight="700"
-          fill="#b3891a">PDF</text>
-  </svg>`;
+/* Ce que la page a besoin de connaître d'un abonnement, posé par
+   abonnement.html juste après l'écriture Firestore. Contrairement à la
+   confirmation de commande, tout est déjà dans ce seul objet — un
+   abonnement n'a pas de fiche produit annexe à relire pour des notices,
+   son panier est celui du plan et rien d'autre. */
+let plan = null, params = {};
 
 (async function () {
-  try { commande = JSON.parse(sessionStorage.getItem("commande") || "null"); } catch {}
+  try { plan = JSON.parse(sessionStorage.getItem("abonnement") || "null"); } catch {}
 
-  if (!commande) {
+  if (!plan) {
     $("page").innerHTML =
-      '<div class="message">We could not find your order on this device.<br><br>' +
+      '<div class="message">We could not find your bread plan on this device.<br><br>' +
       '<a href="./">Back to the menu</a></div>';
     return;
   }
 
-  $("ref").textContent = "Reference " + commande.numero;
+  $("ref").textContent = "Reference " + plan.id;
 
   try {
     const p = await getDoc(doc(db, "parametres", "boutique"));
     params = p.exists() ? p.data() : {};
   } catch (e) { console.error(e); }
 
-  /* Notices de mise en œuvre : une pâte surgelée ou des croissants prêts à
-     cuire ne se devinent pas. On ne les cherche que pour les produits de
-     cette commande, et leur absence ne bloque rien. */
-  try {
-    const cat = await getDocs(collection(db, "boutique_produits"));
-    const codes = new Set((commande.panier || []).map(l => l.code).filter(Boolean));
-    cat.forEach(d => {
-      const v = d.data();
-      if (codes.has(d.id) && v.notice) {
-        notices.push({ nom: v.nom || d.id, fichier: v.notice, taille: "" });
-      }
-    });
-
-    /* Poids du fichier, quand le serveur veut bien le dire : sur données
-       mobiles, savoir ce qu'on télécharge avant de l'ouvrir compte. Une
-       requête qui échoue laisse simplement la mention « PDF » seule. */
-    await Promise.all(notices.map(async n => {
-      try {
-        const r = await fetch(n.fichier, { method: "HEAD" });
-        const octets = Number(r.headers.get("content-length")) || 0;
-        if (octets > 0) {
-          n.taille = octets >= 1048576
-            ? (octets / 1048576).toFixed(1).replace(".", ",") + " MB"
-            : Math.max(1, Math.round(octets / 1024)) + " KB";
-        }
-      } catch {}
-    }));
-  } catch (e) { console.error(e); }
-
   afficher();
 })();
 
 function afficher() {
-  const c = commande;
+  const p = plan;
 
   /* --- Récapitulatif --- */
-  let recap = c.panier.map(l =>
+  let recap = (p.panier || []).map(l =>
     `<div class="l"><span><span class="q">${l.qte} ×</span> ${echapper(l.nom)}</span>
      <span>${peso(l.qte * l.prix)}</span></div>`).join("");
-  if (c.frais_a_confirmer)
-    recap += `<div class="l"><span>${echapper(c.option.nom)}</span><span>Confirmed later</span></div>`;
-  else if (c.frais_livraison > 0)
-    recap += `<div class="l"><span>${echapper(c.option.nom)}</span><span>${peso(c.frais_livraison)}</span></div>`;
-  recap += `<div class="l somme"><span>Total</span><span>${peso(c.total)}</span></div>`;
+
+  recap += `<div class="l"><span>Delivery${p.frais_livraison > 0 ? " (subscriber rate)" : ""}</span>
+            <span>${p.frais_livraison > 0 ? peso(p.frais_livraison) : "free"}</span></div>`;
+  recap += `<div class="l"><span>Per delivery</span><span>${peso(p.par_livraison)}</span></div>`;
+
+  if (p.remise_code > 0) {
+    recap += `<div class="l remise"><span>${echapper(p.code || "Promo code")}${
+      p.livraisons_couvertes > 1 ? " × " + p.livraisons_couvertes + " deliveries" : " (first delivery)"}</span>
+      <span>−${peso(p.remise_code * p.livraisons_couvertes)}</span></div>`;
+  }
+
+  recap += `<div class="l somme"><span>${p.nombre} deliveries</span><span>${peso(p.total)}</span></div>`;
 
   /* --- Étapes --- */
-  /* Le numéro se calcule sur les blocs réellement affichés : un règlement en
-     espèces ou une commande sans notice ne doit pas laisser de trou dans la
-     suite. */
   let etape = 0;
   const num = () => `<span class="num">${++etape}</span>`;
 
-  /* --- Paiement --- */
-  const pay = params.paiement || {};
-  const source = { gcash: pay.gcash, maya: pay.maya, virement: pay.banque }[c.paiement.methode];
+  /* --- Paiement ---
+     Même bloc que la confirmation de commande : QR et instructions
+     réaffichés ici, plutôt que de renvoyer le client vers un écran
+     déjà fermé. En crédit, rien n'est débité avant la première
+     livraison — pas de moyen de paiement à montrer. */
   let blocPaiement = "";
-
-  if (c.paiement.methode === "especes") {
+  if (p.mode === "credit") {
     blocPaiement = `<div class="bloc"><h2 class="etape">${num()}Payment</h2>
-      <p class="info">Pay in cash when you collect or receive your order.</p></div>`;
-  } else if (source) {
-    const details = [source.nom, source.titulaire, source.numero].filter(Boolean).join(" — ");
-    blocPaiement = `<div class="bloc paiement">
-      <h2 class="etape">${num()}Pay by ${NOMS_PAIEMENT[c.paiement.methode]}</h2>
-      <p class="info"><b>${echapper(details)}</b></p>
-      <p class="info">Amount: <b>${peso(c.total)}</b></p>
-      ${source.qr ? `<img src="${echapper(source.qr)}" alt="QR code">
-        <a class="sauver" href="${echapper(source.qr)}" download>Save QR code</a>` : ""}
-      ${pay.instructions ? `<p class="info" style="margin-top:12px">${echapper(pay.instructions)}</p>` : ""}
-    </div>`;
+      <p class="info">Each delivery will be taken from your store credit
+      when it's confirmed.</p></div>`;
+  } else {
+    const pay = params.paiement || {};
+    const g = pay.gcash  || { nom: pay.gcash_nom, numero: pay.gcash_numero };
+    const m = pay.maya   || {};
+    const b = pay.banque || { nom: pay.banque_nom, titulaire: pay.banque_titulaire,
+                              numero: pay.banque_numero };
+    const choix = [];
+    if (g.numero || g.qr) choix.push({ titre: "GCash", qr: g.qr,
+      detail: [g.numero, g.nom].filter(Boolean).join(" — ") });
+    if (m.numero || m.qr) choix.push({ titre: "Maya", qr: m.qr,
+      detail: [m.numero, m.nom].filter(Boolean).join(" — ") });
+    if (b.numero || b.qr) choix.push({ titre: "Bank transfer", qr: b.qr,
+      detail: [b.nom, b.titulaire, b.numero].filter(Boolean).join(" — ") });
+
+    if (choix.length) {
+      blocPaiement = `<div class="bloc paiement">
+        <h2 class="etape">${num()}Payment</h2>
+        <p class="info">Amount: <b>${peso(p.total)}</b></p>
+        ${choix.map(c => `<p class="info" style="margin-top:10px"><b>${echapper(c.titre)}</b>
+          ${c.detail ? " — " + echapper(c.detail) : ""}</p>
+          ${c.qr ? `<img src="${echapper(c.qr)}" alt="${echapper(c.titre)} QR code">
+            <a class="sauver" href="${echapper(c.qr)}" download>Save QR code</a>` : ""}`).join("")}
+        ${pay.instructions ? `<p class="info" style="margin-top:12px">${echapper(pay.instructions)}</p>` : ""}
+      </div>`;
+    } else {
+      blocPaiement = `<div class="bloc"><h2 class="etape">${num()}Payment</h2>
+        <p class="info">Amount: <b>${peso(p.total)}</b></p>
+        <p class="info">We'll contact you to arrange the payment.</p></div>`;
+    }
   }
 
   /* --- Canaux --- */
-  const texte = messageCommande(c);
+  const texte = messagePlan(p);
   const canaux = [];
-
   if (params.whatsapp)
     canaux.push({ cle: "WhatsApp", url: "https://wa.me/" + params.whatsapp +
       "?text=" + encodeURIComponent(texte), principal: true });
@@ -259,75 +223,51 @@ function afficher() {
     canaux.push({ cle: "Messenger", url: "https://m.me/" + params.messenger });
   if (params.email)
     canaux.push({ cle: "Email", url: "mailto:" + params.email +
-      "?subject=" + encodeURIComponent("Order " + c.numero) +
+      "?subject=" + encodeURIComponent("Bread plan " + p.id) +
       "&body=" + encodeURIComponent(texte) });
 
   $("page").innerHTML = `
     <div class="bloc">
-      <h2>Your order</h2>
+      <h2>Your bread plan</h2>
       ${recap}
     </div>
 
     <div class="bloc">
-      <h2>Collection</h2>
-      <p class="info"><b>${echapper(c.option.nom)}</b></p>
-      ${c.option.lieu ? `<p class="info">${echapper(c.option.lieu)}</p>` : ""}
-      ${c.client.adresse ? `<p class="info">${echapper(c.client.adresse)}</p>` : ""}
-      <p class="info">${echapper(c.date_retrait)}${c.creneau ? " — " + echapper(c.creneau) : ""}</p>
+      <h2>Delivery</h2>
+      <p class="info"><b>${echapper(p.option?.nom || "")}</b></p>
+      ${p.option?.lieu ? `<p class="info">${echapper(p.option.lieu)}</p>` : ""}
+      ${p.adresse ? `<p class="info">${echapper(p.adresse)}</p>` : ""}
+      <p class="info">First delivery: ${echapper(p.dates[0])}</p>
+      <p class="info">Then every ${p.cadence === "quinzaine" ? "two weeks" : "week"},
+        ${p.nombre} deliveries in total.</p>
     </div>
 
     ${blocPaiement}
 
     <div class="bloc">
-      <h2 class="etape">${num()}Send us your order details</h2>
-      <p class="info" style="margin-bottom:12px">We have your order. Message us to confirm it and settle payment.</p>
+      <h2 class="etape">${num()}Send us your plan details</h2>
+      <p class="info" style="margin-bottom:12px">We have your plan. Message us to confirm it${
+        p.mode === "credit" ? "" : " and settle payment"}.</p>
+      ${canaux.length ? `
       <div class="canaux">
         ${canaux.map(x => `<a class="canal ${x.principal ? "principal" : ""}"
           href="${x.url}">${x.cle}<span class="fleche">&#8250;</span></a>`).join("")}
-      </div>
-      <button class="copier" id="copier">Copy order details</button>
+      </div>` : ""}
+      <button class="copier" id="copier">Copy plan details</button>
     </div>
 
-    ${notices.length ? `
-    <div class="bloc notices">
-      <h2 class="etape">${num()}Download your instructions</h2>
-      <p class="info" style="margin-bottom:12px">
-        Keep ${notices.length > 1 ? "these" : "this"} with you — ${notices.length > 1 ? "they explain" : "it explains"} the baking and the timing.
+    <div class="bloc" style="text-align:center">
+      <p>
+        <a href="compte.html" style="color:var(--accent)">See my account</a> ·
+        <a href="./" style="color:var(--accent)">Back to the menu</a>
       </p>
-      <div class="canaux">
-        ${notices.map(n => `<a class="canal pdf" href="${echapper(n.fichier)}"
-          target="_blank" rel="noopener" download>
-          ${PICTO_PDF}
-          <span class="intitule">
-            <span class="titre">${echapper(n.nom)}</span>
-            <span class="format">PDF${n.taille ? " · " + n.taille : ""}</span>
-          </span>
-          <span class="fleche">&#8681;</span></a>`).join("")}
-      </div>
-    </div>` : ""}
-
-    ${c.compte_uid ? "" : `
-    <div class="bloc invite">
-      <h2>Want to follow this order?</h2>
-      <p class="info">
-        With an account you can check where your order stands and whether we've
-        recorded your payment, find your past orders, keep your store credit and
-        use promo codes. Signing in takes two taps.
-      </p>
-      <a class="canal principal" href="compte.html">Create an account<span class="fleche">&#8250;</span></a>
-      <p class="info sous">
-        This order stays linked to the details you gave us — creating an account
-        now won't attach it, but the next one will follow you.
-      </p>
-    </div>`}
+    </div>
 
     <a class="bandeau-whatsapp"
        href="https://chat.whatsapp.com/DjFlCWcoaZBIXZcXugACLy?mode=ems_copy_t"
        target="_blank" rel="noopener">
       Stay updated — join our WhatsApp group<span class="fleche">&#8250;</span>
     </a>
-
-    <a class="retour" href="./">Back to the menu</a>
   `;
 
   $("copier").onclick = async () => {
@@ -335,27 +275,27 @@ function afficher() {
       await navigator.clipboard.writeText(texte);
       $("copier").textContent = "Copied";
     } catch {
-      $("copier").textContent = "Press and hold to copy: " + c.numero;
+      $("copier").textContent = "Press and hold to copy: " + p.id;
     }
   };
 }
 
-function messageCommande(c) {
+function messagePlan(p) {
   return [
-    `Order ${c.numero}`,
+    `Bread plan ${p.id}`,
     "",
-    ...c.panier.map(l => `${l.qte} × ${l.nom} — ${peso(l.qte * l.prix)}`),
+    ...(p.panier || []).map(l => `${l.qte} × ${l.nom} per delivery`),
     "",
-    c.frais_a_confirmer ? `${c.option.nom}: fare to confirm`
-      : (c.frais_livraison > 0 ? `${c.option.nom}: ${peso(c.frais_livraison)}` : null),
-    `Total: ${peso(c.total)}`,
+    `${p.nombre} deliveries × ${peso(p.par_livraison)}`,
+    p.remise_code > 0 ? `${p.code}: −${peso(p.remise_code * p.livraisons_couvertes)}` : null,
+    `Total: ${peso(p.total)}`,
     "",
-    `Name: ${c.client.nom}`,
-    `Option: ${c.option.nom}`,
-    c.client.adresse ? `Address: ${c.client.adresse}` : null,
-    `Date: ${c.date_retrait}${c.creneau ? " — " + c.creneau : ""}`,
-    `Payment: ${NOMS_PAIEMENT[c.paiement.methode]}`,
-    c.notes ? `Notes: ${c.notes}` : null
+    `Name: ${p.nom}`,
+    `Phone: ${p.tel}`,
+    `Option: ${p.option?.nom || ""}`,
+    p.adresse ? `Address: ${p.adresse}` : null,
+    `First delivery: ${p.dates[0]}`,
+    `Payment: ${p.mode === "credit" ? "Store credit" : "Paid in advance"}`
   ].filter(Boolean).join("\n");
 }
 </script>
