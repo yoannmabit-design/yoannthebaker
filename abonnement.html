@@ -186,14 +186,14 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getAuth, onAuthStateChanged }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import { getFirestore, collection, getDocs, doc, getDoc, addDoc, query, where, limit }
+import { getFirestore, collection, getDocs, doc, getDoc, addDoc }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 /* La règle d'arbitrage vit dans promo.js, partagée avec la vitrine et le
    checkout. Ici, le pourcentage mis en concurrence avec le code n'est pas
    un tarif de groupe mais la remise abonnement : le calcul est le même,
    seul le taux change. */
-import { normaliserCode, chargerCode, verifierCode, usagesClient,
+import { normaliserCode, chargerCode, verifierCode,
          calculerPrix, prixUnitaire, libelleCode, libellePortee }
   from "./promo.js";
 import { MAX_REPORTS } from "./abo.js";
@@ -407,12 +407,8 @@ async function appliquerCode() {
   etatPromo("Checking…");
   try {
     const fiche = await chargerCode(db, saisie);
-    // Le client est nécessairement connecté sur cette page. Un code déjà
-    // consommé — commande libre ou abonnement antérieur — est refusé ici,
-    // avant que le plan ne soit composé.
-    const usages = await usagesClient(db, user.uid, saisie,
-                                      { collection, query, where, getDocs, limit });
-    const v = verifierCode(fiche, { connecte: true, usages });
+    // Le client est nécessairement connecté sur cette page.
+    const v = verifierCode(fiche, { connecte: true });
     if (!v.ok) { promo = null; etatPromo(v.message, "err"); majRecap(); return; }
     promo = fiche;
     $("champCode").value = "";
@@ -894,76 +890,22 @@ $("btnSouscrire").onclick = async () => {
     });
 
     try {
+      /* Tout ce dont confirmation-abonnement.html a besoin, dans un seul
+         objet — même principe que checkout.html avec sessionStorage
+         "commande" : la page suivante n'a rien d'autre à relire, et
+         reste consultable après un rechargement. */
       sessionStorage.setItem("abonnement", JSON.stringify({
-        id: ref.id, nombre, parLivraison, total, dates, mode: modePaiement
+        id: ref.id, nom, tel, adresse,
+        panier: lignes.map(p => ({ nom: p.nom, qte: choix[p.code], prix: p.prix })),
+        par_livraison: parLivraison, nombre, total, dates, cadence,
+        mode: modePaiement, option: { nom: o.nom, lieu: o.lieu || "" },
+        frais_livraison: frais,
+        code: remiseCode > 0 ? promo.id : null,
+        remise_code: remiseCode, livraisons_couvertes: couvertes
       }));
     } catch {}
 
-    /* --- Canaux --- */
-    const texte = messageAbonnement(ref.id, nom, tel, o, dates, total, parLivraison, nombre, modePaiement);
-    const canaux = [];
-    if (params.whatsapp)
-      canaux.push({ cle: "WhatsApp", url: "https://wa.me/" + params.whatsapp +
-        "?text=" + encodeURIComponent(texte), principal: true });
-    if (params.viber)
-      canaux.push({ cle: "Viber", url: "viber://chat?number=%2B" + params.viber });
-    if (params.messenger)
-      canaux.push({ cle: "Messenger", url: "https://m.me/" + params.messenger });
-    if (params.email)
-      canaux.push({ cle: "Email", url: "mailto:" + params.email +
-        "?subject=" + encodeURIComponent("Bread plan " + ref.id) +
-        "&body=" + encodeURIComponent(texte) });
-
-    let etape = 0;
-    const num = () => `<span class="num">${++etape}</span>`;
-
-    $("page").innerHTML = `
-      <div class="bloc" style="text-align:center;padding:34px 20px">
-        <h2 style="font-size:22.5px;margin-bottom:10px">Your bread plan is set</h2>
-        <p style="color:var(--encre-doux);font-size:17px">
-          ${nombre} deliveries, starting ${dates[0]}.<br><br>
-          ${modePaiement === "credit"
-            ? "Each delivery will be taken from your store credit."
-            : "Please pay " + peso(total) + " using the payment details you just saw."}
-        </p>
-      </div>
-
-      ${modePaiement === "credit" ? "" : `
-      <div class="bloc"><h2 class="etape">${num()}Payment</h2>
-        <p class="info">You chose to pay ${peso(total)} in advance — use the GCash,
-          Maya or bank details shown before you subscribed.</p>
-      </div>`}
-
-      ${canaux.length ? `
-      <div class="bloc">
-        <h2 class="etape">${num()}Send us your plan details</h2>
-        <p class="info" style="margin-bottom:12px">We have your plan. Message us to confirm it${
-          modePaiement === "credit" ? "" : " and settle payment"}.</p>
-        <div class="canaux">
-          ${canaux.map(x => `<a class="canal ${x.principal ? "principal" : ""}"
-            href="${x.url}">${x.cle}<span class="fleche">&#8250;</span></a>`).join("")}
-        </div>
-        <button class="copier" id="copier">Copy plan details</button>
-      </div>` : ""}
-
-      <div class="bloc" style="text-align:center">
-        <p>
-          <a href="compte.html" style="color:var(--accent)">See my account</a> ·
-          <a href="./" style="color:var(--accent)">Back to the menu</a>
-        </p>
-      </div>`;
-    $("pied").hidden = true;
-
-    if (canaux.length) {
-      $("copier").onclick = async () => {
-        try {
-          await navigator.clipboard.writeText(texte);
-          $("copier").textContent = "Copied";
-        } catch {
-          $("copier").textContent = "Press and hold to copy: " + ref.id;
-        }
-      };
-    }
+    window.location.href = "confirmation-abonnement.html";
   } catch (e) {
     console.error(e);
     echec("Your bread plan could not be saved. Please try again.");
@@ -1038,23 +980,6 @@ function construirePaiementAbonnement(total) {
 function echapperTexte(t) {
   return String(t ?? "").replace(/[&<>"]/g, x =>
     ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[x]));
-}
-
-function messageAbonnement(id, nom, tel, o, dates, total, parLivraison, nombre, mode) {
-  return [
-    `Bread plan ${id}`,
-    "",
-    ...lignes.map(l => `${choix[l.code]} × ${l.nom} per delivery`),
-    "",
-    `${nombre} deliveries × ${peso(parLivraison)}`,
-    `Total: ${peso(total)}`,
-    "",
-    `Name: ${nom}`,
-    `Phone: ${tel}`,
-    `Option: ${o.nom}`,
-    `First delivery: ${dates[0]}`,
-    `Payment: ${mode === "credit" ? "Store credit" : "Paid in advance"}`
-  ].filter(Boolean).join("\n");
 }
 
 function echec(texte) {
