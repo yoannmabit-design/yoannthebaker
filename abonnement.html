@@ -142,6 +142,30 @@
     width:100%;background:var(--encre);color:var(--creme);border:none;
     padding:14px;border-radius:var(--r);font-size:17.5px;font-weight:600;cursor:pointer;
   }
+
+  /* Étapes numérotées et canaux de contact — repris à l'identique de
+     confirmation.html pour que l'écran final d'un abonnement ait la
+     même forme que celui d'une commande normale. */
+  .bloc h2.etape{display:flex;align-items:center;gap:10px}
+  .num{
+    flex-shrink:0;width:26px;height:26px;border-radius:50%;
+    background:var(--encre);color:var(--creme);
+    display:inline-flex;align-items:center;justify-content:center;
+    font-size:15px;font-weight:600;line-height:1;
+  }
+  .canaux{display:flex;flex-direction:column;gap:9px;margin-top:4px}
+  .canal{
+    display:flex;align-items:center;gap:11px;padding:13px 15px;
+    border:1px solid var(--trait);border-radius:var(--r);
+    background:#fff;text-decoration:none;color:var(--encre);font-size:17px;
+  }
+  .canal.principal{background:var(--encre);color:var(--creme);border-color:var(--encre)}
+  .canal .fleche{margin-left:auto;opacity:.5}
+  .copier{
+    width:100%;padding:13px;border:1px dashed var(--trait);background:transparent;
+    border-radius:var(--r);font:inherit;font-size:16.5px;color:var(--accent);
+    cursor:pointer;margin-top:9px;
+  }
 </style>
 </head>
 <body>
@@ -172,6 +196,7 @@ import { getFirestore, collection, getDocs, doc, getDoc, addDoc }
 import { normaliserCode, chargerCode, verifierCode,
          calculerPrix, prixUnitaire, libelleCode, libellePortee }
   from "./promo.js";
+import { MAX_REPORTS } from "./abo.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDuq8KS8M_Z8U7BlSp6MvE-6Y9OYYaDujE",
@@ -706,7 +731,9 @@ function majDates() {
     .toLocaleDateString("en-GB", { day: "numeric", month: "short" });
   $("apercuDates").innerHTML =
     "<strong>Your deliveries:</strong><br>" + l.map(format).join(" · ") +
-    "<br><span style=\"font-size:14.5px\">If we are away, your deliveries shift and none is lost.</span>";
+    "<br><span style=\"font-size:14.5px\">If we are away, your deliveries shift automatically — none is lost. " +
+    "You can also move up to " + MAX_REPORTS + " deliveries yourself if you know you'll be away, " +
+    "from My Account once your plan has started.</span>";
 }
 
 /* ---------- Récapitulatif ---------- */
@@ -868,6 +895,24 @@ $("btnSouscrire").onclick = async () => {
       }));
     } catch {}
 
+    /* --- Canaux --- */
+    const texte = messageAbonnement(ref.id, nom, tel, o, dates, total, parLivraison, nombre, modePaiement);
+    const canaux = [];
+    if (params.whatsapp)
+      canaux.push({ cle: "WhatsApp", url: "https://wa.me/" + params.whatsapp +
+        "?text=" + encodeURIComponent(texte), principal: true });
+    if (params.viber)
+      canaux.push({ cle: "Viber", url: "viber://chat?number=%2B" + params.viber });
+    if (params.messenger)
+      canaux.push({ cle: "Messenger", url: "https://m.me/" + params.messenger });
+    if (params.email)
+      canaux.push({ cle: "Email", url: "mailto:" + params.email +
+        "?subject=" + encodeURIComponent("Bread plan " + ref.id) +
+        "&body=" + encodeURIComponent(texte) });
+
+    let etape = 0;
+    const num = () => `<span class="num">${++etape}</span>`;
+
     $("page").innerHTML = `
       <div class="bloc" style="text-align:center;padding:34px 20px">
         <h2 style="font-size:22.5px;margin-bottom:10px">Your bread plan is set</h2>
@@ -875,10 +920,28 @@ $("btnSouscrire").onclick = async () => {
           ${nombre} deliveries, starting ${dates[0]}.<br><br>
           ${modePaiement === "credit"
             ? "Each delivery will be taken from your store credit."
-            : "Please pay " + peso(total) + " using the payment details you just saw. "
-              + "We'll confirm it on our end once received."}
+            : "Please pay " + peso(total) + " using the payment details you just saw."}
         </p>
       </div>
+
+      ${modePaiement === "credit" ? "" : `
+      <div class="bloc"><h2 class="etape">${num()}Payment</h2>
+        <p class="info">You chose to pay ${peso(total)} in advance — use the GCash,
+          Maya or bank details shown before you subscribed.</p>
+      </div>`}
+
+      ${canaux.length ? `
+      <div class="bloc">
+        <h2 class="etape">${num()}Send us your plan details</h2>
+        <p class="info" style="margin-bottom:12px">We have your plan. Message us to confirm it${
+          modePaiement === "credit" ? "" : " and settle payment"}.</p>
+        <div class="canaux">
+          ${canaux.map(x => `<a class="canal ${x.principal ? "principal" : ""}"
+            href="${x.url}">${x.cle}<span class="fleche">&#8250;</span></a>`).join("")}
+        </div>
+        <button class="copier" id="copier">Copy plan details</button>
+      </div>` : ""}
+
       <div class="bloc" style="text-align:center">
         <p>
           <a href="compte.html" style="color:var(--accent)">See my account</a> ·
@@ -886,6 +949,17 @@ $("btnSouscrire").onclick = async () => {
         </p>
       </div>`;
     $("pied").hidden = true;
+
+    if (canaux.length) {
+      $("copier").onclick = async () => {
+        try {
+          await navigator.clipboard.writeText(texte);
+          $("copier").textContent = "Copied";
+        } catch {
+          $("copier").textContent = "Press and hold to copy: " + ref.id;
+        }
+      };
+    }
   } catch (e) {
     console.error(e);
     echec("Your bread plan could not be saved. Please try again.");
@@ -960,6 +1034,23 @@ function construirePaiementAbonnement(total) {
 function echapperTexte(t) {
   return String(t ?? "").replace(/[&<>"]/g, x =>
     ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[x]));
+}
+
+function messageAbonnement(id, nom, tel, o, dates, total, parLivraison, nombre, mode) {
+  return [
+    `Bread plan ${id}`,
+    "",
+    ...lignes.map(l => `${choix[l.code]} × ${l.nom} per delivery`),
+    "",
+    `${nombre} deliveries × ${peso(parLivraison)}`,
+    `Total: ${peso(total)}`,
+    "",
+    `Name: ${nom}`,
+    `Phone: ${tel}`,
+    `Option: ${o.nom}`,
+    `First delivery: ${dates[0]}`,
+    `Payment: ${mode === "credit" ? "Store credit" : "Paid in advance"}`
+  ].filter(Boolean).join("\n");
 }
 
 function echec(texte) {
