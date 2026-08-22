@@ -11,13 +11,14 @@
    hors-ligne.
    ============================================================ */
 
-const VERSION = 'yfb-boutique-v7';
+const VERSION = 'yfb-boutique-v8';
 
 const ESSENTIELS = [
   './',
   './index.html',
   './checkout.html',
   './promo.js',
+  './abo.js',
   './qr.js',
   './compte.html',
   './abonnement.html',
