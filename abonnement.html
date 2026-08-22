@@ -190,14 +190,14 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getAuth, onAuthStateChanged }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import { getFirestore, collection, getDocs, doc, getDoc, addDoc }
+import { getFirestore, collection, getDocs, doc, getDoc, addDoc, query, where, limit }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 /* La règle d'arbitrage vit dans promo.js, partagée avec la vitrine et le
    checkout. Ici, le pourcentage mis en concurrence avec le code n'est pas
    un tarif de groupe mais la remise abonnement : le calcul est le même,
    seul le taux change. */
-import { normaliserCode, chargerCode, verifierCode,
+import { normaliserCode, chargerCode, verifierCode, usagesClient,
          calculerPrix, prixUnitaire, libelleCode, libellePortee }
   from "./promo.js";
 import { MAX_REPORTS } from "./abo.js";
@@ -411,8 +411,12 @@ async function appliquerCode() {
   etatPromo("Checking…");
   try {
     const fiche = await chargerCode(db, saisie);
-    // Le client est nécessairement connecté sur cette page.
-    const v = verifierCode(fiche, { connecte: true });
+    // Le client est nécessairement connecté sur cette page. Un code déjà
+    // consommé — commande libre ou abonnement antérieur — est refusé
+    // ici, avant que le plan ne soit composé.
+    const usages = await usagesClient(db, user.uid, saisie,
+                                      { collection, query, where, getDocs, limit });
+    const v = verifierCode(fiche, { connecte: true, usages });
     if (!v.ok) { promo = null; etatPromo(v.message, "err"); majRecap(); return; }
     promo = fiche;
     $("champCode").value = "";
@@ -842,6 +846,28 @@ $("btnSouscrire").onclick = async () => {
   const parLivraison = calc.groupe + frais;
   const total = parLivraison * nombre - remiseCode * couvertes;
   const dates = echeances();
+
+  /* Dernière vérification du code au moment de souscrire : il a pu être
+     désactivé, ou consommé sur un autre onglet, pendant que le formulaire
+     était rempli. Même geste qu'au checkout, avant la commande. */
+  if (promo) {
+    try {
+      const fiche = await chargerCode(db, promo.id);
+      const usages = await usagesClient(db, user.uid, promo.id,
+                                        { collection, query, where, getDocs, limit });
+      const v = verifierCode(fiche, { connecte: true, usages });
+      if (!v.ok) {
+        promo = null;
+        majRecap();
+        return echec(v.message + " Your total has been updated — please check it before subscribing.");
+      }
+      promo = fiche;
+      majRecap();
+    } catch (e) {
+      console.error(e);
+      return echec("We couldn't confirm your promo code. Please try again.");
+    }
+  }
 
   /* Le solde est relu sur le serveur : la page a pu rester ouverte
      longtemps, et une commande passée entre-temps l'a peut-être vidé.
