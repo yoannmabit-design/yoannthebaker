@@ -209,7 +209,7 @@ import { getFirestore, collection, getDocs, doc, getDoc, setDoc, updateDoc, incr
 import { getAuth, onAuthStateChanged }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import { normaliserCode, lireCodeMemorise, memoriserCode, oublierCode,
-         chargerCode, verifierCode, calculerPrix, prixUnitaire, libelleCode,
+         chargerCode, verifierCode, usagesClient, calculerPrix, prixUnitaire, libelleCode,
          rayonDe, libellePortee }
   from "./promo.js";
 
@@ -712,7 +712,8 @@ async function appliquerCode() {
   etatPromo("Checking…");
   try {
     const fiche = await chargerCode(db, saisie);
-    const v = verifierCode(fiche, { connecte: !!uidClient });
+    const v = verifierCode(fiche, { connecte: !!uidClient,
+                                    usages: await compterUsages(saisie) });
     if (!v.ok) {
       promo = null;
       oublierCode();
@@ -737,12 +738,23 @@ async function appliquerCode() {
 }
 
 // Reprise du code mémorisé, revérifié sur le serveur.
+/* Usages déjà consommés par ce client pour ce code. Les fonctions
+   Firestore sont passées à promo.js, qui n'a pas ses propres imports. */
+function compterUsages(code) {
+  if (!uidClient) return Promise.resolve(0);
+  return usagesClient(db, uidClient, code,
+                      { collection, query, where, getDocs, limit });
+}
+
 async function reprendreCode() {
   const memorise = lireCodeMemorise();
   if (!memorise) return;
   try {
     const fiche = await chargerCode(db, memorise);
-    const v = verifierCode(fiche, { connecte: !!uidClient });
+    // Le code mémorisé passe par le même contrôle : sans cela, un code
+    // déjà consommé reviendrait tout seul d'une commande à l'autre.
+    const v = verifierCode(fiche, { connecte: !!uidClient,
+                                    usages: await compterUsages(memorise) });
     promo = v.ok ? fiche : null;
     if (!v.ok && !v.connexion) oublierCode();
   } catch (e) {
@@ -1205,7 +1217,8 @@ $("btnEnvoyer").onclick = async () => {
   if (promo) {
     try {
       const fiche = await chargerCode(db, promo.id);
-      const v = verifierCode(fiche, { connecte: !!uidClient });
+      const v = verifierCode(fiche, { connecte: !!uidClient,
+                                      usages: await compterUsages(promo.id) });
       if (!v.ok) {
         promo = null;
         oublierCode();
