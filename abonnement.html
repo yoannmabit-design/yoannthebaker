@@ -31,6 +31,10 @@
     border-radius:var(--r);padding:18px;margin-bottom:16px;
   }
   .bloc h2{font-size:17px;margin:0 0 6px}
+  .bloc.explication{background:var(--creme, #fdf6ec)}
+  .bloc.explication h2{font-size:15.5px}
+  .bloc.explication ul{margin:0;padding-left:20px;color:var(--encre-doux);font-size:15.5px}
+  .bloc.explication li{margin:5px 0}
   .bloc .aide{font-size:15px;color:var(--encre-doux);margin:0 0 14px}
 
   .produit{
@@ -489,6 +493,17 @@ function construire() {
         </div>
         <p class="etat" id="etatPromo"></p>
       </div>
+    </div>
+
+    <div class="bloc explication">
+      <h2>How a bread plan works</h2>
+      <ul>
+        <li>Deliveries repeat on your chosen schedule — no need to reorder each time.</li>
+        <li>Your price today is locked in for the whole plan.</li>
+        <li>You can move up to 2 deliveries yourself over the life of the plan.</li>
+        <li>Pay everything now, or use your store credit — taken one delivery at a time,
+          not all at once.</li>
+      </ul>
     </div>
 
     <div class="erreur" id="erreur"></div>`;
