@@ -550,7 +550,8 @@ function construire() {
       <input type="radio" name="paiement" value="credit">
       <span style="flex:1"><span class="t">Use my store credit</span>
       <span class="d" id="detailCredit"></span></span>
-    </label>`;
+    </label>
+    <div id="blocPaiementAvance" style="margin-top:14px"></div>`;
   document.querySelectorAll('input[name="paiement"]').forEach(r => {
     r.onchange = () => { modePaiement = r.value; majPaiement(); majRecap(); };
   });
@@ -766,6 +767,15 @@ function majRecap() {
         : peso(solde) + " covers " + couvre + " of " + nombre}</small>`
     : `${peso(total)}<small>${nombre} × ${peso(parLivraison)}</small>`;
 
+  // Le paiement se choisit ici, avant de souscrire — pas après : la
+  // cliente doit voir comment payer avant de s'engager, pas le
+  // découvrir sur un écran séparé une fois l'abonnement déjà créé.
+  const blocAvance = $("blocPaiementAvance");
+  if (blocAvance) {
+    blocAvance.hidden = modePaiement !== "avance";
+    if (modePaiement === "avance") construirePaiementAbonnement(total);
+  }
+
   $("btnSouscrire").disabled = !lignes.length || !nombre || !depart;
 }
 
@@ -865,11 +875,10 @@ $("btnSouscrire").onclick = async () => {
           ${nombre} deliveries, starting ${dates[0]}.<br><br>
           ${modePaiement === "credit"
             ? "Each delivery will be taken from your store credit."
-            : "Please pay " + peso(total) + " using one of the options below."}
+            : "Please pay " + peso(total) + " using the payment details you just saw. "
+              + "We'll confirm it on our end once received."}
         </p>
       </div>
-      ${modePaiement === "credit" ? "" : `
-      <div class="bloc" id="blocPaiementAbo"></div>`}
       <div class="bloc" style="text-align:center">
         <p>
           <a href="compte.html" style="color:var(--accent)">See my account</a> ·
@@ -877,22 +886,19 @@ $("btnSouscrire").onclick = async () => {
         </p>
       </div>`;
     $("pied").hidden = true;
-    // Le bouton promettait "Pay for all deliveries now" : sans cet écran,
-    // la cliente se retrouvait avec un simple texte "on vous recontacte"
-    // et aucun moyen d'agir tout de suite — d'où la confusion signalée.
-    if (modePaiement !== "credit") construirePaiementAbonnement(total);
   } catch (e) {
     console.error(e);
     echec("Your bread plan could not be saved. Please try again.");
   }
 };
 
-/* Écran de paiement affiché après souscription en mode "avance" — mêmes
-   moyens et mêmes données que le checkout (params.paiement), sans le
-   cash à la livraison : un abonnement se paie d'avance pour plusieurs
-   livraisons futures, la remise à la livraison n'a pas de sens ici.
-   Purement informatif, rien n'est ré-écrit en Firestore depuis cet
-   écran — vous confirmez le paiement manuellement depuis l'admin. */
+/* Instructions de paiement — mêmes moyens et mêmes données que le
+   checkout (params.paiement), sans le cash à la livraison : un
+   abonnement se paie d'avance pour plusieurs livraisons futures, la
+   remise à la livraison n'a pas de sens ici. Affiché dès le choix de
+   "Pay for all deliveries now", avant que "Souscrire" ne soit cliqué —
+   purement informatif, rien n'est ré-écrit en Firestore depuis cet
+   écran, vous confirmez le paiement manuellement depuis l'admin. */
 function construirePaiementAbonnement(total) {
   const pay = params.paiement || {};
   const g = pay.gcash  || { nom: pay.gcash_nom, numero: pay.gcash_numero };
@@ -913,7 +919,7 @@ function construirePaiementAbonnement(total) {
     detail: [b.nom, b.titulaire, b.numero].filter(Boolean).join(" — ")
   });
 
-  const zone = $("blocPaiementAbo");
+  const zone = $("blocPaiementAvance");
   if (!choix.length) {
     zone.innerHTML =
       '<p style="color:var(--encre-doux)">We will contact you to arrange the payment of '
