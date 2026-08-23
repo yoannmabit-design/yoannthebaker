@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bread plan set — Yoann's French Bakery</title>
+<meta name="theme-color" content="#1a1a1a">
+<link rel="icon" href="logo.jpg">
+<style>
+  :root{
+    --creme:#fdf6ec;--papier:#fffdf9;--encre:#1a1a1a;
+    --encre-doux:#6b6157;--trait:#e2d7c6;--accent:#2f4858;--r:6px;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;background:var(--creme);color:var(--encre);
+    font:18px/1.55 ui-sans-serif,-apple-system,"Segoe UI",Roboto,sans-serif;
+  }
+  header{background:var(--encre);color:var(--creme);padding:26px 18px;text-align:center}
+  header .coche{
+    width:46px;height:46px;border-radius:50%;border:1.5px solid var(--creme);
+    display:flex;align-items:center;justify-content:center;
+    margin:0 auto 13px;font-size:25px;
+  }
+  header h1{
+    font-family:"Iowan Old Style",Georgia,serif;
+    font-size:27px;font-weight:400;margin:0;
+  }
+  header .ref{margin:7px 0 0;font-size:16px;opacity:.78;letter-spacing:.05em}
+
+  main{max-width:620px;margin:0 auto;padding:22px 16px 50px}
+  .bloc{
+    background:var(--papier);border:1px solid var(--trait);
+    border-radius:var(--r);padding:18px;margin-bottom:16px;
+  }
+  .bloc h2{font-size:17px;margin:0 0 13px}
+
+  /* Étapes numérotées : même convention que la confirmation de commande,
+     pour que le client reconnaisse le même guidage d'un flux à l'autre. */
+  .bloc h2.etape{display:flex;align-items:center;gap:10px}
+  .num{
+    flex-shrink:0;width:26px;height:26px;border-radius:50%;
+    background:var(--encre);color:var(--creme);
+    display:inline-flex;align-items:center;justify-content:center;
+    font-size:15px;font-weight:600;line-height:1;
+  }
+
+  .l{display:flex;justify-content:space-between;gap:14px;padding:4px 0;font-size:17px}
+  .l .q{color:var(--encre-doux)}
+  .l.remise span:last-child{color:#3d6b3d}
+  .l.somme{
+    border-top:1px solid var(--trait);margin-top:9px;padding-top:11px;
+    font-weight:600;font-size:20px;
+  }
+  .info{font-size:16.5px;color:var(--encre-doux);margin:3px 0}
+  .info b{color:var(--encre);font-weight:600}
+
+  .paiement img{
+    display:block;width:190px;max-width:100%;height:auto;margin-top:12px;
+    border:1px solid var(--trait);border-radius:var(--r);background:#fff;
+  }
+  .paiement a.sauver{display:inline-block;margin-top:8px;font-size:15px;color:var(--accent)}
+
+  .canaux{display:flex;flex-direction:column;gap:9px;margin-top:4px}
+  .canal{
+    display:flex;align-items:center;gap:11px;padding:13px 15px;
+    border:1px solid var(--trait);border-radius:var(--r);
+    background:#fff;text-decoration:none;color:var(--encre);font-size:17px;
+  }
+  .canal.principal{background:var(--encre);color:var(--creme);border-color:var(--encre)}
+  .canal .fleche{margin-left:auto;opacity:.5}
+  .copier{
+    width:100%;padding:13px;border:1px dashed var(--trait);background:transparent;
+    border-radius:var(--r);font:inherit;font-size:16.5px;color:var(--accent);
+    cursor:pointer;margin-top:9px;
+  }
+  .invite .sous{margin-top:12px;font-size:14.5px;color:var(--encre-doux);line-height:1.5}
+  .bandeau-whatsapp{
+    display:flex;align-items:center;gap:10px;
+    margin-top:22px;padding:12px 15px;
+    background:#e9f6ee;border:1px solid #cfe9d9;border-radius:var(--r);
+    color:#1f6e42;text-decoration:none;font-size:15.5px;
+  }
+  .bandeau-whatsapp .fleche{margin-left:auto;opacity:.6}
+  .retour{display:block;text-align:center;margin-top:26px;color:var(--accent);font-size:17px}
+  .message{padding:60px 20px;text-align:center;color:var(--encre-doux)}
+  .message a{color:var(--accent)}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="coche">&#10003;</div>
+  <h1>Bread plan set</h1>
+  <p class="ref" id="ref"></p>
+</header>
+
+<main id="page">
+  <div class="message">Loading…</div>
+</main>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, doc, getDoc }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDuq8KS8M_Z8U7BlSp6MvE-6Y9OYYaDujE",
+  authDomain: "bakertools-ae124.firebaseapp.com",
+  projectId: "bakertools-ae124",
+  storageBucket: "bakertools-ae124.firebasestorage.app",
+  messagingSenderId: "978584667113",
+  appId: "1:978584667113:web:868cc89788aff27717c178"
+};
+
+const db = getFirestore(initializeApp(firebaseConfig));
+const $ = (id) => document.getElementById(id);
+const peso = (n) => "₱" + Number(n).toLocaleString("en-PH");
+const echapper = (t) => String(t).replace(/[&<>"]/g, c =>
+  ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+/* Ce que la page a besoin de connaître d'un abonnement, posé par
+   abonnement.html juste après l'écriture Firestore. Contrairement à la
+   confirmation de commande, tout est déjà dans ce seul objet — un
+   abonnement n'a pas de fiche produit annexe à relire pour des notices,
+   son panier est celui du plan et rien d'autre. */
+let plan = null, params = {};
+
+(async function () {
+  try { plan = JSON.parse(sessionStorage.getItem("abonnement") || "null"); } catch {}
+
+  if (!plan) {
+    $("page").innerHTML =
+      '<div class="message">We could not find your bread plan on this device.<br><br>' +
+      '<a href="./">Back to the menu</a></div>';
+    return;
+  }
+
+  $("ref").textContent = "Reference " + plan.id;
+
+  try {
+    const p = await getDoc(doc(db, "parametres", "boutique"));
+    params = p.exists() ? p.data() : {};
+  } catch (e) { console.error(e); }
+
+  afficher();
+})();
+
+function afficher() {
+  const p = plan;
+
+  /* --- Récapitulatif --- */
+  let recap = (p.panier || []).map(l =>
+    `<div class="l"><span><span class="q">${l.qte} ×</span> ${echapper(l.nom)}</span>
+     <span>${peso(l.qte * l.prix)}</span></div>`).join("");
+
+  recap += `<div class="l"><span>Delivery${p.frais_livraison > 0 ? " (subscriber rate)" : ""}</span>
+            <span>${p.frais_livraison > 0 ? peso(p.frais_livraison) : "free"}</span></div>`;
+  recap += `<div class="l"><span>Per delivery</span><span>${peso(p.par_livraison)}</span></div>`;
+
+  if (p.remise_code > 0) {
+    recap += `<div class="l remise"><span>${echapper(p.code || "Promo code")}${
+      p.livraisons_couvertes > 1 ? " × " + p.livraisons_couvertes + " deliveries" : " (first delivery)"}</span>
+      <span>−${peso(p.remise_code * p.livraisons_couvertes)}</span></div>`;
+  }
+
+  recap += `<div class="l somme"><span>${p.nombre} deliveries</span><span>${peso(p.total)}</span></div>`;
+
+  /* --- Étapes --- */
+  let etape = 0;
+  const num = () => `<span class="num">${++etape}</span>`;
+
+  /* --- Paiement ---
+     Même bloc que la confirmation de commande : QR et instructions
+     réaffichés ici, plutôt que de renvoyer le client vers un écran
+     déjà fermé. En crédit, rien n'est débité avant la première
+     livraison — pas de moyen de paiement à montrer. */
+  let blocPaiement = "";
+  if (p.mode === "credit") {
+    blocPaiement = `<div class="bloc"><h2 class="etape">${num()}Payment</h2>
+      <p class="info">Each delivery will be taken from your store credit
+      when it's confirmed.</p></div>`;
+  } else {
+    const pay = params.paiement || {};
+    const g = pay.gcash  || { nom: pay.gcash_nom, numero: pay.gcash_numero };
+    const m = pay.maya   || {};
+    const b = pay.banque || { nom: pay.banque_nom, titulaire: pay.banque_titulaire,
+                              numero: pay.banque_numero };
+    const choix = [];
+    if (g.numero || g.qr) choix.push({ titre: "GCash", qr: g.qr,
+      detail: [g.numero, g.nom].filter(Boolean).join(" — ") });
+    if (m.numero || m.qr) choix.push({ titre: "Maya", qr: m.qr,
+      detail: [m.numero, m.nom].filter(Boolean).join(" — ") });
+    if (b.numero || b.qr) choix.push({ titre: "Bank transfer", qr: b.qr,
+      detail: [b.nom, b.titulaire, b.numero].filter(Boolean).join(" — ") });
+
+    if (choix.length) {
+      blocPaiement = `<div class="bloc paiement">
+        <h2 class="etape">${num()}Payment</h2>
+        <p class="info">Amount: <b>${peso(p.total)}</b></p>
+        ${choix.map(c => `<p class="info" style="margin-top:10px"><b>${echapper(c.titre)}</b>
+          ${c.detail ? " — " + echapper(c.detail) : ""}</p>
+          ${c.qr ? `<img src="${echapper(c.qr)}" alt="${echapper(c.titre)} QR code">
+            <a class="sauver" href="${echapper(c.qr)}" download>Save QR code</a>` : ""}`).join("")}
+        ${pay.instructions ? `<p class="info" style="margin-top:12px">${echapper(pay.instructions)}</p>` : ""}
+      </div>`;
+    } else {
+      blocPaiement = `<div class="bloc"><h2 class="etape">${num()}Payment</h2>
+        <p class="info">Amount: <b>${peso(p.total)}</b></p>
+        <p class="info">We'll contact you to arrange the payment.</p></div>`;
+    }
+  }
+
+  /* --- Canaux --- */
+  const texte = messagePlan(p);
+  const canaux = [];
+  if (params.whatsapp)
+    canaux.push({ cle: "WhatsApp", url: "https://wa.me/" + params.whatsapp +
+      "?text=" + encodeURIComponent(texte), principal: true });
+  if (params.viber)
+    canaux.push({ cle: "Viber", url: "viber://chat?number=%2B" + params.viber });
+  if (params.messenger)
+    canaux.push({ cle: "Messenger", url: "https://m.me/" + params.messenger });
+  if (params.email)
+    canaux.push({ cle: "Email", url: "mailto:" + params.email +
+      "?subject=" + encodeURIComponent("Bread plan " + p.id) +
+      "&body=" + encodeURIComponent(texte) });
+
+  $("page").innerHTML = `
+    <div class="bloc">
+      <h2>Your bread plan</h2>
+      ${recap}
+    </div>
+
+    <div class="bloc">
+      <h2>Delivery</h2>
+      <p class="info"><b>${echapper(p.option?.nom || "")}</b></p>
+      ${p.option?.lieu ? `<p class="info">${echapper(p.option.lieu)}</p>` : ""}
+      ${p.adresse ? `<p class="info">${echapper(p.adresse)}</p>` : ""}
+      <p class="info">First delivery: ${echapper(p.dates[0])}</p>
+      <p class="info">Then every ${p.cadence === "quinzaine" ? "two weeks" : "week"},
+        ${p.nombre} deliveries in total.</p>
+    </div>
+
+    ${blocPaiement}
+
+    <div class="bloc">
+      <h2 class="etape">${num()}Send us your plan details</h2>
+      <p class="info" style="margin-bottom:12px">We have your plan. Message us to confirm it${
+        p.mode === "credit" ? "" : " and settle payment"}.</p>
+      ${canaux.length ? `
+      <div class="canaux">
+        ${canaux.map(x => `<a class="canal ${x.principal ? "principal" : ""}"
+          href="${x.url}">${x.cle}<span class="fleche">&#8250;</span></a>`).join("")}
+      </div>` : ""}
+      <button class="copier" id="copier">Copy plan details</button>
+    </div>
+
+    <div class="bloc" style="text-align:center">
+      <p>
+        <a href="compte.html" style="color:var(--accent)">See my account</a> ·
+        <a href="./" style="color:var(--accent)">Back to the menu</a>
+      </p>
+    </div>
+
+    <a class="bandeau-whatsapp"
+       href="https://chat.whatsapp.com/DjFlCWcoaZBIXZcXugACLy?mode=ems_copy_t"
+       target="_blank" rel="noopener">
+      Stay updated — join our WhatsApp group<span class="fleche">&#8250;</span>
+    </a>
+  `;
+
+  $("copier").onclick = async () => {
+    try {
+      await navigator.clipboard.writeText(texte);
+      $("copier").textContent = "Copied";
+    } catch {
+      $("copier").textContent = "Press and hold to copy: " + p.id;
+    }
+  };
+}
+
+function messagePlan(p) {
+  return [
+    `Bread plan ${p.id}`,
+    "",
+    ...(p.panier || []).map(l => `${l.qte} × ${l.nom} per delivery`),
+    "",
+    `${p.nombre} deliveries × ${peso(p.par_livraison)}`,
+    p.remise_code > 0 ? `${p.code}: −${peso(p.remise_code * p.livraisons_couvertes)}` : null,
+    `Total: ${peso(p.total)}`,
+    "",
+    `Name: ${p.nom}`,
+    `Phone: ${p.tel}`,
+    `Option: ${p.option?.nom || ""}`,
+    p.adresse ? `Address: ${p.adresse}` : null,
+    `First delivery: ${p.dates[0]}`,
+    `Payment: ${p.mode === "credit" ? "Store credit" : "Paid in advance"}`
+  ].filter(Boolean).join("\n");
+}
+</script>
+</body>
+</html>
