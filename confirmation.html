@@ -116,6 +116,34 @@
   <div class="message">Loading…</div>
 </main>
 
+<script>
+/* ---------- Garde-fou de nom de fichier ----------
+   Un fichier copié dans le mauvais nom se signale ici, plutôt que de
+   casser silencieusement le parcours de tous les clients suivants —
+   c'est exactement ce qui vient d'arriver entre cette page et
+   confirmation-abonnement.html. Même principe que admin-nav.js côté
+   administration, en autonome puisque les pages client n'ont pas de
+   script commun chargé partout. */
+(function () {
+  const ATTENDU = "Order received";
+  const ici = location.pathname.split("/").pop() || "";
+  const vu = (document.title || "").split(/[—|]/)[0].trim();
+  const net = (s) => (s || "").toLowerCase()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, " ").trim();
+  if (net(vu) !== net(ATTENDU)) {
+    const a = document.createElement("div");
+    a.style.cssText =
+      "background:#8c2f22;color:#fff;padding:12px 16px;font-size:14px;" +
+      "line-height:1.45;font-family:ui-sans-serif,-apple-system,sans-serif";
+    a.innerHTML = "<b>Ce fichier ne contient pas la page attendue.</b><br>" +
+      "Le fichier <code>" + ici + "</code> devrait afficher « " + ATTENDU +
+      " », mais affiche « " + (vu || "sans titre") + " ». " +
+      "Vérifiez que le bon contenu a été déposé sous le bon nom.";
+    document.body.insertBefore(a, document.body.firstChild);
+  }
+})();
+</script>
+
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getFirestore, doc, getDoc, collection, getDocs }
