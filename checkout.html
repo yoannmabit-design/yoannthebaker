@@ -382,6 +382,16 @@ function construire() {
       <label class="champ"><span>WhatsApp number</span>
         <input type="tel" id="tel" inputmode="tel" placeholder="0917 123 4567"
                autocomplete="tel"></label>
+
+      <div id="blocTelLocal" hidden>
+        <label class="champ"><span>Local number for the rider (optional)</span>
+          <input type="tel" id="telLocal" inputmode="tel" placeholder="0917 123 4567"
+                 autocomplete="off"></label>
+        <p class="sous" style="margin:-6px 0 0">
+          Your delivery rider will call, not message. If you have a Philippine
+          number, add it here.</p>
+      </div>
+
       <div id="zoneMemo"></div>
 
       <div class="compte-avantages" id="blocCompte" hidden>
@@ -489,6 +499,9 @@ function construire() {
 
   if (memo.nom) $("nom").value = memo.nom;
   if (memo.tel) $("tel").value = memo.tel;
+  if (memo.tel_local) $("telLocal").value = memo.tel_local;
+  $("tel").addEventListener("input", majTelLocal);
+  majTelLocal();
   // L'adresse du compte prime sur celle de l'appareil : c'est la plus sûre
   // quand le client commande depuis un téléphone partagé.
   ecrireAdresse(adresseCompte || memo.adresse_detail || memo.adresse || "");
@@ -497,7 +510,7 @@ function construire() {
       '<button class="retour" id="oublier">Not you? Clear these details</button>';
     $("oublier").onclick = () => {
       localStorage.removeItem("client");
-      $("nom").value = ""; $("tel").value = "";
+      $("nom").value = ""; $("tel").value = ""; $("telLocal").value = "";
       ecrireAdresse("");
       $("zoneMemo").innerHTML = "";
     };
@@ -984,12 +997,36 @@ function choisie() {
   return options[Number(r.value)];
 }
 
+/* Un numéro philippin n'a pas besoin d'un second numéro : le motard peut
+   l'appeler directement. Le champ ne s'affiche donc que pour les clients
+   étrangers résidant ici, qui commandent avec leur WhatsApp d'origine —
+   sinon il serait rempli à l'identique et n'apporterait rien. */
+function estNumeroPhilippin(brut) {
+  const c = String(brut || "").replace(/\D/g, "");
+  if (!c) return true;                            // champ vide : ne rien demander
+  if (c.length === 12 && c.startsWith("63")) return true;   // +63 9xx xxx xxxx
+  if (c.length === 11 && c.startsWith("09")) return true;   // 09xx xxx xxxx
+  if (c.length === 10 && c.startsWith("9"))  return true;   // 9xx xxx xxxx
+  return false;
+}
+
+function majTelLocal() {
+  const o = choisie();
+  const utile = !!(o && o.demander_adresse) && !estNumeroPhilippin($("tel").value);
+  $("blocTelLocal").hidden = !utile;
+  // Repasser sur un retrait, ou corriger son numéro en philippin, doit
+  // effacer ce qui a été saisi : sinon un numéro fantôme partirait avec
+  // la commande sans que le client puisse le voir ni le corriger.
+  if (!utile) $("telLocal").value = "";
+}
+
 function majOption() {
   const o = choisie();
   document.querySelectorAll(".choix[data-i]").forEach(c =>
     c.classList.toggle("actif", options[Number(c.dataset.i)] === o));
 
   $("blocAdresse").hidden = !o.demander_adresse;
+  majTelLocal();
   // Adresse déjà connue (ex: point de livraison fixe dans un immeuble) :
   // seul le numéro d'unité identifie le destinataire, le reste ne sert à
   // rien puisque la rue/barangay/ville ne varient pas d'un client à l'autre.
@@ -1193,6 +1230,9 @@ $("btnEnvoyer").onclick = async () => {
   const o   = choisie();
   const nom = $("nom").value.trim();
   const tel = $("tel").value.replace(/\D/g, "");
+  // Vide dans l'immense majorité des cas : seuls les clients au numéro
+  // étranger voient le champ, et il reste facultatif.
+  const telLocal = $("blocTelLocal").hidden ? "" : $("telLocal").value.replace(/\D/g, "");
   const detail  = o.demander_adresse ? lireAdresse() : null;
   const adresse = detail ? adresseUneLigne(detail) : "";
 
@@ -1258,7 +1298,8 @@ $("btnEnvoyer").onclick = async () => {
     statut: "nouvelle",
     // adresse reste la ligne complète, lue telle quelle par l'administration
     // et la confirmation ; adresse_detail porte le découpage.
-    client: { nom, telephone: tel, adresse, adresse_detail: detail },
+    client: { nom, telephone: tel, telephone_local: telLocal,
+              adresse, adresse_detail: detail },
     panier: lignes.map(l => ({ code: l.code, nom: l.nom, qte: l.qte, prix: l.prix })),
     remise,
     // Quelle remise a réellement joué : "groupe", "promo" ou "aucune".
@@ -1313,7 +1354,7 @@ $("btnEnvoyer").onclick = async () => {
     }
     try {
       localStorage.setItem("client",
-        JSON.stringify({ nom, tel, adresse, adresse_detail: detail }));
+        JSON.stringify({ nom, tel, tel_local: telLocal, adresse, adresse_detail: detail }));
       localStorage.setItem("derniere_commande", JSON.stringify({
         quand: new Date().toISOString(),
         lignes: lignes.map(l => ({ id: l.id, nom: l.nom, qte: l.qte }))
