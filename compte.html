@@ -152,6 +152,16 @@
   .abo .dit{font-size:15.5px;margin:10px 0 0}
   .abo .dit.ok{color:var(--ok)}
   .abo .dit.err{color:var(--alerte)}
+  .cmd button.recu{
+    background:transparent;color:var(--accent);border:1px solid var(--trait);
+    border-radius:var(--r);padding:8px 14px;font:inherit;font-size:15.5px;
+    cursor:pointer;margin-top:12px;
+  }
+  .cmd button.recu[disabled]{opacity:.55;cursor:default}
+  .plus{
+    background:none;border:none;padding:0;margin-top:14px;
+    color:var(--accent);font:inherit;font-size:15.5px;cursor:pointer;
+  }
   .qui{font-size:15px;color:var(--encre-doux);text-align:center;margin-top:14px}
   .qui button{background:none;border:none;color:var(--accent);
     text-decoration:underline;cursor:pointer;font-size:15px;padding:0}
@@ -363,12 +373,21 @@ function ligneCommande(c) {
       ${etatPaiement === "en attente"
         ? '<p class="ou attente">We\'ll mark this as paid once we\'ve checked the transfer. Already paid? No action needed.</p>'
         : ""}
+      <button class="recu" type="button" data-recu="${ech(c.id)}">${
+        etatPaiement === "paye" ? "Download receipt" : "Download order summary"}</button>
     </div>
   </div>`;
 }
 
 // Le détail s'ouvre au clic, une fois la page écrite.
 function brancherCommandes() {
+  document.querySelectorAll(".cmd button.recu").forEach(b => {
+    b.onclick = (e) => {
+      e.stopPropagation();   // ne pas replier le détail
+      telechargerRecu(b.dataset.recu, b);
+    };
+  });
+
   document.querySelectorAll(".cmd").forEach(bloc => {
     const tete = bloc.querySelector(".tete");
     const detail = bloc.querySelector(".detail");
@@ -379,6 +398,169 @@ function brancherCommandes() {
       bloc.querySelector(".fleche").textContent = ouvert ? "▴" : "▾";
     };
   });
+}
+
+/* ---------- Reçu téléchargeable ----------
+   Le document est fabriqué au moment du clic, à partir de la commande telle
+   qu'elle est en base : une commande réglée après coup produit donc un reçu
+   à jour au téléchargement suivant, sans rien à régénérer.
+
+   Le titre suit le paiement : « Receipt » seulement une fois réglé. Un
+   document intitulé Receipt sur une commande impayée pourrait être présenté
+   comme une preuve de paiement, ce qu'il n'est pas.
+
+   Ce n'est pas une facture officielle BIR : ni numérotation fiscale, ni TIN.
+   C'est un justificatif de commande, et il ne prétend pas à autre chose. */
+const JSPDF_CDN = "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js";
+let promesseJsPDF = null;
+
+// Chargé au premier clic seulement : un client qui ne télécharge rien ne
+// paie pas le poids de la bibliothèque.
+function chargerJsPDF() {
+  if (window.jspdf) return Promise.resolve(window.jspdf);
+  if (!promesseJsPDF) {
+    promesseJsPDF = new Promise((ok, non) => {
+      const s = document.createElement("script");
+      s.src = JSPDF_CDN;
+      s.onload = () => window.jspdf ? ok(window.jspdf) : non(new Error("jsPDF absent"));
+      s.onerror = () => { promesseJsPDF = null; non(new Error("Chargement impossible")); };
+      document.head.appendChild(s);
+    });
+  }
+  return promesseJsPDF;
+}
+
+/* Le logo, lu une seule fois et gardé en mémoire. Ses proportions viennent
+   du fichier lui-même : un rapport écrit en dur déformerait l'image le jour
+   où le logo change. Un échec de chargement n'empêche pas le reçu de sortir,
+   il sort seulement sans image. */
+let promesseLogo = null;
+function chargerLogo() {
+  if (!promesseLogo) {
+    promesseLogo = new Promise((ok) => {
+      const img = new Image();
+      img.onload = () => {
+        const c = document.createElement("canvas");
+        c.width = img.naturalWidth; c.height = img.naturalHeight;
+        c.getContext("2d").drawImage(img, 0, 0);
+        try {
+          ok({ data: c.toDataURL("image/jpeg", 0.92),
+               ratio: img.naturalWidth / img.naturalHeight });
+        } catch (e) { ok(null); }
+      };
+      img.onerror = () => ok(null);
+      img.src = "logo.jpg";
+    });
+  }
+  return promesseLogo;
+}
+
+// Le peso en PDF : la police par défaut de jsPDF ne porte pas le glyphe ₱,
+// qui sortirait en carré vide. PHP reste lisible partout.
+const pesoPdf = (n) => "PHP " + Number(n || 0).toLocaleString("en-PH",
+  { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+function construireRecu(doc2, c, logo) {
+  const paye = (c.paiement?.statut || "en attente") === "paye";
+  const M = 18;              // marge gauche, en millimètres
+  const L = 210 - M * 2;     // largeur utile d'une page A4
+  const CORPS = 11;
+  const SAUT = 6.4;          // interligne, accordé à la taille du corps
+  let y = 22;
+
+  const ligne = (gauche, droite, gras) => {
+    doc2.setFont("helvetica", gras ? "bold" : "normal");
+    doc2.text(String(gauche), M, y);
+    if (droite !== undefined) doc2.text(String(droite), M + L, y, { align: "right" });
+    y += SAUT;
+  };
+
+  // Logo à gauche, texte à sa droite. Hauteur fixe, largeur déduite des
+  // proportions réelles du fichier.
+  let xTexte = M;
+  if (logo) {
+    const h = 18, w = h * logo.ratio;
+    doc2.addImage(logo.data, "JPEG", M, y - 12, w, h);
+    xTexte = M + w + 6;
+  }
+
+  doc2.setFontSize(16);
+  doc2.setFont("helvetica", "bold");
+  doc2.text("Yoann's French Bakery", xTexte, y);
+  y += 6;
+  doc2.setFontSize(CORPS);
+  doc2.setFont("helvetica", "normal");
+  doc2.setTextColor(110);
+  doc2.text("Metro Manila, Philippines", xTexte, y);
+  doc2.setTextColor(0);
+  y += logo ? 12 : 8;
+
+  doc2.setFontSize(13.5);
+  ligne(paye ? "Receipt" : "Order summary", "", true);
+  doc2.setFontSize(CORPS);
+
+  ligne("Order", c.numero || c.id);
+  if (c.cree_le) ligne("Ordered on", joliJour(String(c.cree_le).slice(0, 10)));
+  if (c.date_retrait) ligne(c.option?.nom || "Collection", joliJour(c.date_retrait));
+  ligne("Order status", (ETATS[c.statut] || {}).texte || c.statut || "");
+  ligne("Payment", ((PAIEMENTS[c.paiement?.statut || "en attente"] || {}).texte || "")
+    + (c.paiement?.methode ? " (" + c.paiement.methode + ")" : ""));
+  if (c.client?.nom) ligne("Customer", c.client.nom);
+  if (c.client?.adresse) {
+    doc2.setFont("helvetica", "normal");
+    const lignesAdresse = doc2.splitTextToSize("Address: " + c.client.adresse, L);
+    doc2.text(lignesAdresse, M, y);
+    y += SAUT * lignesAdresse.length;
+  }
+
+  y += 3;
+  doc2.setDrawColor(200); doc2.line(M, y, M + L, y); y += 7;
+
+  (c.panier || []).forEach(l => {
+    const qte = Number(l.qte) || 0;
+    ligne(qte + " x " + (l.nom || l.code || ""), pesoPdf(qte * (Number(l.prix) || 0)));
+  });
+
+  y += 1;
+  doc2.line(M, y, M + L, y); y += 7;
+
+  if (c.code_promo && c.code_promo.montant)
+    ligne("Promo code " + (c.code_promo.code || ""), "-" + pesoPdf(c.code_promo.montant));
+  if (c.frais_a_confirmer) ligne(c.option?.nom || "Delivery", "confirmed later");
+  else if (Number(c.frais_livraison) > 0)
+    ligne(c.option?.nom || "Delivery", pesoPdf(c.frais_livraison));
+  if (Number(c.credit_utilise) > 0)
+    ligne("Store credit", "-" + pesoPdf(c.credit_utilise));
+
+  doc2.setFontSize(13);
+  ligne("Total", pesoPdf(c.total), true);
+  doc2.setFontSize(9);
+  doc2.setTextColor(120);
+  y += 6;
+  doc2.text(doc2.splitTextToSize(
+    "This document is a summary of your order, not an official BIR invoice. "
+    + "Issued " + new Date().toLocaleString("en-PH") + ".", L), M, y);
+}
+
+async function telechargerRecu(id, bouton) {
+  const c = toutesCommandes.find(x => x.id === id);
+  if (!c) return;
+
+  const texteInitial = bouton.textContent;
+  bouton.disabled = true;
+  bouton.textContent = "Preparing…";
+  try {
+    const [{ jsPDF }, logo] = await Promise.all([chargerJsPDF(), chargerLogo()]);
+    const doc2 = new jsPDF({ unit: "mm", format: "a4" });
+    construireRecu(doc2, c, logo);
+    doc2.save("YFB-" + (c.numero || c.id) + ".pdf");
+    bouton.textContent = texteInitial;
+  } catch (e) {
+    console.error(e);
+    bouton.textContent = "Could not prepare it — try again";
+  } finally {
+    bouton.disabled = false;
+  }
 }
 
 /* ---------- Abonnements ----------
@@ -493,6 +675,11 @@ function blocAbonnement(a) {
 /* Les abonnements chargés, gardés en mémoire pour redessiner un bloc
    sans relire toute la page. */
 let abonnements = [];
+
+/* Toutes les commandes lues, au-delà des trois affichées d'emblée. Un client
+   peut avoir besoin du reçu d'une commande ancienne : la couper à trois
+   rendrait le bouton inutile là où il sert le plus. */
+let toutesCommandes = [];
 
 function brancherAbonnements() {
   document.querySelectorAll(".abo .replier").forEach(b => {
@@ -617,6 +804,9 @@ async function ecranCompte(user) {
     // Limiter dans la requête donnerait trois commandes au hasard : sans
     // orderBy, Firestore coupe selon l'identifiant, qui n'a rien de
     // chronologique. On trie d'abord, on coupe ensuite.
+    // Toutes gardées en mémoire : « Show older orders » n'entraîne aucune
+    // lecture supplémentaire, la page a déjà payé le coût de la requête.
+    toutesCommandes = commandes;
     commandes = commandes.slice(0, DERNIERES);
   } catch (e) {
     console.error(e);
@@ -705,10 +895,10 @@ async function ecranCompte(user) {
 
     <div class="bloc ${classeCommandes}">
       <h2>Your last orders</h2>
-      ${listeCommandes}
-      ${commandes.length >= DERNIERES
-        ? '<p class="aide" style="margin:12px 0 0">Older orders aren\'t shown here — message us if you need one.</p>'
-        : ""}
+      <div id="listeCommandes">${listeCommandes}</div>
+      ${toutesCommandes.length > DERNIERES
+        ? `<button class="plus" id="btnPlusCommandes" type="button">Show older orders (${
+            toutesCommandes.length - DERNIERES})</button>` : ""}
     </div>
 
     <div class="bloc ${classeMouvements}">
@@ -722,6 +912,15 @@ async function ecranCompte(user) {
 
   brancherCommandes();
   brancherAbonnements();
+
+  const btnPlus = $("btnPlusCommandes");
+  if (btnPlus) {
+    btnPlus.onclick = () => {
+      $("listeCommandes").innerHTML = toutesCommandes.map(ligneCommande).join("");
+      btnPlus.remove();
+      brancherCommandes();   // les nouvelles cartes n'ont pas encore leurs écouteurs
+    };
+  }
   $("btnSortir").onclick = () => signOut(auth);
 }
 </script>
