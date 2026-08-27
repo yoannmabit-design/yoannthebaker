@@ -6,7 +6,9 @@
 
    Deux remises existent, elles ne se cumulent jamais :
      - le tarif de groupe, un pourcentage porté par le compte client,
-       appliqué produit par produit et arrondi au peso ;
+       appliqué produit par produit et arrondi au peso — sur tout le
+       panier par défaut, ou seulement sur certains rayons/produits si
+       le compte porte une portée (voir ligneConcerneeParGroupe) ;
      - le code promo, appliqué au sous-total.
    On calcule les deux sous-totaux et on retient le plus avantageux.
    À égalité, le tarif de groupe l'emporte : inutile de consommer un
@@ -48,6 +50,37 @@ export function ligneConcernee(ligne, fiche) {
   const portee = porteeDe(fiche);
   if (!portee.length) return true;
   return portee.includes(ligne.rayon || "Other");
+}
+
+/* Portée du tarif de groupe d'un compte — même principe que la portée d'un
+   code promo, mais réglée sur le compte plutôt que sur le code. Vide des
+   trois côtés (rayons, produits, qte_min) = comportement historique, la
+   remise porte sur tout le panier ; aucun compte existant n'est donc
+   affecté tant que ces champs ne sont pas renseignés. Un produit précis
+   l'emporte sur un rayon si les deux sont renseignés à la fois, plus
+   spécifique gagne. */
+function ligneCorrespondPortee(ligne, scope) {
+  const produits = (scope && Array.isArray(scope.produits)) ? scope.produits.filter(Boolean) : [];
+  const rayons = (scope && Array.isArray(scope.rayons)) ? scope.rayons.filter(Boolean) : [];
+  if (!produits.length && !rayons.length) return true;
+  if (produits.length) return !!(ligne.code && produits.includes(ligne.code));
+  return rayons.includes(ligne.rayon || "Other");
+}
+
+/* Applique en plus le seuil de quantité minimale, s'il y en a un : porte
+   sur le total cumulé des lignes déjà retenues par rayon/produit (ou sur
+   tout le panier si aucune portée rayon/produit n'est réglée) — pas sur
+   le panier entier indépendamment de la portée. En dessous du seuil,
+   aucune des lignes normalement concernées n'obtient la remise : un achat
+   de complément ne doit pas profiter du même tarif que l'achat en gros. */
+export function lignesEligiblesGroupe(lignes, scope) {
+  const arr = lignes || [];
+  const correspondent = arr.map(l => ligneCorrespondPortee(l, scope));
+  const qteMin = Number(scope && scope.qte_min) || 0;
+  if (qteMin <= 0) return correspondent;
+  const qteCorrespondante = arr.reduce(
+    (t, l, i) => correspondent[i] ? t + (Number(l.qte) || 0) : t, 0);
+  return qteCorrespondante >= qteMin ? correspondent : arr.map(() => false);
 }
 
 // Libellé anglais de la portée, pour les messages au client.
@@ -194,33 +227,46 @@ export function prixGroupe(base, remise) {
   return r > 0 ? Math.round(b * (1 - r / 100)) : b;
 }
 
-/* lignes : [{ qte, prixBase, rayon }]
+/* lignes : [{ qte, prixBase, rayon, code }]
    remise : pourcentage du tarif de groupe (0 si aucun)
    fiche  : code promo déjà vérifié, ou null
+   remiseScope : portée du tarif de groupe { rayons: [], produits: [], qte_min }
+                 — vide ou omis = tout le panier, comme avant.
 
-   Le tarif de groupe porte sur tout le panier ; le code promo ne porte
-   que sur les rayons de sa portée. On compare malgré tout les deux
-   sous-totaux du panier entier : c'est le montant que paie le client.
+   Le tarif de groupe porte sur le panier, ou sur la part que sa portée
+   couvre si elle en a une (et seulement si le seuil de quantité minimale,
+   s'il y en a un, est atteint) ; le code promo ne porte que sur les rayons
+   de sa portée à lui. On compare malgré tout les deux sous-totaux du
+   panier entier : c'est le montant que paie le client.
 
    Renvoie :
-     base        sous-total au tarif catalogue
-     groupe      sous-total au tarif de groupe
-     promo       sous-total avec le code
-     eligible    part du panier concernée par le code
-     sousTotal   celui retenu
-     source      "groupe" | "promo" | "aucune"
-     economie    base − sousTotal
+     base                  sous-total au tarif catalogue
+     groupe                sous-total au tarif de groupe (lignes hors portée au prix catalogue)
+     promo                 sous-total avec le code
+     eligible              part du panier concernée par le code
+     sousTotal             celui retenu
+     source                "groupe" | "promo" | "aucune"
+     economie              base − sousTotal
+     lignesGroupeEligibles tableau parallèle à "lignes" : cette ligne est-elle
+                            dans la portée du tarif de groupe ? à repasser à
+                            prixUnitaire ligne par ligne, pour ne pas
+                            recalculer la portée à chaque appel.
 */
-export function calculerPrix(lignes, remise, fiche) {
-  const base = (lignes || []).reduce(
+export function calculerPrix(lignes, remise, fiche, remiseScope) {
+  const arr = lignes || [];
+  const base = arr.reduce(
     (t, l) => t + (Number(l.qte) || 0) * (Number(l.prixBase) || 0), 0);
 
-  const groupe = (lignes || []).reduce(
-    (t, l) => t + (Number(l.qte) || 0) * prixGroupe(l.prixBase, remise), 0);
+  const lignesGroupeEligibles = lignesEligiblesGroupe(arr, remiseScope);
+  const groupe = arr.reduce((t, l, i) => {
+    const prix = lignesGroupeEligibles[i]
+      ? prixGroupe(l.prixBase, remise) : (Number(l.prixBase) || 0);
+    return t + (Number(l.qte) || 0) * prix;
+  }, 0);
 
   // Part du panier sur laquelle le code peut mordre.
   const eligible = fiche
-    ? (lignes || []).reduce((t, l) => ligneConcernee(l, fiche)
+    ? arr.reduce((t, l) => ligneConcernee(l, fiche)
         ? t + (Number(l.qte) || 0) * (Number(l.prixBase) || 0) : t, 0)
     : 0;
 
@@ -239,14 +285,17 @@ export function calculerPrix(lignes, remise, fiche) {
   if (groupe < base && groupe <= promo)      { source = "groupe"; sousTotal = groupe; }
   else if (fiche && promo < base && promo < groupe) { source = "promo"; sousTotal = promo; }
 
-  return { base, groupe, promo, eligible, sousTotal, source, economie: base - sousTotal };
+  return { base, groupe, promo, eligible, sousTotal, source, economie: base - sousTotal, lignesGroupeEligibles };
 }
 
 // Prix unitaire réellement facturé, selon la remise retenue.
 // Avec un code promo la remise porte sur le total : les lignes gardent
 // leur prix catalogue et la réduction s'affiche à part.
-export function prixUnitaire(prixBase, remise, source) {
-  return source === "groupe" ? prixGroupe(prixBase, remise) : (Number(prixBase) || 0);
+// ligneEligible : cette ligne précise est-elle dans la portée du tarif de
+// groupe ? Par défaut oui, pour ne rien changer aux appels existants qui
+// n'ont pas encore de portée à faire valoir.
+export function prixUnitaire(prixBase, remise, source, ligneEligible = true) {
+  return (source === "groupe" && ligneEligible) ? prixGroupe(prixBase, remise) : (Number(prixBase) || 0);
 }
 
 // Libellé anglais de la remise, pour le récapitulatif.
