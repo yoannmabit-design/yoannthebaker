@@ -4,12 +4,22 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Checkout — Yoann's French Bakery</title>
-<meta name="theme-color" content="#1a1a1a">
+<meta name="theme-color" content="#201e1d">
+<!-- Une seule police web, titres seulement : le corps de texte garde la
+     police du système. Voir index.html, même choix, mêmes raisons. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Caprasimo&display=swap">
 <style>
+  /* Palette « Terracotta & Sage » — mêmes valeurs que la vitrine, pour que
+     le client ne change pas d'univers en passant à la commande. Les noms de
+     variables sont inchangés : rien d'autre dans la page n'a besoin d'être
+     touché. */
   :root{
-    --creme:#fdf6ec;--papier:#fffdf9;--encre:#1a1a1a;
-    --encre-doux:#6b6157;--trait:#e2d7c6;--accent:#2f4858;
-    --alerte:#8c2f22;--r:6px;
+    --creme:#f5ead8;--papier:#ffffff;--encre:#201e1d;
+    --encre-doux:#5c5449;--trait:#e3d4b8;--accent:#c67139;
+    --accent-fonce:#a85a26;--sauge:#7a8a5e;
+    --alerte:#8c2f22;--r:10px;
   }
   *{box-sizing:border-box}
   body{
@@ -22,7 +32,8 @@
     padding:15px 18px;display:flex;align-items:center;gap:14px;
   }
   header a{color:var(--creme);text-decoration:none;font-size:25px;line-height:1}
-  header h1{font-size:19px;margin:0;font-weight:600}
+  header h1{font-family:Caprasimo,"Iowan Old Style",Georgia,serif;
+    font-size:21px;margin:0;font-weight:400;letter-spacing:.01em}
   main{max-width:620px;margin:0 auto;padding:20px 16px}
 
   .bloc{
@@ -45,7 +56,7 @@
     border:1px solid var(--trait);border-radius:var(--r);
     margin-bottom:9px;cursor:pointer;background:#fff;
   }
-  .choix.actif{border-color:var(--accent);background:#f2f6f8}
+  .choix.actif{border-color:var(--accent);background:#fdf6ea}
   .choix input{width:auto;margin-top:3px;flex-shrink:0}
   .choix .corps{flex:1;min-width:0}
   .choix .t{font-weight:600;font-size:17px;display:flex;
@@ -112,9 +123,9 @@
     aspect-ratio:1;border:none;background:transparent;border-radius:var(--r);
     font:inherit;font-size:17px;color:var(--epuise,#b3aaa0);cursor:default;
   }
-  .cal .case.libre{color:var(--encre);font-weight:700;cursor:pointer;background:#f4efe6}
-  .cal .case.libre:hover{background:#e9e1d4}
-  .cal .case.prise{background:var(--accent);color:#fff}
+  .cal .case.libre{color:var(--encre);font-weight:700;cursor:pointer;background:#faf3e6}
+  .cal .case.libre:hover{background:#eadcc1}
+  .cal .case.prise{background:var(--sauge);color:#fff}
   .cal .case.vide{background:transparent}
   .choisie{font-size:16px;color:var(--accent);margin:9px 0 0;font-weight:600}
   .recap{font-size:17px}
@@ -126,7 +137,7 @@
   .recap .q{color:var(--encre-doux)}
   .recap .ligne-panier{align-items:center}
   .recap .nom-panier{flex:1;min-width:0}
-  .recap .l.remise span:last-child{color:#3d6b3d}
+  .recap .l.remise span:last-child{color:var(--sauge)}
   .promo{margin-top:13px;padding-top:12px;border-top:1px dashed var(--trait)}
   .promo .saisie{display:flex;gap:9px;flex-wrap:wrap}
   .promo input{
@@ -140,7 +151,7 @@
   }
   .promo button.appliquer:disabled{opacity:.5;cursor:default}
   .promo .etat{margin:9px 0 0;font-size:16px;color:var(--encre-doux)}
-  .promo .etat.ok{color:#3d6b3d}
+  .promo .etat.ok{color:var(--sauge)}
   .promo .etat.err{color:var(--alerte)}
   .promo .etat a{color:var(--accent)}
   .promo .retirer{
