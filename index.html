@@ -57,6 +57,13 @@
     background:#f3e8d5;border-bottom:1px solid var(--trait);
     padding:13px 20px;text-align:center;font-size:16.5px;color:#4a4038;
   }
+  /* Le texte par défaut ci-dessous est écrit en dur dans le HTML pour que le
+     bandeau s'affiche immédiatement, sans attendre la lecture Firestore.
+     Sans cela, ce bloc devenait le plus grand élément de la page et n'arrivait
+     qu'après le réseau : LCP à 6 s et toute la page poussée vers le bas.
+     La hauteur minimale absorbe l'écart si le texte enregistré depuis
+     l'onglet Boutique est un peu plus long que le défaut. */
+  @media (max-width:600px){ .avis{ min-height:104px; } }
   .vacances{
     background:var(--papier);border-bottom:1px solid var(--trait);
     padding:26px 20px;text-align:center;
@@ -284,7 +291,10 @@
 </div>
 
 <div class="vacances" id="vacances" hidden></div>
-<div class="avis" id="avis" hidden></div>
+<!-- Texte par défaut = copie de message_accueil (parametres/boutique).
+     À resynchroniser ici si le message change durablement dans l'admin. -->
+<div class="avis" id="avis">Baking on Wednesdays, Saturdays and Sundays. Please.
+  Present on Legazpi sunday Market, Makati. You can order anytime, cut-off 5pm the day before delivery.</div>
 
 <nav class="rayons" id="rayons" hidden></nav>
 
@@ -427,9 +437,14 @@ async function demarrer() {
         zone.hidden = false;
       }
 
-      if (p.message_accueil) {
-        $("avis").textContent = p.message_accueil;
-        $("avis").hidden = false;
+      // Le bandeau est déjà affiché avec son texte par défaut. On ne le touche
+      // que si l'admin a enregistré autre chose, pour ne pas provoquer de
+      // décalage inutile quand les deux textes sont identiques.
+      const avis = $("avis");
+      if (p.message_accueil && p.message_accueil !== avis.textContent.trim()) {
+        avis.textContent = p.message_accueil;
+      } else if (!p.message_accueil) {
+        avis.hidden = true;   // message vidé depuis l'admin
       }
       if (p.whatsapp) {
         $("pied").innerHTML =
