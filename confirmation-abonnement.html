@@ -4,12 +4,21 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Bread plan set — Yoann's French Bakery</title>
-<meta name="theme-color" content="#1a1a1a">
+<meta name="theme-color" content="#201e1d">
 <link rel="icon" href="logo.jpg">
+<!-- Une seule police web, titres seulement : le corps de texte garde la
+     police du système. Voir index.html, même choix, mêmes raisons. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Caprasimo&display=swap">
 <style>
+  /* Palette « Terracotta & Sage » — mêmes valeurs que la vitrine et les
+     autres écrans client. Les noms de variables sont inchangés : rien
+     d'autre dans la page n'a besoin d'être touché. */
   :root{
-    --creme:#fdf6ec;--papier:#fffdf9;--encre:#1a1a1a;
-    --encre-doux:#6b6157;--trait:#e2d7c6;--accent:#2f4858;--r:6px;
+    --creme:#f5ead8;--papier:#ffffff;--encre:#201e1d;
+    --encre-doux:#5c5449;--trait:#e3d4b8;--accent:#c67139;
+    --accent-fonce:#a85a26;--sauge:#7a8a5e;--r:10px;
   }
   *{box-sizing:border-box}
   body{
@@ -23,7 +32,7 @@
     margin:0 auto 13px;font-size:25px;
   }
   header h1{
-    font-family:"Iowan Old Style",Georgia,serif;
+    font-family:Caprasimo,"Iowan Old Style",Georgia,serif;
     font-size:27px;font-weight:400;margin:0;
   }
   header .ref{margin:7px 0 0;font-size:16px;opacity:.78;letter-spacing:.05em}
@@ -47,7 +56,7 @@
 
   .l{display:flex;justify-content:space-between;gap:14px;padding:4px 0;font-size:17px}
   .l .q{color:var(--encre-doux)}
-  .l.remise span:last-child{color:#3d6b3d}
+  .l.remise span:last-child{color:var(--sauge)}
   .l.somme{
     border-top:1px solid var(--trait);margin-top:9px;padding-top:11px;
     font-weight:600;font-size:20px;
