@@ -4,13 +4,22 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>My account — Yoann's French Bakery</title>
-<meta name="theme-color" content="#1a1a1a">
+<meta name="theme-color" content="#201e1d">
 <link rel="icon" href="logo.jpg">
+<!-- Une seule police web, titres seulement : le corps de texte garde la
+     police du système. Voir index.html, même choix, mêmes raisons. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Caprasimo&display=swap">
 <style>
+  /* Palette « Terracotta & Sage » — mêmes valeurs que la vitrine et le
+     checkout. Les noms de variables sont inchangés : rien d'autre dans la
+     page n'a besoin d'être touché. */
   :root{
-    --creme:#fdf6ec;--papier:#fffdf9;--encre:#1a1a1a;
-    --encre-doux:#6b6157;--trait:#e2d7c6;--accent:#2f4858;
-    --ok:#3d6b3d;--alerte:#8c2f22;--r:6px;
+    --creme:#f5ead8;--papier:#ffffff;--encre:#201e1d;
+    --encre-doux:#5c5449;--trait:#e3d4b8;--accent:#c67139;
+    --accent-fonce:#a85a26;--sauge:#7a8a5e;
+    --ok:#7a8a5e;--alerte:#8c2f22;--r:10px;
     --vide:#5a5285;--recent:#a85a1c;
   }
   *{box-sizing:border-box}
@@ -23,7 +32,8 @@
     padding:15px 18px;display:flex;align-items:center;gap:14px;
   }
   header a{color:var(--creme);text-decoration:none;font-size:25px;line-height:1}
-  header h1{font-size:19px;margin:0;font-weight:600}
+  header h1{font-family:Caprasimo,"Iowan Old Style",Georgia,serif;
+    font-size:21px;margin:0;font-weight:400;letter-spacing:.01em}
   main{max-width:560px;margin:0 auto;padding:22px 16px 60px}
 
   .bloc{
@@ -92,7 +102,7 @@
   }
   .cmd .statut{
     font-size:13px;letter-spacing:.06em;text-transform:uppercase;
-    padding:2px 9px;border-radius:11px;background:#efe6d8;color:var(--encre-doux);
+    padding:2px 9px;border-radius:999px;background:#eadcc1;color:var(--encre-doux);
   }
   .cmd .statut.vive{background:#e4efe4;color:var(--ok)}
   .cmd .statut.morte{background:#f6e2de;color:var(--alerte)}
@@ -121,7 +131,7 @@
   .abo .rythme{font-size:15px;color:var(--encre-doux)}
   .abo .puce{
     font-size:13px;letter-spacing:.06em;text-transform:uppercase;
-    padding:2px 9px;border-radius:11px;background:#efe6d8;color:var(--encre-doux);
+    padding:2px 9px;border-radius:999px;background:#eadcc1;color:var(--encre-doux);
   }
   .abo .puce.vive{background:#e4efe4;color:var(--ok)}
   .abo .puce.morte{background:#f6e2de;color:var(--alerte)}
