@@ -16,7 +16,9 @@
 
    La remise ne porte jamais sur les frais de retrait ou de livraison.
 
-   Un code ne vaut qu'une fois par client — voir usagesClient().
+   Le nombre d'usages autorisés par client est réglé sur la fiche du
+   code (limite_par_client) ; absent, le code est sans limite.
+   Voir usagesClient() et verifierCode().
    ============================================================ */
 
 import { doc, getDoc }
@@ -132,7 +134,7 @@ export async function chargerCode(db, saisie) {
    livrée : le test est sans effet aujourd'hui, mais un code daté saisi
    à la main dans Firestore sera déjà respecté. */
 /* ---------- Usage par client ----------
-   Un code ne vaut qu'une fois par personne. Le comptage porte sur ce que
+   Le comptage porte sur ce que
    le client a déjà engagé : ses commandes libres portant ce code, et ses
    abonnements l'ayant retenu.
 
@@ -202,11 +204,19 @@ export function verifierCode(fiche, { connecte = false, quand = new Date(), usag
   const valeur = Number(fiche.valeur) || 0;
   if (valeur <= 0) return { ok: false, message: "That code is no longer available." };
 
-  // Une fois par personne. Le refus est prononcé dès l'application du
-  // code, pas au moment de valider : inutile de composer tout un panier
-  // pour apprendre ensuite que le code ne vaut plus.
-  if (Number(usages) > 0)
-    return { ok: false, message: "You've already used this code." };
+  /* Nombre d'usages autorisés par personne, réglé sur la fiche du code
+     depuis l'écran Boutique. Absent ou null = aucune limite : le client
+     peut réutiliser le code autant de fois qu'il veut.
+
+     Le refus est prononcé dès l'application du code, pas au moment de
+     valider : inutile de composer tout un panier pour apprendre ensuite
+     que le code ne vaut plus. */
+  const limite = fiche.limite_par_client;
+  if (limite != null && Number(usages) >= Number(limite)) {
+    return { ok: false, message: Number(limite) === 1
+      ? "You've already used this code."
+      : "You've reached the limit for this code." };
+  }
 
   return { ok: true };
 }
