@@ -156,6 +156,25 @@
   }
   .produit .visuel:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
 
+  /* Ruban : posé en haut à gauche de la photo. Le .visuel est déjà en
+     position:relative, rien d'autre à restructurer.
+     Une couleur par valeur, choisie pour que le sens se lise sans lire :
+     terracotta = nouveauté, rouge = prix, sauge = recommandation,
+     encre = distinction, crème = simple information.
+     pointer-events:none pour que le clic passe au travers et continue
+     d'ouvrir le descriptif comme avant. */
+  .produit .ruban{
+    position:absolute;top:0;left:0;z-index:1;pointer-events:none;
+    padding:5px 11px;border-bottom-right-radius:var(--r);
+    font-size:11.5px;font-weight:700;letter-spacing:.06em;
+    text-transform:uppercase;line-height:1.2;
+    background:var(--accent);color:#fff;
+  }
+  .produit .ruban.promo{background:var(--alerte, #8c2f22)}
+  .produit .ruban.best{background:var(--sauge)}
+  .produit .ruban.mois{background:var(--encre)}
+  .produit .ruban.precommande{background:var(--encre);color:var(--creme);opacity:.9}
+
   .produit .corps{padding:11px 12px 12px}
   .infos{min-width:0}
   .infos .nom{font-weight:600;font-size:17px;line-height:1.3}
@@ -666,6 +685,27 @@ function ligneProduit(p) {
     img.src = essais[0];
   }
   visuel.appendChild(img);
+
+  /* Ruban, si la fiche produit en porte un. Le libellé vient tel quel de
+     l'admin ; la classe de couleur est déduite du texte, avec repli sur le
+     terracotta si le libellé ne correspond à aucun cas connu — un ruban
+     inattendu s'affiche donc quand même, il est juste moins coloré.
+     Le ruban suit l'opacité de la carte quand le produit est épuisé :
+     un « NEW » bien vif sur un produit indisponible serait frustrant. */
+  if (p.ruban) {
+    const cle = String(p.ruban).toLowerCase();
+    let teinte = "";
+    if (cle.includes("promo")) teinte = " promo";
+    else if (cle.includes("best")) teinte = " best";
+    else if (cle.includes("month") || cle.includes("mois")) teinte = " mois";
+    else if (cle.includes("pre-order") || cle.includes("preorder")) teinte = " precommande";
+
+    const ruban = document.createElement("span");
+    ruban.className = "ruban" + teinte;
+    ruban.textContent = p.ruban;
+    visuel.appendChild(ruban);
+  }
+
   el.appendChild(visuel);
 
   const corps = document.createElement("div");
