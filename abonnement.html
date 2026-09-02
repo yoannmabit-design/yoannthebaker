@@ -426,7 +426,7 @@ async function appliquerCode() {
     // ici, avant que le plan ne soit composé.
     const usages = await usagesClient(db, user.uid, saisie,
                                       { collection, query, where, getDocs, limit });
-    const v = verifierCode(fiche, { connecte: true, usages });
+    const v = verifierCode(fiche, { connecte: true, usages, contexte: "abonnement" });
     if (!v.ok) { promo = null; etatPromo(v.message, "err"); majRecap(); return; }
     promo = fiche;
     $("champCode").value = "";
@@ -865,7 +865,7 @@ $("btnSouscrire").onclick = async () => {
       const fiche = await chargerCode(db, promo.id);
       const usages = await usagesClient(db, user.uid, promo.id,
                                         { collection, query, where, getDocs, limit });
-      const v = verifierCode(fiche, { connecte: true, usages });
+      const v = verifierCode(fiche, { connecte: true, usages, contexte: "abonnement" });
       if (!v.ok) {
         promo = null;
         majRecap();
