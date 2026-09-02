@@ -243,6 +243,12 @@ const JOURS_COURTS = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
 
 let params = {}, options = [], lignes = [], sousTotal = 0;
 let remise = 0, uidClient = "", solde = 0, creditUtilise = 0;
+/* E-mail du compte connecté. Rien n'est demandé au client : Firebase Auth
+   le connaît déjà (compte Google). Il est écrit dans la commande pour servir
+   de lien avec la collection « comptes », qui ne porte pas de téléphone —
+   sans lui, la page Clients ne peut rattacher aucune fiche à son compte.
+   Vide pour une commande en invité, qui n'a de toute façon pas de compte. */
+let emailClient = "";
 let creditEngage = 0;          // crédit annoncé sur des commandes non encore réglées
 let promo = null;              // fiche du code promo appliqué
 let sourceRemise = "aucune";   // "groupe" | "promo" | "aucune"
@@ -260,6 +266,7 @@ function attendreConnexion() {
       stop();
       if (user) {
         uidClient = user.uid;
+        emailClient = user.email || "";
         try {
           const s = await getDoc(doc(db, "comptes", user.uid));
           remise = Number(s.data()?.remise) || 0;
@@ -1310,6 +1317,8 @@ $("btnEnvoyer").onclick = async () => {
     // adresse reste la ligne complète, lue telle quelle par l'administration
     // et la confirmation ; adresse_detail porte le découpage.
     client: { nom, telephone: tel, telephone_local: telLocal,
+              // Lien vers le compte boutique. Voir emailClient plus haut.
+              email: emailClient,
               adresse, adresse_detail: detail },
     panier: lignes.map(l => ({ code: l.code, nom: l.nom, qte: l.qte, prix: l.prix })),
     remise,
