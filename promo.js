@@ -19,6 +19,10 @@
    Le nombre d'usages autorisés par client est réglé sur la fiche du
    code (limite_par_client) ; absent, le code est sans limite.
    Voir usagesClient() et verifierCode().
+
+   Un code peut être réservé aux abonnements (abonnement_seulement) : il
+   est alors refusé sur une commande libre. La page appelante annonce son
+   contexte à verifierCode(), « commande » par défaut.
    ============================================================ */
 
 import { doc, getDoc }
@@ -186,10 +190,19 @@ export async function usagesClient(db, uid, code, fs) {
   return n;
 }
 
-export function verifierCode(fiche, { connecte = false, quand = new Date(), usages = 0 } = {}) {
+export function verifierCode(fiche, { connecte = false, quand = new Date(), usages = 0,
+                                      contexte = "commande" } = {}) {
   if (!fiche)            return { ok: false, message: "We don't recognise that code." };
   if (fiche.actif === false)
     return { ok: false, message: "That code is no longer available." };
+
+  /* Codes réservés aux abonnements : refusés sur une commande libre, et
+     dits comme tels. Le code voyage d'une page à l'autre par le stockage
+     local — un prof qui le saisit sur la vitrine doit comprendre qu'il ne
+     s'est pas trompé de code, mais de page. Le défaut « commande » laisse
+     la vitrine et le checkout inchangés. */
+  if (fiche.abonnement_seulement === true && contexte !== "abonnement")
+    return { ok: false, message: "This code only applies to subscriptions." };
 
   // Un code est nominatif : il suppose un compte pour être décompté.
   if (!connecte)
