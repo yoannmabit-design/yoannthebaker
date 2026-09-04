@@ -122,6 +122,16 @@
     font-family:Caprasimo,"Iowan Old Style",Georgia,serif;
     font-size:22.5px;font-weight:400;margin:0 0 3px;
   }
+  /* Conseil affiché sous le titre du rayon (conservation, réchauffage...).
+     Le texte vient de parametres/boutique, champ rayons_notes. */
+  .categorie .note{
+    font-style:italic;
+    font-size:clamp(.82rem,2.2vw,.92rem);
+    line-height:1.45;
+    color:var(--sauge);
+    margin:0 0 10px;
+    max-width:60ch;
+  }
   .categorie .filet{height:1px;background:var(--trait);margin-bottom:16px}
 
   /* ---------- Produit ---------- */
@@ -418,6 +428,12 @@ let connecte = false;   // un code promo suppose un compte
 let promo    = null;    // fiche du code promo appliqué
 let sourceRemise = "aucune";   // "groupe" | "promo" | "aucune"
 
+/* Conseils par rayon, lus dans parametres/boutique (champ rayons_notes).
+   Volontairement dans le document déjà chargé au démarrage : pas de lecture
+   supplémentaire, donc pas de retard à l'affichage. Objet vide = rien ne
+   s'affiche, la vitrine fonctionne comme avant. */
+let notesRayons = {};
+
 /* ---------- Panier conservé sur l'appareil du client ---------- */
 function chargerPanier() {
   try { panier = JSON.parse(localStorage.getItem("panier") || "{}"); }
@@ -457,6 +473,10 @@ async function demarrer() {
 
     if (params.exists()) {
       const p = params.data();
+
+      // Conseils par rayon. Absent ou mal typé : on repart d'un objet vide.
+      notesRayons = (p.rayons_notes && typeof p.rayons_notes === "object")
+        ? p.rayons_notes : {};
 
       const vac = p.vacances || {};
       ferme = !!vac.actif;
@@ -624,6 +644,17 @@ function afficher() {
     const titre = document.createElement("h2");
     titre.textContent = cle;
     bloc.appendChild(titre);
+
+    /* Conseil du rayon, juste sous le titre. textContent et non innerHTML :
+       le texte vient de l'admin, on ne lui laisse pas injecter de balises. */
+    const note = notesRayons[cle];
+    if (note && String(note).trim()) {
+      const p = document.createElement("p");
+      p.className = "note";
+      p.textContent = String(note).trim();
+      bloc.appendChild(p);
+    }
+
     bloc.insertAdjacentHTML("beforeend", '<div class="filet"></div>');
 
     const grille = document.createElement("div");
