@@ -295,7 +295,24 @@ async function charger() {
        accord négocié de vive voix, pas d'un plan en libre-service : on
        le renvoie vers la boulangerie plutôt que de lui proposer un
        tarif qui ne correspond pas à son usage. */
-    if (Number(compte.remise) > 0) {
+    /* Certains groupes remisés sont des particuliers — des enseignants, par
+       exemple — à qui l'abonnement s'adresse pleinement. La liste des
+       groupes autorisés vit dans parametres/groupes_tarifaires, champ
+       « groupes_abonnement ». Absente, personne n'est autorisé : c'est le
+       comportement d'avant, aucun compte remisé existant n'est débloqué
+       par surprise. */
+    let groupesAbo = [];
+    try {
+      const g = await getDoc(doc(db, "parametres", "groupes_tarifaires"));
+      const v = g.exists() ? g.data().groupes_abonnement : null;
+      if (Array.isArray(v)) groupesAbo = v.filter(Boolean);
+    } catch (e) { console.error(e); }
+
+    const groupeClient = (compte.groupe || "").trim();
+    const autorise = groupeClient && groupesAbo.some(
+      x => String(x).trim().toLowerCase() === groupeClient.toLowerCase());
+
+    if (Number(compte.remise) > 0 && !autorise) {
       $("page").innerHTML =
         '<div class="message">Bread plans are for individual customers.<br><br>' +
         "If you'd like a regular order for your business, just message us — " +
