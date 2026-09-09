@@ -436,6 +436,15 @@ function construire() {
       <h2>Where would you like to get it?</h2>
       <div id="listeOptions"></div>
       <div id="blocAdresse" hidden style="margin-top:14px">
+        <div id="blocPonctuelle" hidden style="margin-bottom:12px">
+          <label class="choix" style="align-items:flex-start">
+            <input type="checkbox" id="adressePonctuelle">
+            <span>
+              <b>Deliver somewhere else this time</b><br>
+              <span class="option">For this order only — your usual address stays unchanged.</span>
+            </span>
+          </label>
+        </div>
         <label class="champ"><span id="labelUnite">Unit / floor / building <span class="option">optional</span></span>
           <input type="text" id="adrUnite" autocomplete="address-line2"
                  placeholder="Unit 5B, Solstice Tower"></label>
@@ -522,7 +531,24 @@ function construire() {
   majTelLocal();
   // L'adresse du compte prime sur celle de l'appareil : c'est la plus sûre
   // quand le client commande depuis un téléphone partagé.
-  ecrireAdresse(adresseCompte || memo.adresse_detail || memo.adresse || "");
+  /* Adresse habituelle du client, gardée de côté : cocher « livrer ailleurs »
+     vide les champs pour cette commande, décocher la remet. Sans cette copie,
+     un client qui coche par erreur perdrait son adresse et devrait la
+     retaper entièrement. */
+  const adresseHabituelle = adresseCompte || memo.adresse_detail || memo.adresse || "";
+  ecrireAdresse(adresseHabituelle);
+
+  /* La case n'a de sens que pour un client dont on connaît déjà l'adresse :
+     une première commande n'a pas d'adresse « habituelle » à laquelle
+     s'opposer. */
+  const aUneAdresseConnue = !!(adresseHabituelle &&
+    (typeof adresseHabituelle === "string" ? adresseHabituelle.trim()
+      : Object.values(adresseHabituelle).some(Boolean)));
+
+  $("adressePonctuelle").onchange = (e) => {
+    ecrireAdresse(e.target.checked ? "" : adresseHabituelle);
+    if (e.target.checked) $("adrRue").focus();
+  };
   if (memo.nom || memo.tel) {
     $("zoneMemo").innerHTML =
       '<button class="retour" id="oublier">Not you? Clear these details</button>';
@@ -1044,6 +1070,16 @@ function majOption() {
     c.classList.toggle("actif", options[Number(c.dataset.i)] === o));
 
   $("blocAdresse").hidden = !o.demander_adresse;
+  const bp = $("blocPonctuelle");
+  if (bp) {
+    // Inutile sur un point de livraison fixe : l'adresse n'y varie pas.
+    const utile = !!o.demander_adresse && !o.adresse_connue && aUneAdresseConnue;
+    bp.hidden = !utile;
+    if (!utile && $("adressePonctuelle").checked) {
+      $("adressePonctuelle").checked = false;
+      ecrireAdresse(adresseHabituelle);
+    }
+  }
   majTelLocal();
   // Adresse déjà connue (ex: point de livraison fixe dans un immeuble) :
   // seul le numéro d'unité identifie le destinataire, le reste ne sert à
@@ -1253,6 +1289,11 @@ $("btnEnvoyer").onclick = async () => {
   const telLocal = $("blocTelLocal").hidden ? "" : $("telLocal").value.replace(/\D/g, "");
   const detail  = o.demander_adresse ? lireAdresse() : null;
   const adresse = detail ? adresseUneLigne(detail) : "";
+  /* Le client a explicitement demandé une livraison ailleurs pour cette fois.
+     Ce drapeau évite d'avoir à deviner : l'étiquette imprime alors l'adresse
+     de la commande plutôt que celle de la fiche, et l'administration sait
+     que le point de livraison enregistré ne correspond pas. */
+  const adressePonctuelle = !$("blocPonctuelle").hidden && $("adressePonctuelle").checked;
 
   if (nom.length < 2)  return echec("Please enter your name.");
   if (tel.length < 10) return echec("Please enter a valid mobile number.");
@@ -1319,7 +1360,8 @@ $("btnEnvoyer").onclick = async () => {
     client: { nom, telephone: tel, telephone_local: telLocal,
               // Lien vers le compte boutique. Voir emailClient plus haut.
               email: emailClient,
-              adresse, adresse_detail: detail },
+              adresse, adresse_detail: detail,
+              adresse_ponctuelle: adressePonctuelle },
     panier: lignes.map(l => ({ code: l.code, nom: l.nom, qte: l.qte, prix: l.prix })),
     remise,
     // Quelle remise a réellement joué : "groupe", "promo" ou "aucune".
@@ -1366,15 +1408,18 @@ $("btnEnvoyer").onclick = async () => {
 
     // L'adresse est gardée sur le compte pour les prochaines commandes.
     // merge : le solde, la remise et le groupe ne sont pas touchés.
-    if (uidClient && detail && adresse) {
+    // Une adresse ponctuelle ne devient jamais l'adresse habituelle.
+    if (uidClient && detail && adresse && !adressePonctuelle) {
       try {
         await setDoc(doc(db, "comptes", uidClient),
                      { adresse, adresse_detail: detail }, { merge: true });
       } catch (e) { console.error(e); }   // sans effet sur la commande
     }
     try {
-      localStorage.setItem("client",
-        JSON.stringify({ nom, tel, tel_local: telLocal, adresse, adresse_detail: detail }));
+      localStorage.setItem("client", JSON.stringify(adressePonctuelle
+        ? { nom, tel, tel_local: telLocal,
+            adresse: memo.adresse || "", adresse_detail: memo.adresse_detail || null }
+        : { nom, tel, tel_local: telLocal, adresse, adresse_detail: detail }));
       localStorage.setItem("derniere_commande", JSON.stringify({
         quand: new Date().toISOString(),
         lignes: lignes.map(l => ({ id: l.id, nom: l.nom, qte: l.qte }))
