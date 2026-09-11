@@ -255,6 +255,26 @@ let sourceRemise = "aucune";   // "groupe" | "promo" | "aucune"
 let economie = 0;              // écart avec le tarif catalogue
 let eligible = 0;              // part du panier concernée par le code
 let adresseCompte = null;      // adresse détaillée enregistrée sur le compte
+/* Adresse nettoyée par l'administration, dans la collection « clients ».
+   Elle prime sur celle du compte : c'est la seule dont on sait qu'elle a
+   été relue par un humain et qu'elle se géocode correctement. */
+let adresseFicheClient = null;
+
+async function lireAdresseCorrigee(tel) {
+  // La fiche client porte pour identifiant le téléphone réduit à ses
+  // chiffres — même règle que l'import de l'administration.
+  const cle = String(tel || "").replace(/\D/g, "");
+  if (!cle) return;
+  try {
+    const s = await getDoc(doc(db, "clients", cle));
+    if (!s.exists()) return;
+    const v = s.data();
+    adresseFicheClient = v.adresse_detail || v.adresse || null;
+  } catch (e) {
+    // Sans elle, on retombe sur l'adresse du compte : rien n'est bloqué.
+    console.error(e);
+  }
+}
 let charges = {};              // { "2026-08-22": { "BUT-CRO": 12 } }
 let capacites = {};            // { "BUT-CRO": 30 } — 0 ou absent = pas de limite
 let dateChoisie = "", moisVu = null, dateMin = null;
@@ -360,7 +380,7 @@ let panier = {};
     if (!lignes.length) return vide("The items in your basket are no longer available.");
     if (!options.length) return vide("Ordering is temporarily unavailable.");
 
-    construire();
+    await construire();
   } catch (e) {
     console.error(e);
     $("page").innerHTML =
@@ -374,7 +394,8 @@ function vide(texte) {
 }
 
 /* ---------- Formulaire ---------- */
-function construire() {
+/* Asynchrone depuis qu'elle attend l'adresse nettoyée de la fiche client. */
+async function construire() {
   const memo = lireMemo();
   const creneaux = params.creneaux || [];
 
@@ -529,13 +550,25 @@ function construire() {
   if (memo.tel_local) $("telLocal").value = memo.tel_local;
   $("tel").addEventListener("input", majTelLocal);
   majTelLocal();
+
+  // Le numéro est connu à ce stade (mémo local ou compte) : on va chercher
+  // l'adresse nettoyée avant de remplir les champs.
+  await lireAdresseCorrigee($("tel").value);
+
   // L'adresse du compte prime sur celle de l'appareil : c'est la plus sûre
   // quand le client commande depuis un téléphone partagé.
   /* Adresse habituelle du client, gardée de côté : cocher « livrer ailleurs »
      vide les champs pour cette commande, décocher la remet. Sans cette copie,
      un client qui coche par erreur perdrait son adresse et devrait la
      retaper entièrement. */
-  const adresseHabituelle = adresseCompte || memo.adresse_detail || memo.adresse || "";
+  /* Ordre de priorité délibéré : la fiche client d'abord.
+     Les adresses saisies par les clients arrivent souvent en triple, tout
+     en majuscules, ou avec la ville répétée — inexploitables pour obtenir
+     des coordonnées GPS. Une fois nettoyée dans l'administration, c'est
+     cette version-là qui doit revenir, sinon le client resaisit la même
+     forme bancale à chaque commande et le travail est à refaire. */
+  const adresseHabituelle = adresseFicheClient || adresseCompte ||
+    memo.adresse_detail || memo.adresse || "";
   ecrireAdresse(adresseHabituelle);
 
   /* La case n'a de sens que pour un client dont on connaît déjà l'adresse :
