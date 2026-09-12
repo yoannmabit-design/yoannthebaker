@@ -33,7 +33,7 @@ export const CLE_CODE = "code_promo";
 /* Rayons de la vitrine, dans l'ordre d'affichage. La même liste sert au
    classement du catalogue et à la portée des codes promo : un rayon ajouté
    ici est aussitôt disponible des deux côtés. */
-export const RAYONS = ["Breads", "Pastries", "Cakes", "Frozen", "Other"];
+export const RAYONS = ["Breads", "Gluten Free", "Pastries", "Seasonal", "Frozen", "Other"];
 
 /* Repli pour les produits publiés avant l'existence des rayons : on
    retombe sur la catégorie technique de la fiche. */
