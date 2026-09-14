@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -124,6 +125,20 @@
   }
   .cmd .l .q{color:var(--encre-doux)}
   .cmd .ou{color:var(--encre-doux);font-size:15px;margin:8px 0 0;line-height:1.45}
+  /* Encadré discret mais détaché du reste : il doit se trouver d'un coup
+     d'œil sur un téléphone, devant la boutique, sans lire le détail des prix. */
+  .cmd .ou-bloc{
+    display:flex;flex-direction:column;gap:3px;
+    border:1px solid var(--trait);border-left:3px solid var(--accent);
+    border-radius:var(--r);padding:11px 13px;margin:0 0 14px;background:#fffdf8;
+    font-size:15.5px;line-height:1.45;
+  }
+  .cmd .ou-bloc .ou-quoi{
+    font-size:12.5px;letter-spacing:.08em;text-transform:uppercase;
+    color:var(--encre-doux);
+  }
+  .cmd .ou-bloc b{font-size:17px}
+  .cmd .ou-bloc span:not(.ou-quoi){color:var(--encre-doux)}
   .abo{border-bottom:1px solid var(--trait);padding:12px 0}
   .abo:last-child{border-bottom:none}
   .abo .titre{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
@@ -359,11 +374,27 @@ function ligneCommande(c) {
     extras.push(`<div class="l"><span>Store credit</span>
                  <span>−${peso(c.credit_utilise)}</span></div>`);
 
-  const ou = [
-    c.option?.nom || "",
-    c.creneau || "",
-    c.client?.adresse || ""
-  ].filter(Boolean).join(" · ");
+  /* Où et quand récupérer la commande. C'est l'information que le client
+     vient chercher ici le jour venu — pas le détail des prix — donc elle a
+     son bloc, en tête du détail, et non une ligne grise en bas de carte.
+
+     Le lieu de l'option est affiché en entier. Un client dont la commande a
+     été basculée en retrait après coup n'a jamais vu l'adresse du point de
+     retrait : il avait choisi la livraison, et la page de confirmation qui
+     l'affiche date d'avant la modification. « My account » est alors le seul
+     endroit qu'il peut relire. */
+  const retrait = (c.option?.type || "retrait") !== "livraison";
+  const lignesOu = [
+    c.option?.lieu || "",
+    retrait ? "" : (c.client?.adresse || ""),
+    [joliJour(c.date_retrait), c.creneau || ""].filter(Boolean).join(" — ")
+  ].filter(Boolean);
+  const blocOu = `
+    <div class="ou-bloc">
+      <span class="ou-quoi">${retrait ? "Collection" : "Delivery"}</span>
+      <b>${ech(c.option?.nom || (retrait ? "Collection" : "Delivery"))}</b>
+      ${lignesOu.map(l => `<span>${ech(l)}</span>`).join("")}
+    </div>`;
 
   return `<div class="cmd">
     <button class="tete" type="button" aria-expanded="false">
@@ -375,11 +406,11 @@ function ligneCommande(c) {
       <span class="fleche">▾</span>
     </button>
     <div class="detail" hidden>
+      ${blocOu}
       ${articles}
       ${extras.join("")}
       <div class="l total"><span>${Number(c.credit_utilise) > 0 ? "Paid" : "Total"}</span>
         <span>${peso(Number(c.credit_utilise) > 0 ? restant : total)}</span></div>
-      ${ou ? `<p class="ou">${ech(ou)}</p>` : ""}
       ${etatPaiement === "en attente"
         ? '<p class="ou attente">We\'ll mark this as paid once we\'ve checked the transfer. Already paid? No action needed.</p>'
         : ""}
@@ -512,6 +543,9 @@ function construireRecu(doc2, c, logo) {
   ligne("Order", c.numero || c.id);
   if (c.cree_le) ligne("Ordered on", joliJour(String(c.cree_le).slice(0, 10)));
   if (c.date_retrait) ligne(c.option?.nom || "Collection", joliJour(c.date_retrait));
+  // Adresse du point de retrait ou précision de livraison : le reçu PDF est
+  // souvent ce que le client garde et relit le jour venu.
+  if (c.option?.lieu) ligne("Where", c.option.lieu);
   ligne("Order status", (ETATS[c.statut] || {}).texte || c.statut || "");
   ligne("Payment", ((PAIEMENTS[c.paiement?.statut || "en attente"] || {}).texte || "")
     + (c.paiement?.methode ? " (" + c.paiement.methode + ")" : ""));
