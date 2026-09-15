@@ -201,81 +201,57 @@
   .qui button{background:none;border:none;color:var(--accent);
     text-decoration:underline;cursor:pointer;font-size:15px;padding:0}
 
-  /* ---------- Pousse ----------
-     Animation d'attente : un pâton qui lève, dore au four, s'ouvre aux
-     grignes et fume. Dessinée en SVG plutôt qu'en GIF — un GIF serait un
-     fichier de plus à télécharger, donc invisible précisément sur les
-     connexions lentes où l'attente se fait sentir. Ici, rien à charger.
+  /* ---------- Scènes d'attente ----------
+     Une scène par page, plutôt qu'un même dessin partout : le client passe
+     de l'une à l'autre et l'attente se remarque moins. Toutes partagent le
+     cadre — même viewBox, même anneau, mêmes couleurs — pour rester d'une
+     seule famille.
 
      Cycle court à dessein : les pages se chargent en 3 à 7 secondes sur un
-     téléphone. Un cycle plus long ne montrerait qu'un pâton cru à ceux qui
-     arrivent sur les pages rapides.
+     téléphone. Un cycle plus long ne montrerait que le début de la scène à
+     ceux qui arrivent sur les pages rapides.
 
-     Tout est préfixé « po- » et scopé sous .pousse : ce SVG vit à
-     l'intérieur de la page, ses classes et son filtre ne doivent rien
-     heurter. */
+     Tout est préfixé et scopé sous .pousse : ces SVG vivent à l'intérieur
+     de la page, leurs classes ne doivent rien heurter. */
   .pousse{--po-duree:3.4s;text-align:center;padding:34px 20px;color:var(--encre-doux)}
   .pousse svg{width:190px;height:190px;display:block;margin:0 auto 4px}
   .pousse p{margin:0;font-size:16.5px;letter-spacing:.03em}
-
-  /* Le pain pousse depuis sa base, posée sur la sole. */
-  .pousse .po-pain{
-    transform-origin:160px 190px;
-    animation:po-lever var(--po-duree) cubic-bezier(.4,0,.2,1) infinite;
-  }
-  .pousse .po-croute{
-    animation:po-dorer var(--po-duree) ease-in-out infinite;
-  }
-  /* Les grignes s'écartent et découvrent la mie, une fois la pousse finie. */
-  .pousse .po-grignes{
-    transform-origin:160px 150px;
-    animation:po-grigner var(--po-duree) cubic-bezier(.4,0,.2,1) infinite;
-  }
-  .pousse .po-buee{opacity:0;animation:po-buee var(--po-duree) ease-out infinite}
-  .pousse .po-buee.b2{animation-delay:.15s}
-  .pousse .po-buee.b3{animation-delay:.3s}
-  /* Rotation continue, sans début ni fin : l'anneau dit « ça travaille »,
-     il ne prétend pas mesurer une progression qu'on ne connaît pas. */
-  .pousse .po-anneau{
-    transform-origin:160px 160px;
-    animation:po-tourner 1.9s linear infinite;
-  }
-
-  @keyframes po-lever{
-    0%       {transform:scale(.8,.65) translateY(18px)}
-    35%      {transform:scale(.95,.88) translateY(6px)}
-    55%,85%  {transform:scale(1.04,1.02) translateY(-2px)}
-    95%,100% {transform:scale(.8,.65) translateY(18px)}
-  }
-  @keyframes po-dorer{
-    0%,25%   {fill:#FBF0DF;stroke:#D6C29E}
-    40%      {fill:#F6D59E;stroke:#C29658}
-    60%,85%  {fill:#C26E23;stroke:#78350F}
-    95%,100% {fill:#FBF0DF;stroke:#D6C29E}
-  }
-  @keyframes po-grigner{
-    0%,30%   {stroke-width:2.5px;stroke:#D6C29E;opacity:.7}
-    45%      {stroke-width:5px;stroke:#FDE68A;opacity:1}
-    65%,85%  {stroke-width:8.5px;stroke:#FEF08A;opacity:1}
-    95%,100% {stroke-width:2.5px;stroke:#D6C29E;opacity:.7}
-  }
-  @keyframes po-buee{
-    0%,50% {opacity:0;transform:translateY(0) scaleY(.7)}
-    60%    {opacity:.7}
-    85%    {opacity:0;transform:translateY(-28px) scaleY(1.3)}
-    100%   {opacity:0;transform:translateY(0)}
-  }
+  /* Rotation continue, sans début ni fin : l'anneau dit « ça travaille », il
+     ne prétend pas mesurer une progression qu'on ne connaît pas. */
+  .pousse .po-anneau{transform-origin:160px 160px;animation:po-tourner 1.9s linear infinite}
   @keyframes po-tourner{to{transform:rotate(360deg)}}
 
-  /* Animations désactivées au niveau du système : on montre un pain cuit,
-     immobile, plutôt qu'un pâton cru figé. */
+  /* --- Compte : la molette tourne, la porte s'ouvre sur le trésor. --- */
+  .pousse .sc-molette{transform-origin:188px 161px;
+    animation:sc-molette var(--po-duree) cubic-bezier(.5,0,.3,1) infinite}
+  /* La porte pivote par un aplatissement horizontal, pris sur sa charnière
+     gauche : une vraie rotation 3D coûterait une perspective pour un effet
+     que personne ne remarquerait à cette taille. */
+  .pousse .sc-porte{transform-origin:92px 161px;
+    animation:sc-porte var(--po-duree) cubic-bezier(.4,0,.2,1) infinite}
+  .pousse .sc-croissant{animation:sc-tresor var(--po-duree) ease-out infinite}
+  .pousse .sc-lueur{animation:sc-lueur var(--po-duree) ease-out infinite}
+  @keyframes sc-molette{
+    0%      {transform:rotate(0)}
+    34%     {transform:rotate(310deg)}
+    44%,100%{transform:rotate(430deg)}}
+  @keyframes sc-porte{
+    0%,46%  {transform:scaleX(1)}
+    68%,86% {transform:scaleX(.16)}
+    96%,100%{transform:scaleX(1)}}
+  @keyframes sc-tresor{
+    0%,58%  {opacity:0;transform:translateY(6px) scale(.9)}
+    72%     {opacity:1;transform:translateY(0) scale(1)}
+    86%     {opacity:1}
+    94%,100%{opacity:0}}
+  @keyframes sc-lueur{
+    0%,60%  {opacity:0}
+    74%,86% {opacity:1}
+    94%,100%{opacity:0}}
   @media (prefers-reduced-motion: reduce){
-    .pousse .po-pain,.pousse .po-croute,.pousse .po-grignes,
-    .pousse .po-anneau,.pousse .po-buee{animation:none}
-    .pousse .po-croute{fill:#C26E23;stroke:#78350F}
-    .pousse .po-grignes{stroke:#FEF08A;stroke-width:8.5px;opacity:1}
-    .pousse .po-buee{opacity:.6}
-  }
+    .pousse .sc-molette,.pousse .sc-porte,.pousse .sc-croissant,
+    .pousse .sc-lueur,.pousse .po-anneau{animation:none}
+    .pousse .sc-porte{transform:scaleX(.16)}}
 </style>
 </head>
 <body>
@@ -286,7 +262,32 @@
 </header>
 
 <main id="page">
-  <div class="pousse" role="status" aria-live="polite"><svg viewBox="0 0 320 320" aria-hidden="true"><defs><filter id="po-ombre" x="-15%" y="-15%" width="130%" height="130%"><feDropShadow dx="0" dy="6" stdDeviation="5" flood-color="#451A03" flood-opacity=".18"/></filter></defs><circle cx="160" cy="160" r="132" fill="none" stroke="#F4ECE1" stroke-width="2.5"/><circle class="po-anneau" cx="160" cy="160" r="132" fill="none" stroke="#D97706" stroke-width="3" stroke-linecap="round" opacity=".8" stroke-dasharray="70 760"/><g filter="url(#po-ombre)"><path d="M 50 206 C 50 200, 270 200, 270 206 L 260 216 C 260 220, 60 220, 60 216 Z" fill="#D4A373"/><path d="M 50 206 L 270 206 L 260 214 L 60 214 Z" fill="#C58F5B"/></g><g fill="none" stroke="#D97706" stroke-width="2.5" stroke-linecap="round" opacity=".6"><path class="po-buee" d="M 140 102 Q 134 85 142 72 Q 150 58 140 45"/><path class="po-buee b2" d="M 160 96 Q 168 80 160 66 Q 152 52 162 38"/><path class="po-buee b3" d="M 180 102 Q 174 85 182 72 Q 190 58 180 45"/></g><g class="po-pain" filter="url(#po-ombre)"><path class="po-croute" d="M 85 192 C 75 145, 115 110, 160 110 C 205 110, 245 145, 235 192 C 220 202, 100 202, 85 192 Z" stroke-width="3.5" stroke-linejoin="round"/><path d="M 98 182 C 94 165 106 142 120 134 C 114 148 112 168 120 180 Z" fill="#FFF" opacity=".35"/><path d="M 222 182 C 226 165 214 142 200 134 C 206 148 208 168 200 180 Z" fill="#FFF" opacity=".35"/><g class="po-grignes" fill="none" stroke-linecap="round"><path d="M 120 142 Q 128 158 136 174"/><path d="M 152 136 Q 160 156 168 176"/><path d="M 184 142 Q 192 158 200 174"/></g><path d="M 142 178 Q 146 182 150 180" stroke="#78350F" stroke-width="1.5" stroke-linecap="round" opacity=".5" fill="none"/><path d="M 174 178 Q 178 182 182 180" stroke="#78350F" stroke-width="1.5" stroke-linecap="round" opacity=".5" fill="none"/></g></svg><p>Proving…</p></div>
+  <div class="pousse" role="status" aria-live="polite"><svg viewBox="0 0 320 320" aria-hidden="true"><circle cx="160" cy="160" r="132" fill="none" stroke="#F4ECE1" stroke-width="2.5"/><circle class="po-anneau" cx="160" cy="160" r="132" fill="none" stroke="#D97706" stroke-width="3" stroke-linecap="round" opacity=".8" stroke-dasharray="70 760"/>
+<rect x="84" y="96" width="152" height="128" rx="12" fill="#3e3324"/>
+<rect x="98" y="110" width="124" height="100" rx="6" fill="#241d14"/>
+<defs><radialGradient id="po-lueur"><stop offset="0" stop-color="#FEF08A" stop-opacity=".55"/><stop offset="1" stop-color="#FEF08A" stop-opacity="0"/></radialGradient></defs><ellipse class="sc-lueur" cx="160" cy="166" rx="66" ry="52" fill="url(#po-lueur)"/>
+<rect x="102" y="186" width="116" height="5" rx="2.5" fill="#5c4a33"/>
+<g transform="translate(0,62) scale(0.56) translate(126,20)"><g class="sc-croissant">
+<path d="M88 186 C81 168 88 148 102 139 C97 124 108 111 124 111
+ C131 100 148 95 160 102 C172 95 189 100 196 111 C212 111 223 124 218 139
+ C232 148 239 168 232 186 C216 190 208 175 197 162 C182 145 173 139 160 139
+ C147 139 138 145 123 162 C112 175 104 190 88 186 Z"
+ fill="#e0954f" stroke="#78350F" stroke-width="4" stroke-linejoin="round"/>
+<g fill="none" stroke="#a85a26" stroke-width="2.6" opacity=".65" stroke-linecap="round">
+<path d="M106 172 C110 158 114 148 121 141"/><path d="M133 152 C137 138 142 128 150 122"/>
+<path d="M187 152 C183 138 178 128 170 122"/><path d="M214 172 C210 158 206 148 199 141"/></g>
+<path d="M104 164 C110 140 128 116 152 110" fill="none" stroke="#FBF0DF"
+ stroke-width="3.4" opacity=".42" stroke-linecap="round"/></g></g>
+<g class="sc-porte">
+<rect x="92" y="106" width="136" height="110" rx="9" fill="#8a7458" stroke="#3e3324" stroke-width="4"/>
+<rect x="104" y="118" width="112" height="86" rx="6" fill="none" stroke="#6b5a45" stroke-width="3"/>
+<g class="sc-molette">
+<circle cx="188" cy="161" r="21" fill="#D4A373" stroke="#3e3324" stroke-width="3.5"/>
+<g stroke="#3e3324" stroke-width="3.5" stroke-linecap="round">
+<path d="M188 144 v-8"/><path d="M188 178 v8"/><path d="M171 161 h-8"/><path d="M205 161 h8"/></g>
+<circle cx="188" cy="161" r="5" fill="#3e3324"/></g>
+<rect x="112" y="153" width="30" height="16" rx="8" fill="#D4A373" stroke="#3e3324" stroke-width="3"/></g>
+</svg><p>Cracking the vault…</p></div>
 </main>
 
 <script type="module">
@@ -881,7 +882,32 @@ async function demanderReport(id, date, bouton) {
 
 /* ---------- Écran du compte ---------- */
 async function ecranCompte(user) {
-  $("page").innerHTML = `<div class="pousse" role="status" aria-live="polite"><svg viewBox="0 0 320 320" aria-hidden="true"><defs><filter id="po-ombre" x="-15%" y="-15%" width="130%" height="130%"><feDropShadow dx="0" dy="6" stdDeviation="5" flood-color="#451A03" flood-opacity=".18"/></filter></defs><circle cx="160" cy="160" r="132" fill="none" stroke="#F4ECE1" stroke-width="2.5"/><circle class="po-anneau" cx="160" cy="160" r="132" fill="none" stroke="#D97706" stroke-width="3" stroke-linecap="round" opacity=".8" stroke-dasharray="70 760"/><g filter="url(#po-ombre)"><path d="M 50 206 C 50 200, 270 200, 270 206 L 260 216 C 260 220, 60 220, 60 216 Z" fill="#D4A373"/><path d="M 50 206 L 270 206 L 260 214 L 60 214 Z" fill="#C58F5B"/></g><g fill="none" stroke="#D97706" stroke-width="2.5" stroke-linecap="round" opacity=".6"><path class="po-buee" d="M 140 102 Q 134 85 142 72 Q 150 58 140 45"/><path class="po-buee b2" d="M 160 96 Q 168 80 160 66 Q 152 52 162 38"/><path class="po-buee b3" d="M 180 102 Q 174 85 182 72 Q 190 58 180 45"/></g><g class="po-pain" filter="url(#po-ombre)"><path class="po-croute" d="M 85 192 C 75 145, 115 110, 160 110 C 205 110, 245 145, 235 192 C 220 202, 100 202, 85 192 Z" stroke-width="3.5" stroke-linejoin="round"/><path d="M 98 182 C 94 165 106 142 120 134 C 114 148 112 168 120 180 Z" fill="#FFF" opacity=".35"/><path d="M 222 182 C 226 165 214 142 200 134 C 206 148 208 168 200 180 Z" fill="#FFF" opacity=".35"/><g class="po-grignes" fill="none" stroke-linecap="round"><path d="M 120 142 Q 128 158 136 174"/><path d="M 152 136 Q 160 156 168 176"/><path d="M 184 142 Q 192 158 200 174"/></g><path d="M 142 178 Q 146 182 150 180" stroke="#78350F" stroke-width="1.5" stroke-linecap="round" opacity=".5" fill="none"/><path d="M 174 178 Q 178 182 182 180" stroke="#78350F" stroke-width="1.5" stroke-linecap="round" opacity=".5" fill="none"/></g></svg><p>Proving…</p></div>`;
+  $("page").innerHTML = `<div class="pousse" role="status" aria-live="polite"><svg viewBox="0 0 320 320" aria-hidden="true"><circle cx="160" cy="160" r="132" fill="none" stroke="#F4ECE1" stroke-width="2.5"/><circle class="po-anneau" cx="160" cy="160" r="132" fill="none" stroke="#D97706" stroke-width="3" stroke-linecap="round" opacity=".8" stroke-dasharray="70 760"/>
+<rect x="84" y="96" width="152" height="128" rx="12" fill="#3e3324"/>
+<rect x="98" y="110" width="124" height="100" rx="6" fill="#241d14"/>
+<defs><radialGradient id="po-lueur"><stop offset="0" stop-color="#FEF08A" stop-opacity=".55"/><stop offset="1" stop-color="#FEF08A" stop-opacity="0"/></radialGradient></defs><ellipse class="sc-lueur" cx="160" cy="166" rx="66" ry="52" fill="url(#po-lueur)"/>
+<rect x="102" y="186" width="116" height="5" rx="2.5" fill="#5c4a33"/>
+<g transform="translate(0,62) scale(0.56) translate(126,20)"><g class="sc-croissant">
+<path d="M88 186 C81 168 88 148 102 139 C97 124 108 111 124 111
+ C131 100 148 95 160 102 C172 95 189 100 196 111 C212 111 223 124 218 139
+ C232 148 239 168 232 186 C216 190 208 175 197 162 C182 145 173 139 160 139
+ C147 139 138 145 123 162 C112 175 104 190 88 186 Z"
+ fill="#e0954f" stroke="#78350F" stroke-width="4" stroke-linejoin="round"/>
+<g fill="none" stroke="#a85a26" stroke-width="2.6" opacity=".65" stroke-linecap="round">
+<path d="M106 172 C110 158 114 148 121 141"/><path d="M133 152 C137 138 142 128 150 122"/>
+<path d="M187 152 C183 138 178 128 170 122"/><path d="M214 172 C210 158 206 148 199 141"/></g>
+<path d="M104 164 C110 140 128 116 152 110" fill="none" stroke="#FBF0DF"
+ stroke-width="3.4" opacity=".42" stroke-linecap="round"/></g></g>
+<g class="sc-porte">
+<rect x="92" y="106" width="136" height="110" rx="9" fill="#8a7458" stroke="#3e3324" stroke-width="4"/>
+<rect x="104" y="118" width="112" height="86" rx="6" fill="none" stroke="#6b5a45" stroke-width="3"/>
+<g class="sc-molette">
+<circle cx="188" cy="161" r="21" fill="#D4A373" stroke="#3e3324" stroke-width="3.5"/>
+<g stroke="#3e3324" stroke-width="3.5" stroke-linecap="round">
+<path d="M188 144 v-8"/><path d="M188 178 v8"/><path d="M171 161 h-8"/><path d="M205 161 h8"/></g>
+<circle cx="188" cy="161" r="5" fill="#3e3324"/></g>
+<rect x="112" y="153" width="30" height="16" rx="8" fill="#D4A373" stroke="#3e3324" stroke-width="3"/></g>
+</svg><p>Cracking the vault…</p></div>`;
 
   const ref = doc(db, "comptes", user.uid);
   let fiche = null;
