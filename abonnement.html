@@ -250,6 +250,8 @@ let nombre = 0;
 let iOption = 0;
 let depart = "";
 let modePaiement = "avance";
+// Montant du solde appliqué à cet abonnement, prélevé à la souscription.
+let creditUtilise = 0;
 
 /* ---------- Démarrage ---------- */
 onAuthStateChanged(auth, async (u) => {
@@ -611,21 +613,18 @@ function construire() {
 
   // Paiement. Le détail du crédit est réécrit par majCredit() : ce que le
   // solde couvre dépend du montant par livraison, qui change avec le panier.
+  /* Le crédit n'est plus un mode de paiement concurrent mais une déduction
+     sur le total, exactement comme au checkout : une case à cocher, le
+     solde s'applique en entier, le reste se règle normalement. Un abonnement
+     se paie d'avance, en une fois. */
   $("listePaiement").innerHTML = `
-    <label class="choix" data-p="avance">
-      <input type="radio" name="paiement" value="avance" checked>
-      <span style="flex:1"><span class="t">Pay for all deliveries now</span>
-      <span class="d">One payment, and your deliveries are secured.</span></span>
-    </label>
     <label class="choix" data-p="credit" id="choixCredit">
-      <input type="radio" name="paiement" value="credit">
-      <span style="flex:1"><span class="t">Use my store credit</span>
+      <input type="checkbox" id="utiliserCredit">
+      <span style="flex:1"><span class="t" id="titreCredit">Use my store credit</span>
       <span class="d" id="detailCredit"></span></span>
     </label>
     <div id="blocPaiementAvance" style="margin-top:14px"></div>`;
-  document.querySelectorAll('input[name="paiement"]').forEach(r => {
-    r.onchange = () => { modePaiement = r.value; majPaiement(); majRecap(); };
-  });
+  $("utiliserCredit").onchange = () => { majPaiement(); majRecap(); };
 
   $("nom").value = compte.nom || user.displayName || "";
   $("tel").value = compte.telephone || "";
@@ -674,56 +673,65 @@ function majOption() {
 }
 
 function majPaiement() {
-  document.querySelectorAll(".choix[data-p]").forEach(c =>
-    c.classList.toggle("actif", c.dataset.p === modePaiement));
+  const c = $("choixCredit");
+  if (c) c.classList.toggle("actif", creditUtilise > 0);
 }
 
-/* ---------- Disponibilité du crédit ----------
-   Le débit se fait à chaque livraison, pas à la souscription : le solde
-   n'est donc pas réservé et peut servir entre-temps à une commande
-   libre. On dit ce qu'il couvre aujourd'hui, sans le promettre pour la
-   suite. En dessous d'une livraison, l'option n'est pas proposée : la
-   choisir n'aurait produit qu'un abonnement impayable. */
+/* ---------- Crédit en boutique ----------
+   Un abonnement se paie d'avance, en une fois. Le crédit est donc une
+   déduction sur le total, prélevée à la souscription — et non une promesse
+   honorée livraison après livraison.
+
+   L'ancienne règle débitait à chaque livraison sans réserver le solde :
+   une commande passée entre deux livraisons pouvait le vider, et
+   l'abonnement se retrouvait à sec en cours de route sans que personne
+   ne s'en aperçoive avant la troisième échéance.
+
+   Même seuil d'affichage qu'au checkout : quelques pesos résiduels
+   n'achètent rien et n'ajoutent qu'une case de plus sur un écran chargé. */
 function soldeClient() {
   return Number(compte && compte.solde) || 0;
 }
 
-function livraisonsCouvertes(parLivraison) {
-  if (!(parLivraison > 0)) return 0;
-  return Math.floor(soldeClient() / parLivraison);
+function seuilCredit() {
+  const v = Number(params.credit_min_affichage);
+  return Number.isFinite(v) && v >= 0 ? v : 100;
 }
 
-function majCredit(parLivraison) {
+function majCredit(total) {
   const bloc   = $("choixCredit");
   const detail = $("detailCredit");
-  if (!bloc || !detail) return;
+  const titre  = $("titreCredit");
+  const case_  = $("utiliserCredit");
+  if (!bloc || !detail || !case_) return;
 
-  const solde   = soldeClient();
-  const couvre  = livraisonsCouvertes(parLivraison);
-  const radio   = bloc.querySelector("input");
-  const possible = couvre > 0;
+  const solde = soldeClient();
 
-  radio.disabled = !possible;
-  bloc.classList.toggle("indispo", !possible);
-
-  if (!possible) {
+  // Sous le seuil, la case n'est pas proposée — mais le bloc reste visible
+  // pour expliquer pourquoi, plutôt que de disparaître sans un mot.
+  if (solde < seuilCredit() || solde <= 0) {
+    creditUtilise = 0;
+    case_.checked = false;
+    case_.disabled = true;
+    bloc.classList.remove("actif");
+    titre.textContent = "Store credit — " + peso(solde);
     detail.textContent = solde > 0
-      ? "Your balance of " + peso(solde) + " doesn't cover a delivery yet."
+      ? "Not enough to apply to this plan."
       : "You have no store credit yet — ask us about topping up.";
-    // L'option a pu devenir indisponible après un changement de panier.
-    if (modePaiement === "credit") {
-      modePaiement = "avance";
-      const autre = document.querySelector('input[name="paiement"][value="avance"]');
-      if (autre) autre.checked = true;
-      majPaiement();
-    }
     return;
   }
 
-  detail.textContent = couvre >= nombre
-    ? "Each delivery is taken from your balance of " + peso(solde) + "."
-    : peso(solde) + " covers " + couvre + " of your " + nombre +
-      " deliveries — you can top up along the way.";
+  case_.disabled = false;
+  const possible = Math.min(solde, total);
+  creditUtilise = case_.checked ? possible : 0;
+
+  titre.textContent = "Use my credit — " + peso(solde) + " available";
+  detail.textContent = creditUtilise > 0
+    ? (creditUtilise >= total
+        ? "Your plan is fully covered by your credit."
+        : peso(creditUtilise) + " applied · " + peso(total - creditUtilise) + " left to pay")
+    : "Apply up to " + peso(possible) + " to this plan.";
+  bloc.classList.toggle("actif", creditUtilise > 0);
 }
 
 function iso(d) {
@@ -830,14 +838,15 @@ function majRecap() {
     (economie > 0 ? `<div class="economie">You save ${peso(economie)} on this plan</div>` : "");
 
   majPromo(calc);
-  majCredit(parLivraison);
+  majCredit(total);
+  majPaiement();
 
-  const solde = soldeClient();
-  const couvre = livraisonsCouvertes(parLivraison);
-  $("totalPied").innerHTML = modePaiement === "credit"
-    ? `${peso(total)}<small>${couvre >= nombre
-        ? "from your credit — balance " + peso(solde)
-        : peso(solde) + " covers " + couvre + " of " + nombre}</small>`
+  // Le pied annonce ce qu'il reste réellement à régler : afficher le total
+  // alors que le crédit en couvre une partie ferait douter du montant à
+  // envoyer par GCash.
+  const reste = Math.max(0, total - creditUtilise);
+  $("totalPied").innerHTML = creditUtilise > 0
+    ? `${peso(reste)}<small>${peso(total)} − ${peso(creditUtilise)} credit</small>`
     : `${peso(total)}<small>${nombre} × ${peso(parLivraison)}</small>`;
 
   // Le paiement se choisit ici, avant de souscrire — pas après : la
@@ -845,8 +854,11 @@ function majRecap() {
   // découvrir sur un écran séparé une fois l'abonnement déjà créé.
   const blocAvance = $("blocPaiementAvance");
   if (blocAvance) {
-    blocAvance.hidden = modePaiement !== "avance";
-    if (modePaiement === "avance") construirePaiementAbonnement(total);
+    // Crédit couvrant la totalité : il n'y a plus rien à régler, donc plus
+    // rien à choisir. Laisser la liste afficherait un moyen de paiement
+    // pour un montant nul.
+    blocAvance.hidden = reste <= 0;
+    if (reste > 0) construirePaiementAbonnement(reste);
   }
 
   $("btnSouscrire").disabled = !lignes.length || !nombre || !depart;
@@ -896,11 +908,10 @@ $("btnSouscrire").onclick = async () => {
     }
   }
 
-  /* Le solde est relu sur le serveur : la page a pu rester ouverte
-     longtemps, et une commande passée entre-temps l'a peut-être vidé.
-     On ne débite rien ici — le débit se fait à chaque livraison — mais
-     souscrire en crédit sans crédit n'aurait aucun sens. */
-  if (modePaiement === "credit") {
+  /* Le solde est relu sur le serveur juste avant de prélever : la page a pu
+     rester ouverte longtemps, et une commande passée entre-temps l'a
+     peut-être vidé. majRecap() replafonne alors le montant appliqué. */
+  if (creditUtilise > 0) {
     try {
       const s = await getDoc(doc(db, "comptes", user.uid));
       compte = s.exists() ? s.data() : {};
@@ -909,14 +920,17 @@ $("btnSouscrire").onclick = async () => {
       return echec("We couldn't check your store credit. Please try again.");
     }
     majRecap();
-    if (livraisonsCouvertes(parLivraison) < 1) {
-      return echec(soldeClient() > 0
-        ? "Your store credit no longer covers a delivery. Please choose the other option."
-        : "Your store credit is empty. Please choose the other option.");
+    if (creditUtilise <= 0) {
+      return echec("Your store credit is no longer available. " +
+                   "Please check the total before subscribing.");
     }
   }
 
+  const resteAPayer = Math.max(0, total - creditUtilise);
   if (!confirm(`${nombre} deliveries, ${peso(parLivraison)} each — ${peso(total)} in total.\n\n` +
+               (creditUtilise > 0
+                 ? `${peso(creditUtilise)} from your store credit · ${peso(resteAPayer)} left to pay\n\n`
+                 : "") +
                `First delivery: ${dates[0]}\n\nStart your bread plan?`)) return;
 
   $("btnSouscrire").disabled = true;
@@ -952,10 +966,25 @@ $("btnSouscrire").onclick = async () => {
       frais_livraison: frais,
       total_par_livraison: parLivraison,
       total,
-      paiement: { mode: modePaiement, statut: "en attente" },
+      /* Le crédit est prélevé ici même, à la souscription : le montant est
+         donc acquis, pas promis. « mode » désigne le moyen du complément. */
+      credit_utilise: creditUtilise,
+      paiement: {
+        mode: resteAPayer > 0 ? modePaiement : "credit",
+        methode: resteAPayer > 0 ? modePaiement : "credit",
+        statut: resteAPayer > 0 ? "en attente" : "paye",
+        montant_paye: creditUtilise
+      },
       echeances: dates.map(d => ({ date: d, statut: "planifiee" })),
       cree_le: new Date().toISOString()
     });
+
+    /* Le crédit n'est pas prélevé ici. Les règles Firestore interdisent au
+       client d'écrire son propre solde et ses mouvements — à juste titre,
+       sinon n'importe qui se créditerait. Le montant est inscrit sur
+       l'abonnement, et le prélèvement a lieu quand vous confirmez
+       l'abonnement dans l'administration, en une seule écriture avec le
+       mouvement associé. */
 
     try {
       /* Tout ce dont confirmation-abonnement.html a besoin, dans un seul
@@ -966,8 +995,10 @@ $("btnSouscrire").onclick = async () => {
         id: ref.id, nom, tel, adresse,
         panier: lignes.map(p => ({ nom: p.nom, qte: choix[p.code], prix: p.prix })),
         par_livraison: parLivraison, nombre, total, dates, cadence,
-        mode: modePaiement, option: { nom: o.nom, lieu: o.lieu || "" },
+        mode: resteAPayer > 0 ? modePaiement : "credit",
+        option: { nom: o.nom, lieu: o.lieu || "" },
         frais_livraison: frais,
+        credit_utilise: creditUtilise, reste_a_payer: resteAPayer,
         code: remiseCode > 0 ? promo.id : null,
         remise_code: remiseCode, livraisons_couvertes: couvertes
       }));
