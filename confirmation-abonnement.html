@@ -175,6 +175,20 @@ function afficher() {
 
   recap += `<div class="l somme"><span>${p.nombre} deliveries</span><span>${peso(p.total)}</span></div>`;
 
+  /* Crédit appliqué, puis ce qu'il reste réellement à régler. Sans ces deux
+     lignes, le client enverrait le total alors qu'une partie est déjà payée
+     par son solde. */
+  const credit = Number(p.credit_utilise) || 0;
+  const reste  = credit > 0
+    ? Math.max(0, Number(p.reste_a_payer ?? (p.total - credit)))
+    : Number(p.total) || 0;
+
+  if (credit > 0) {
+    recap += `<div class="l remise"><span>Store credit</span>
+              <span>−${peso(credit)}</span></div>`;
+    recap += `<div class="l somme"><span>Left to pay</span><span>${peso(reste)}</span></div>`;
+  }
+
   /* --- Étapes --- */
   let etape = 0;
   const num = () => `<span class="num">${++etape}</span>`;
@@ -185,10 +199,11 @@ function afficher() {
      déjà fermé. En crédit, rien n'est débité avant la première
      livraison — pas de moyen de paiement à montrer. */
   let blocPaiement = "";
-  if (p.mode === "credit") {
+  if (reste <= 0) {
     blocPaiement = `<div class="bloc"><h2 class="etape">${num()}Payment</h2>
-      <p class="info">Each delivery will be taken from your store credit
-      when it's confirmed.</p></div>`;
+      <p class="info">Your plan is fully covered by your store credit —
+      nothing left to pay. ${peso(credit)} will be taken from your balance
+      when we confirm your plan.</p></div>`;
   } else {
     const pay = params.paiement || {};
     const g = pay.gcash  || { nom: pay.gcash_nom, numero: pay.gcash_numero };
@@ -206,7 +221,8 @@ function afficher() {
     if (choix.length) {
       blocPaiement = `<div class="bloc paiement">
         <h2 class="etape">${num()}Payment</h2>
-        <p class="info">Amount: <b>${peso(p.total)}</b></p>
+        <p class="info">Amount: <b>${peso(reste)}</b>${
+          credit > 0 ? ` <span class="q">(${peso(p.total)} − ${peso(credit)} credit)</span>` : ""}</p>
         ${choix.map(c => `<p class="info" style="margin-top:10px"><b>${echapper(c.titre)}</b>
           ${c.detail ? " — " + echapper(c.detail) : ""}</p>
           ${c.qr ? `<img src="${echapper(c.qr)}" alt="${echapper(c.titre)} QR code">
@@ -215,7 +231,7 @@ function afficher() {
       </div>`;
     } else {
       blocPaiement = `<div class="bloc"><h2 class="etape">${num()}Payment</h2>
-        <p class="info">Amount: <b>${peso(p.total)}</b></p>
+        <p class="info">Amount: <b>${peso(reste)}</b></p>
         <p class="info">We'll contact you to arrange the payment.</p></div>`;
     }
   }
@@ -256,7 +272,7 @@ function afficher() {
     <div class="bloc">
       <h2 class="etape">${num()}Send us your plan details</h2>
       <p class="info" style="margin-bottom:12px">We have your plan. Message us to confirm it${
-        p.mode === "credit" ? "" : " and settle payment"}.</p>
+        reste > 0 ? " and settle payment" : ""}.</p>
       ${canaux.length ? `
       <div class="canaux">
         ${canaux.map(x => `<a class="canal ${x.principal ? "principal" : ""}"
@@ -298,13 +314,19 @@ function messagePlan(p) {
     `${p.nombre} deliveries × ${peso(p.par_livraison)}`,
     p.remise_code > 0 ? `${p.code}: −${peso(p.remise_code * p.livraisons_couvertes)}` : null,
     `Total: ${peso(p.total)}`,
+    Number(p.credit_utilise) > 0 ? `Store credit: −${peso(p.credit_utilise)}` : null,
+    Number(p.credit_utilise) > 0
+      ? `Left to pay: ${peso(Math.max(0, Number(p.reste_a_payer ?? (p.total - p.credit_utilise))))}`
+      : null,
     "",
     `Name: ${p.nom}`,
     `Phone: ${p.tel}`,
     `Option: ${p.option?.nom || ""}`,
     p.adresse ? `Address: ${p.adresse}` : null,
     `First delivery: ${p.dates[0]}`,
-    `Payment: ${p.mode === "credit" ? "Store credit" : "Paid in advance"}`
+    `Payment: ${Number(p.credit_utilise) > 0
+      ? (Number(p.reste_a_payer) > 0 ? "Store credit + balance in advance" : "Store credit")
+      : "Paid in advance"}`
   ].filter(Boolean).join("\n");
 }
 </script>
