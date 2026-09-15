@@ -195,81 +195,52 @@
     font-size:16px;cursor:pointer;padding:0;text-decoration:underline;
   }
 
-  /* ---------- Pousse ----------
-     Animation d'attente : un pâton qui lève, dore au four, s'ouvre aux
-     grignes et fume. Dessinée en SVG plutôt qu'en GIF — un GIF serait un
-     fichier de plus à télécharger, donc invisible précisément sur les
-     connexions lentes où l'attente se fait sentir. Ici, rien à charger.
+  /* ---------- Scènes d'attente ----------
+     Une scène par page, plutôt qu'un même dessin partout : le client passe
+     de l'une à l'autre et l'attente se remarque moins. Toutes partagent le
+     cadre — même viewBox, même anneau, mêmes couleurs — pour rester d'une
+     seule famille.
 
      Cycle court à dessein : les pages se chargent en 3 à 7 secondes sur un
-     téléphone. Un cycle plus long ne montrerait qu'un pâton cru à ceux qui
-     arrivent sur les pages rapides.
+     téléphone. Un cycle plus long ne montrerait que le début de la scène à
+     ceux qui arrivent sur les pages rapides.
 
-     Tout est préfixé « po- » et scopé sous .pousse : ce SVG vit à
-     l'intérieur de la page, ses classes et son filtre ne doivent rien
-     heurter. */
+     Tout est préfixé et scopé sous .pousse : ces SVG vivent à l'intérieur
+     de la page, leurs classes ne doivent rien heurter. */
   .pousse{--po-duree:3.4s;text-align:center;padding:34px 20px;color:var(--encre-doux)}
   .pousse svg{width:190px;height:190px;display:block;margin:0 auto 4px}
   .pousse p{margin:0;font-size:16.5px;letter-spacing:.03em}
-
-  /* Le pain pousse depuis sa base, posée sur la sole. */
-  .pousse .po-pain{
-    transform-origin:160px 190px;
-    animation:po-lever var(--po-duree) cubic-bezier(.4,0,.2,1) infinite;
-  }
-  .pousse .po-croute{
-    animation:po-dorer var(--po-duree) ease-in-out infinite;
-  }
-  /* Les grignes s'écartent et découvrent la mie, une fois la pousse finie. */
-  .pousse .po-grignes{
-    transform-origin:160px 150px;
-    animation:po-grigner var(--po-duree) cubic-bezier(.4,0,.2,1) infinite;
-  }
-  .pousse .po-buee{opacity:0;animation:po-buee var(--po-duree) ease-out infinite}
-  .pousse .po-buee.b2{animation-delay:.15s}
-  .pousse .po-buee.b3{animation-delay:.3s}
-  /* Rotation continue, sans début ni fin : l'anneau dit « ça travaille »,
-     il ne prétend pas mesurer une progression qu'on ne connaît pas. */
-  .pousse .po-anneau{
-    transform-origin:160px 160px;
-    animation:po-tourner 1.9s linear infinite;
-  }
-
-  @keyframes po-lever{
-    0%       {transform:scale(.8,.65) translateY(18px)}
-    35%      {transform:scale(.95,.88) translateY(6px)}
-    55%,85%  {transform:scale(1.04,1.02) translateY(-2px)}
-    95%,100% {transform:scale(.8,.65) translateY(18px)}
-  }
-  @keyframes po-dorer{
-    0%,25%   {fill:#FBF0DF;stroke:#D6C29E}
-    40%      {fill:#F6D59E;stroke:#C29658}
-    60%,85%  {fill:#C26E23;stroke:#78350F}
-    95%,100% {fill:#FBF0DF;stroke:#D6C29E}
-  }
-  @keyframes po-grigner{
-    0%,30%   {stroke-width:2.5px;stroke:#D6C29E;opacity:.7}
-    45%      {stroke-width:5px;stroke:#FDE68A;opacity:1}
-    65%,85%  {stroke-width:8.5px;stroke:#FEF08A;opacity:1}
-    95%,100% {stroke-width:2.5px;stroke:#D6C29E;opacity:.7}
-  }
-  @keyframes po-buee{
-    0%,50% {opacity:0;transform:translateY(0) scaleY(.7)}
-    60%    {opacity:.7}
-    85%    {opacity:0;transform:translateY(-28px) scaleY(1.3)}
-    100%   {opacity:0;transform:translateY(0)}
-  }
+  /* Rotation continue, sans début ni fin : l'anneau dit « ça travaille », il
+     ne prétend pas mesurer une progression qu'on ne connaît pas. */
+  .pousse .po-anneau{transform-origin:160px 160px;animation:po-tourner 1.9s linear infinite}
   @keyframes po-tourner{to{transform:rotate(360deg)}}
 
-  /* Animations désactivées au niveau du système : on montre un pain cuit,
-     immobile, plutôt qu'un pâton cru figé. */
+  /* --- Checkout : le tiroir claque, les pièces sautent, le total s'inscrit. --- */
+  .pousse .sc-tiroir{animation:sc-tiroir var(--po-duree) cubic-bezier(.34,1.4,.5,1) infinite}
+  .pousse .sc-piece{opacity:0;animation:sc-piece var(--po-duree) cubic-bezier(.3,1.2,.5,1) infinite}
+  .pousse .sc-piece.p2{animation-delay:.07s}
+  .pousse .sc-piece.p3{animation-delay:.14s}
+  .pousse .sc-total{animation:sc-total var(--po-duree) steps(1) infinite}
+  .pousse .sc-touches{animation:sc-touches var(--po-duree) ease-out infinite}
+  @keyframes sc-tiroir{
+    0%,28%   {transform:translateY(0)}
+    40%,78%  {transform:translateY(18px)}
+    92%,100% {transform:translateY(0)}}
+  @keyframes sc-piece{
+    0%,30%  {opacity:0;transform:translateY(0) scale(.6)}
+    46%     {opacity:1;transform:translateY(-62px) scale(1)}
+    70%     {opacity:1;transform:translateY(-54px) scale(1)}
+    86%,100%{opacity:0;transform:translateY(-30px) scale(.8)}}
+  @keyframes sc-total{0%,24%{opacity:0}30%,100%{opacity:1}}
+  @keyframes sc-touches{
+    0%,20% {opacity:.85}
+    26%    {opacity:.35}
+    34%,100%{opacity:.85}}
   @media (prefers-reduced-motion: reduce){
-    .pousse .po-pain,.pousse .po-croute,.pousse .po-grignes,
-    .pousse .po-anneau,.pousse .po-buee{animation:none}
-    .pousse .po-croute{fill:#C26E23;stroke:#78350F}
-    .pousse .po-grignes{stroke:#FEF08A;stroke-width:8.5px;opacity:1}
-    .pousse .po-buee{opacity:.6}
-  }
+    .pousse .sc-tiroir,.pousse .sc-piece,.pousse .sc-total,
+    .pousse .sc-touches,.pousse .po-anneau{animation:none}
+    .pousse .sc-tiroir{transform:translateY(18px)}
+    .pousse .sc-piece{opacity:1;transform:translateY(-58px)}}
 </style>
 </head>
 <body>
@@ -280,7 +251,26 @@
 </header>
 
 <main id="page">
-  <div class="pousse" role="status" aria-live="polite"><svg viewBox="0 0 320 320" aria-hidden="true"><defs><filter id="po-ombre" x="-15%" y="-15%" width="130%" height="130%"><feDropShadow dx="0" dy="6" stdDeviation="5" flood-color="#451A03" flood-opacity=".18"/></filter></defs><circle cx="160" cy="160" r="132" fill="none" stroke="#F4ECE1" stroke-width="2.5"/><circle class="po-anneau" cx="160" cy="160" r="132" fill="none" stroke="#D97706" stroke-width="3" stroke-linecap="round" opacity=".8" stroke-dasharray="70 760"/><g filter="url(#po-ombre)"><path d="M 50 206 C 50 200, 270 200, 270 206 L 260 216 C 260 220, 60 220, 60 216 Z" fill="#D4A373"/><path d="M 50 206 L 270 206 L 260 214 L 60 214 Z" fill="#C58F5B"/></g><g fill="none" stroke="#D97706" stroke-width="2.5" stroke-linecap="round" opacity=".6"><path class="po-buee" d="M 140 102 Q 134 85 142 72 Q 150 58 140 45"/><path class="po-buee b2" d="M 160 96 Q 168 80 160 66 Q 152 52 162 38"/><path class="po-buee b3" d="M 180 102 Q 174 85 182 72 Q 190 58 180 45"/></g><g class="po-pain" filter="url(#po-ombre)"><path class="po-croute" d="M 85 192 C 75 145, 115 110, 160 110 C 205 110, 245 145, 235 192 C 220 202, 100 202, 85 192 Z" stroke-width="3.5" stroke-linejoin="round"/><path d="M 98 182 C 94 165 106 142 120 134 C 114 148 112 168 120 180 Z" fill="#FFF" opacity=".35"/><path d="M 222 182 C 226 165 214 142 200 134 C 206 148 208 168 200 180 Z" fill="#FFF" opacity=".35"/><g class="po-grignes" fill="none" stroke-linecap="round"><path d="M 120 142 Q 128 158 136 174"/><path d="M 152 136 Q 160 156 168 176"/><path d="M 184 142 Q 192 158 200 174"/></g><path d="M 142 178 Q 146 182 150 180" stroke="#78350F" stroke-width="1.5" stroke-linecap="round" opacity=".5" fill="none"/><path d="M 174 178 Q 178 182 182 180" stroke="#78350F" stroke-width="1.5" stroke-linecap="round" opacity=".5" fill="none"/></g></svg><p>Proving…</p></div>
+  <div class="pousse" role="status" aria-live="polite"><svg viewBox="0 0 320 320" aria-hidden="true"><circle cx="160" cy="160" r="132" fill="none" stroke="#F4ECE1" stroke-width="2.5"/><circle class="po-anneau" cx="160" cy="160" r="132" fill="none" stroke="#D97706" stroke-width="3" stroke-linecap="round" opacity=".8" stroke-dasharray="70 760"/>
+<g class="sc-piece p1"><circle cx="126" cy="150" r="10" fill="#FEF08A" stroke="#D97706" stroke-width="2.5"/>
+<circle cx="126" cy="150" r="4" fill="none" stroke="#D97706" stroke-width="1.6"/></g>
+<g class="sc-piece p2"><circle cx="160" cy="150" r="11" fill="#FEF08A" stroke="#D97706" stroke-width="2.5"/>
+<circle cx="160" cy="150" r="4.5" fill="none" stroke="#D97706" stroke-width="1.6"/></g>
+<g class="sc-piece p3"><circle cx="194" cy="150" r="10" fill="#FEF08A" stroke="#D97706" stroke-width="2.5"/>
+<circle cx="194" cy="150" r="4" fill="none" stroke="#D97706" stroke-width="1.6"/></g>
+<g class="sc-tiroir"><rect x="84" y="196" width="152" height="24" rx="5" fill="#a85a26" stroke="#78350F" stroke-width="3"/>
+<rect x="146" y="204" width="28" height="7" rx="3.5" fill="#F4ECE1"/></g>
+<rect x="104" y="100" width="112" height="52" rx="7" fill="#d98c4e" stroke="#78350F" stroke-width="3"/>
+<rect x="118" y="112" width="84" height="28" rx="4" fill="#FBF0DF" stroke="#C29658" stroke-width="2"/>
+<g class="sc-total" fill="#a85a26"><rect x="128" y="122" width="26" height="6" rx="3"/>
+<rect x="160" y="122" width="34" height="6" rx="3"/></g>
+<path d="M78 156 h164 a6 6 0 0 1 6 6 v40 a6 6 0 0 1 -6 6 h-164 a6 6 0 0 1 -6 -6 v-40 a6 6 0 0 1 6 -6 Z"
+ fill="#c67139" stroke="#78350F" stroke-width="3.5"/>
+<g class="sc-touches" fill="#FBF0DF" opacity=".85">
+<circle cx="98" cy="172" r="5"/><circle cx="118" cy="172" r="5"/><circle cx="138" cy="172" r="5"/>
+<circle cx="98" cy="190" r="5"/><circle cx="118" cy="190" r="5"/><circle cx="138" cy="190" r="5"/></g>
+<rect x="166" y="166" width="62" height="30" rx="5" fill="#a85a26" opacity=".55"/>
+</svg><p>Counting the change…</p></div>
 </main>
 
 <div class="pied" id="pied" hidden>
