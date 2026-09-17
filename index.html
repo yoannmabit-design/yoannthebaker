@@ -447,7 +447,7 @@
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getFirestore, collection, getDocs, doc, getDoc }
+import { getFirestore, collection, getDocs, doc, getDoc, setDoc, increment }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import { getAuth, onAuthStateChanged }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
@@ -520,8 +520,34 @@ function lignesPanier() {
 }
 
 /* ---------- Chargement ---------- */
+/* ---------- Compteur de visites ----------
+   Un document par jour dans « visites », incrémenté au premier chargement de
+   la vitrine. Compté une fois par session et non par page vue : recharger ou
+   revenir du checkout ne doit pas gonfler le chiffre.
+
+   Volontairement minimal — pas de traçage, aucune donnée sur le visiteur,
+   rien qui sorte de Firestore. La question à laquelle ça répond est « est-ce
+   que le site est visité et est-ce que ça progresse », pas « qui est venu ».
+
+   L'échec est silencieux et sans conséquence : un compteur n'a pas à empêcher
+   quelqu'un de commander du pain. */
+async function compterVisite() {
+  try {
+    if (sessionStorage.getItem("visite-comptee")) return;
+    sessionStorage.setItem("visite-comptee", "1");
+    const d = new Date();
+    const jour = new Date(d.getTime() - d.getTimezoneOffset() * 60000)
+      .toISOString().slice(0, 10);
+    await setDoc(doc(db, "visites", jour), { visites: increment(1) }, { merge: true });
+  } catch (e) {
+    console.debug("Compteur de visites indisponible", e);
+  }
+}
+
 async function demarrer() {
   chargerPanier();
+  // Lancé sans await : la vitrine ne doit pas attendre après un compteur.
+  compterVisite();
   try {
     const [params, catalogue] = await Promise.all([
       getDoc(doc(db, "parametres", "boutique")),
