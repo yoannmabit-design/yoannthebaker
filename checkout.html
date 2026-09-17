@@ -575,6 +575,13 @@ async function construire() {
       <h2>Payment</h2>
       <div id="listePaiements"></div>
       <div class="note" id="instrPaiement"></div>
+      <!-- Placé ici et pas en pied de page : c'est au moment de choisir une
+           date, un mode et un paiement que viennent les questions qui font
+           abandonner une commande. -->
+      <p class="note" style="margin-top:12px">
+        Not sure about delivery, dates or paying?
+        <a href="faq.html" style="color:var(--accent)">What's the FAQ?</a>
+      </p>
     </div>
 
     <div class="bloc">
@@ -1073,10 +1080,26 @@ function construirePaiements() {
     code: "virement", titre: "Bank transfer", qr: b.qr,
     detail: [b.nom, b.titulaire, b.numero].filter(Boolean).join(" — ")
   });
-  choix.push({
-    code: "especes", titre: "Cash", qr: "",
-    detail: "Pay when you collect or receive your order."
-  });
+  /* Espèces : possible au retrait, et sur les livraisons que nous assurons
+     nous-mêmes. Pas sur une course confiée à un coursier — les livreurs
+     n'encaissent pas pour nous, et proposer l'option reviendrait à promettre
+     un paiement que personne ne viendra prendre. Les cas particuliers se
+     règlent par message, d'où la ligne qui remplace l'option. */
+  /* Un coursier entre en jeu seulement si c'est une livraison que vous
+     n'assurez pas vous-même. San Lorenzo et Pacific Plaza sont des
+     livraisons, mais c'est le boulanger qui les fait : les espèces y sont
+     les bienvenues. */
+  const o = choisie();
+  const parCoursier = (o?.type || "retrait") === "livraison" && !o?.je_livre;
+  const parLeBoulanger = (o?.type || "retrait") === "livraison" && !!o?.je_livre;
+  if (!parCoursier) {
+    choix.push({
+      code: "especes", titre: "Cash", qr: "",
+      detail: parLeBoulanger
+        ? "Pay when your order is handed to you."
+        : "Pay when you collect your order."
+    });
+  }
 
   const zone = $("listePaiements");
   zone.innerHTML = "";
@@ -1110,6 +1133,17 @@ function construirePaiements() {
     l.querySelector("input").onchange = majPaiement;
     zone.appendChild(l);
   });
+
+  /* Une option qui disparaît sans explication passe pour un bug : on dit
+     pourquoi, et on laisse une porte ouverte pour les cas particuliers. */
+  if (parCoursier) {
+    const note = document.createElement("p");
+    note.className = "aide";
+    note.style.margin = "10px 2px 0";
+    note.textContent = "Paying cash isn't possible on courier deliveries — "
+      + "riders don't collect payment for us. Message us if you need an exception.";
+    zone.appendChild(note);
+  }
 
   majPaiement();
 }
@@ -1205,6 +1239,14 @@ function majOption() {
     bouts.push(o.nom + " is available on " +
       o.jours.map(n => JOURS_COURTS[n]).join(", ") + " only.");
   $("noteDate").textContent = bouts.join(" ");
+
+  /* Les moyens de paiement dépendent du mode choisi : les espèces
+     disparaissent dès qu'un coursier entre en jeu. La liste est donc
+     reconstruite à chaque changement d'option, pas une seule fois au
+     chargement. Construite seulement si la zone existe déjà, car majOption()
+     tourne aussi avant que les paiements ne soient posés. */
+  if ($("listePaiements") && $("listePaiements").children.length)
+    construirePaiements();
 
   verifierDate();
   majTotaux();
