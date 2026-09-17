@@ -26,6 +26,7 @@ const ESSENTIELS = [
   './confirmation-abonnement.html',
   './manifest.json',
   './logo.jpg'
+   './faq.html'
 ];
 
 self.addEventListener('install', (e) => {
