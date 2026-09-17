@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>What's the FAQ? — Yoann's French Bakery</title>
+<meta name="theme-color" content="#201e1d">
+<meta name="description" content="How to order, collect or receive your bread, how bread plans work, and how store credit works.">
+<link rel="icon" href="logo.jpg">
+<!-- Une seule police web, titres seulement : le corps de texte garde la
+     police du système. Voir index.html, même choix, mêmes raisons. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Caprasimo&display=swap">
+<style>
+  /* Palette « Terracotta & Sage » — mêmes valeurs que la vitrine et les
+     autres écrans client. */
+  :root{
+    --creme:#f5ead8;--papier:#ffffff;--encre:#201e1d;
+    --encre-doux:#5c5449;--trait:#e3d4b8;--accent:#c67139;
+    --accent-fonce:#a85a26;--sauge:#7a8a5e;--r:10px;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;background:var(--creme);color:var(--encre);
+    font:18px/1.55 ui-sans-serif,-apple-system,"Segoe UI",Roboto,sans-serif;
+  }
+  header{background:var(--encre);color:var(--creme);padding:30px 18px;text-align:center}
+  header h1{
+    font-family:Caprasimo,"Iowan Old Style",Georgia,serif;
+    font-size:28px;font-weight:400;margin:0;
+  }
+  header p{margin:8px 0 0;font-size:16.5px;opacity:.8}
+
+  main{max-width:660px;margin:0 auto;padding:22px 16px 60px}
+
+  /* Sommaire : la page est longue, et sur un téléphone on cherche une
+     question précise plutôt qu'on ne lit tout. */
+  nav.sommaire{
+    background:var(--papier);border:1px solid var(--trait);
+    border-radius:var(--r);padding:16px 18px;margin-bottom:22px;
+  }
+  nav.sommaire p{margin:0 0 9px;font-size:14px;letter-spacing:.09em;
+    text-transform:uppercase;color:var(--encre-doux)}
+  nav.sommaire ul{margin:0;padding:0;list-style:none;
+    display:flex;flex-wrap:wrap;gap:8px}
+  nav.sommaire a{
+    display:inline-block;padding:7px 13px;border:1px solid var(--trait);
+    border-radius:99px;text-decoration:none;color:var(--encre);font-size:16px;
+  }
+  nav.sommaire a:hover{border-color:var(--accent);color:var(--accent)}
+
+  section{margin-bottom:26px;scroll-margin-top:14px}
+  section > h2{
+    font-family:Caprasimo,"Iowan Old Style",Georgia,serif;
+    font-size:22px;font-weight:400;margin:0 0 12px;
+  }
+
+  /* Chaque question est un <details> : replié par défaut, la page se
+     parcourt d'un coup d'œil et ne s'ouvre que sur ce qu'on cherche. */
+  details{
+    background:var(--papier);border:1px solid var(--trait);
+    border-radius:var(--r);margin-bottom:9px;overflow:hidden;
+  }
+  summary{
+    padding:15px 17px;cursor:pointer;font-weight:600;font-size:17.5px;
+    list-style:none;display:flex;gap:12px;align-items:flex-start;
+  }
+  summary::-webkit-details-marker{display:none}
+  summary::after{
+    content:"+";margin-left:auto;color:var(--accent);
+    font-size:21px;line-height:1;flex-shrink:0;
+  }
+  details[open] summary::after{content:"–"}
+  details[open] summary{border-bottom:1px solid var(--trait)}
+  .corps{padding:14px 17px 17px;font-size:17px;color:var(--encre-doux)}
+  .corps p{margin:0 0 11px}
+  .corps p:last-child{margin-bottom:0}
+  .corps b{color:var(--encre)}
+  .corps ul{margin:0 0 11px;padding-left:20px}
+  .corps li{margin-bottom:6px}
+  .corps a{color:var(--accent)}
+
+  /* Encadré pour les points où une erreur coûte cher au client. */
+  .attention{
+    border-left:3px solid var(--accent);background:#fffdf8;
+    padding:11px 14px;border-radius:0 var(--r) var(--r) 0;margin:0 0 11px;
+  }
+
+  .pied{
+    background:var(--papier);border:1px solid var(--trait);
+    border-radius:var(--r);padding:20px;text-align:center;margin-top:30px;
+  }
+  .pied h2{font-size:18px;margin:0 0 8px}
+  .pied p{margin:0 0 14px;font-size:16.5px;color:var(--encre-doux)}
+  .retour{display:block;text-align:center;margin-top:24px;color:var(--accent);font-size:17px}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Questions &amp; answers</h1>
+  <p>Ordering, collection, delivery, bread plans and store credit.</p>
+</header>
+
+<main>
+
+  <nav class="sommaire">
+    <p>Jump to</p>
+    <ul>
+      <li><a href="#commander">Ordering</a></li>
+      <li><a href="#paiement">Paying</a></li>
+      <li><a href="#recevoir">Collection &amp; delivery</a></li>
+      <li><a href="#compte">Your account</a></li>
+      <li><a href="#credit">Store credit</a></li>
+      <li><a href="#abonnement">Bread plans</a></li>
+      <li><a href="#produits">About the bread</a></li>
+    </ul>
+  </nav>
+
+  <!-- ==================== COMMANDER ==================== -->
+  <section id="commander">
+    <h2>Ordering</h2>
+
+    <details>
+      <summary>How do I place an order?</summary>
+      <div class="corps">
+        <p>Pick what you want on the menu, choose how you'd like to receive it,
+        pick a date, and send the order. You'll get a confirmation page with a
+        reference number and everything you need to pay.</p>
+        <p>I bake to order, so orders are placed ahead of time — you're
+        booking a date, not buying from a shelf.</p>
+      </div>
+    </details>
+
+    <details>
+      <summary>How far ahead should I order?</summary>
+      <div class="corps">
+        <p>The dates you can pick are shown when you check out. Only the days
+        I bake and deliver appear, and dates that are too close are not
+        offered — everything is made fresh, so I need time.</p>
+        <p>If the day you want isn't there, it's either not a baking day or
+        it's already too late for that date. Message me if you're stuck.</p>
+      </div>
+    </details>
+
+    <details>
+      <summary>Do I need an account to order?</summary>
+      <div class="corps">
+        <p>No. You can order as a guest with just your name and mobile number.</p>
+        <p>An account is needed for three things: <b>store credit</b>,
+        <b>promo codes</b> and <b>bread plans</b>. It also keeps your order
+        history and your receipts in one place.</p>
+      </div>
+    </details>
+
+    <details>
+      <summary>Can I change or cancel my order?</summary>
+      <div class="corps">
+        <p>Yes — message me. Orders can't be changed from the website once
+        they're sent, but I can still change things on my side as long as baking
+        hasn't started.</p>
+        <p>Once your order shows as <b>Baking</b>, the dough is already
+        mixed and I can't undo it.</p>
+        <p>If you've already paid and the order is cancelled, the amount goes
+        back to you as <b>store credit</b> on your account, ready to spend on
+        your next order.</p>
+      </div>
+    </details>
+
+    <details>
+      <summary>What do the statuses on my order mean?</summary>
+      <div class="corps">
+        <ul>
+          <li><b>Received</b> — I have your order but haven't confirmed it yet.</li>
+          <li><b>Confirmed</b> — your date is booked and I'm planning for it.</li>
+          <li><b>Baking</b> — it's in production.</li>
+          <li><b>Ready</b> — waiting for you, or on its way.</li>
+          <li><b>Collected</b> — done.</li>
+        </ul>
+        <p>You can follow all of this in <a href="compte.html">My account</a>.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ==================== PAIEMENT ==================== -->
+  <section id="paiement">
+    <h2>Paying</h2>
+
+    <details>
+      <summary>How do I pay?</summary>
+      <div class="corps">
+        <p>The payment options are shown at checkout and again on your
+        confirmation page, with the QR codes where I have them. Depending on
+        what's available you'll see GCash, Maya, bank transfer, and cash.</p>
+        <p>Cash means you pay when you collect your order, or when I bring it
+        to you myself.</p>
+        <div class="attention">
+          <p>Cash isn't possible when your order travels by courier — riders
+          don't collect payment for me. If you're having your order delivered
+          that way, please settle it before the bake.</p>
+        </div>
+        <p>If nobody has the right change, the difference goes onto your
+        account as store credit and comes off your next order — I don't leave
+        it unsettled.</p>
+      </div>
+    </details>
+
+    <details>
+      <summary>Do I have to pay straight away?</summary>
+      <div class="corps">
+        <p>Sending your order doesn't take any money — I confirm it first.
+        But paying once it's confirmed, before I bake, really is better for
+        everyone. Nobody enjoys chasing a payment, and nobody enjoys being
+        chased.</p>
+        <p>And you're not taking a risk by paying early: if anything goes wrong
+        with your order, that's on me. Missing item, wrong price, an order I
+        can't fulfil — you get it put right, or the amount back as store credit
+        on your account.</p>
+        <p>Please send your proof of payment through the channel shown on your
+        confirmation page. It's how I match your payment to your order.</p>
+      </div>
+    </details>
+
+    <details>
+      <summary>I have a promo code — where do I put it?</summary>
+      <div class="corps">
+        <p>There's a field for it at checkout, and you need to be signed in to
+        use one. Each code has its own rules — which items it covers, how long
+        it runs, and how many times one customer can use it.</p>
+        <p>A code and a group rate don't stack: you automatically get whichever
+        is better for you.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ==================== RECEVOIR ==================== -->
+  <section id="recevoir">
+    <h2>Collection &amp; delivery</h2>
+
+    <details>
+      <summary>Where and when do I collect?</summary>
+      <div class="corps">
+        <p>Each collection point has its own address and hours, shown when you
+        pick it at checkout. The same details appear on your confirmation page,
+        on your receipt, and in <a href="compte.html">My account</a> — so you
+        can always find them again on the day.</p>
+      </div>
+    </details>
+
+    <details>
+      <summary>How does delivery work?</summary>
+      <div class="corps">
+        <p>Deliveries go out by courier on the days shown for your area. The
+        fee, if there is one, appears before you confirm. Some deliveries I
+        bring myself — you'll know because it will have been agreed beforehand.</p>
+        <p>When a courier brings your order, it needs to be paid before the
+        bake: riders don't collect payment for me.</p>
+        <p>Please give the clearest address you can — building or house number,
+        unit, street, barangay, and any landmark that helps. Riders here go by
+        landmarks more than by street numbers, and a vague address is the main
+        reason an order arrives late.</p>
+      </div>
+    </details>
+
+    <details>
+      <summary>Why is the delivery fee so high?</summary>
+      <div class="corps">
+        <p>It can look steep, and I understand why. I should say plainly that I
+        make nothing on it — every peso of it goes to getting your order to
+        you.</p>
+        <p>The reason it costs what it costs is the tip. Riders here decide
+        which bookings to accept, and on a busy day a booking without a good
+        tip simply sits there unaccepted. Paying it properly is the only way to
+        have your bread arrive when it's supposed to, rather than three hours
+        later or not at all.</p>
+        <p>So if collecting suits you, please do — it's cheaper for you, and it
+        saves me a booking to chase. On the days I'm out driving deliveries
+        myself, that genuinely helps.</p>
+      </div>
+    </details>
+
+    <details>
+      <summary>Can you deliver somewhere else, just this once?</summary>
+      <div class="corps">
+        <p>Yes. There's a box at checkout to send this one order to a different
+        address, and it won't change the address saved on your account.</p>
+        <p>Do use that box rather than putting an address in the notes — notes
+        aren't part of the delivery instructions, and an address written there
+        may be missed entirely.</p>
+      </div>
+    </details>
+
+    <details>
+      <summary>Can I choose delivery but write my address in the notes to avoid the fee?</summary>
+      <div class="corps">
+        <div class="attention">
+          <p>Please don't. If you pick a collection option and then ask for
+          delivery, I'll simply charge the delivery fee for your area, or ask
+          you to come and collect.</p>
+        </div>
+        <p>The fee isn't a margin — I make nothing on it. It covers the rider
+        and the tip it takes to get a booking accepted at all. If it feels like
+        a lot, collecting is always the cheaper option, and you're welcome to
+        it.</p>
+      </div>
+    </details>
+
+    <details>
+      <summary>Nobody's home when it arrives. What happens?</summary>
+      <div class="corps">
+        <p>The rider will call the number on the order. Please keep your phone
+        on around the delivery window, and give me a number you actually answer.</p>
+        <p>If I can't reach you, the bread comes back to me, and I'll get in touch to sort it out — but nobody wins that one.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ==================== COMPTE ==================== -->
+  <section id="compte">
+    <h2>Your account</h2>
+
+    <details>
+      <summary>How do I create an account?</summary>
+      <div class="corps">
+        <p>Go to <a href="compte.html">My account</a> and sign in. It takes a
+        few seconds and there's no form to fill in.</p>
+        <div class="attention">
+          <p>Please add your <b>mobile number</b> when you're asked for it. It's
+          what links your account to the orders you've already placed, to your
+          store credit and to your prices. Without it, your account will look
+          empty even though your orders are there.</p>
+        </div>
+      </div>
+    </details>
+
+    <details>
+      <summary>I signed in but my orders aren't there.</summary>
+      <div class="corps">
+        <p>That usually means one of two things: your account doesn't have your
+        mobile number yet, or you signed in with a different email from the one
+        on your earlier orders.</p>
+        <p>Add your mobile number in <a href="compte.html">My account</a>, and
+        message me if it still looks empty — I can link them up by hand.</p>
+      </div>
+    </details>
+
+    <details>
+      <summary>Can I get a receipt?</summary>
+      <div class="corps">
+        <p>Yes. Open the order in <a href="compte.html">My account</a> and
+        download the receipt as a PDF.</p>
+        <p>The PDF is a snapshot taken at the moment you download it. If I change something on your order afterwards, download it again.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ==================== CREDIT ==================== -->
+  <section id="credit">
+    <h2>Store credit</h2>
+
+    <details>
+      <summary>What is store credit?</summary>
+      <div class="corps">
+        <p>It's a balance on your account that you can spend on any order. It
+        comes from refunds, goodwill, or a top-up you've arranged with me.</p>
+        <p>Your balance and every movement on it are visible in
+        <a href="compte.html">My account</a>.</p>
+      </div>
+    </details>
+
+    <details>
+      <summary>Where does store credit come from?</summary>
+      <div class="corps">
+        <p>From me putting things right. If an item was missing from your
+        order, if you were charged the wrong price, or if you paid for an order
+        that then got cancelled, I put the amount back on your account as
+        store credit rather than sending money back and forth.</p>
+        <p>It also covers the everyday one: paying cash and nobody having the
+        right change. Rather than hunting for coins on the doorstep, the
+        difference goes onto your account and comes off your next order.</p>
+        <p>You'll see it appear in <a href="compte.html">My account</a>, with
+        the reason next to it. Tell me if something doesn't look right.</p>
+      </div>
+    </details>
+
+    <details>
+      <summary>How do I use it?</summary>
+      <div class="corps">
+        <p>Tick the box at checkout. I apply as much of your balance as the
+        order allows, and you'll see exactly how much was applied and how much
+        is left to pay.</p>
+        <p>It isn't a payment method in itself — it's a discount on the total.
+        You pay whatever remains the usual way.</p>
+      </div>
+    </details>
+
+    <details>
+      <summary>Why can't I use all of my credit?</summary>
+      <div class="corps">
+        <p>Two reasons. If you have an order waiting to be paid that already
+        uses some of your credit, that part is held so it can't be spent twice
+        — the checkout tells you when this happens.</p>
+        <p>And a very small balance isn't offered, because it can't buy
+        anything on its own. It stays on your account for next time.</p>
+      </div>
+    </details>
+
+    <details>
+      <summary>Does store credit expire?</summary>
+      <div class="corps">
+        <p>No. It stays on your account until you spend it.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ==================== ABONNEMENT ==================== -->
+  <section id="abonnement">
+    <h2>Bread plans</h2>
+
+    <details>
+      <summary>What is a bread plan?</summary>
+      <div class="corps">
+        <p>You choose what you want in each delivery, how often you want it —
+        weekly or every two weeks — and how many deliveries. I then bake and
+        bring the same order on each date, without you having to think about it
+        again.</p>
+        <p>Delivery is charged at the subscriber rate, which is lower than a
+        one-off order.</p>
+      </div>
+    </details>
+
+    <details>
+      <summary>How do I pay for it?</summary>
+      <div class="corps">
+        <p>A plan is paid up front, in one go, for all its deliveries. If you
+        have store credit you can put it towards the plan, and pay the rest the
+        usual way.</p>
+        <p>You'll see the total, the credit applied, and what's left to pay
+        before you confirm anything.</p>
+      </div>
+    </details>
+
+    <details>
+      <summary>I'm away that week. Can I skip a delivery?</summary>
+      <div class="corps">
+        <p>Yes. Open your plan in <a href="compte.html">My account</a> and
+        postpone the delivery you'll miss — it's added back at the end, so you
+        still get everything you paid for.</p>
+        <p>Two things to know: you can postpone <b>twice</b> per plan, and you need to do it at least <b>24 hours</b> before the delivery. After that
+        the dough is already made.</p>
+        <p>If I'm the one who has to move a date — a holiday, a closure —
+        that doesn't use up your two.</p>
+      </div>
+    </details>
+
+    <details>
+      <summary>Can I change what's in my plan, or stop it?</summary>
+      <div class="corps">
+        <p>Message me. The items and prices in a plan are fixed once it starts,
+        but I'd rather adjust it with you than have you stuck with something
+        that no longer suits.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ==================== PRODUITS ==================== -->
+  <section id="produits">
+    <h2>About the bread</h2>
+
+    <details>
+      <summary>Why isn't everything available every day?</summary>
+      <div class="corps">
+        <p>Because it's one baker and one oven, and a bakery isn't only baking.
+        Some days go to buying, to taking in deliveries of flour and butter, or
+        to making the viennoiserie — which is shaped and then frozen raw, ready
+        to bake off. And now and then, to a bit of rest.</p>
+        <p>So different products are baked on different days, and what's
+        available depends on the day you're ordering for.</p>
+      </div>
+    </details>
+
+    <details>
+      <summary>When can I get gluten-free bread?</summary>
+      <div class="corps">
+        <p>Gluten-free is baked on Fridays and available over the weekend —
+        Saturday and Sunday.</p>
+        <div class="attention">
+          <p>It's baked in the same workshop as my wheat breads, on a separate
+          day and with separate equipment. That suits people who choose to eat
+          gluten-free, but it isn't a gluten-free facility, so I can't rule out
+          traces.</p>
+        </div>
+      </div>
+    </details>
+
+    <details>
+      <summary>Frozen items — how do those work?</summary>
+      <div class="corps">
+        <p>A few items are sold frozen, and they need to reach you still
+        frozen. That rules out an ordinary courier: a bag in traffic for an
+        hour is a lost product, and there's no way for me to check.</p>
+        <p>So frozen items travel in my own cooler, which means I bring them
+        myself. In practice:</p>
+        <ul>
+          <li><b>Collection</b> is always fine.</li>
+          <li><b>Delivery</b> works in the areas I cover myself —
+          <b>San Lorenzo, Pacific Plaza, Dasmariñas and Forbes</b>.</li>
+          <li>Anywhere else, message me and I'll find a date that works.</li>
+          <li><b>No frozen delivery on Wednesdays.</b></li>
+        </ul>
+        <p>Pizza dough is the exception — it's dense enough to travel like
+        anything else.</p>
+      </div>
+    </details>
+
+    <details>
+      <summary>How should I keep my bread?</summary>
+      <div class="corps">
+        <p>Real bread has no preservatives, so it doesn't behave like
+        supermarket bread. Keep it in a paper bag or a cloth, cut side down on
+        a board — not in plastic, which softens the crust, and not in the
+        fridge, which makes it stale faster than the counter does.</p>
+        <p>For anything beyond two or three days, slice it and freeze it. It
+        toasts straight from the freezer.</p>
+      </div>
+    </details>
+  </section>
+
+  <div class="pied">
+    <h2>Still stuck?</h2>
+    <p>Message me — I'd rather sort it out than have you guess.</p>
+    <p><a href="./" style="color:var(--accent)">Back to the menu</a> ·
+       <a href="compte.html" style="color:var(--accent)">My account</a></p>
+  </div>
+
+</main>
+
+</body>
+</html>
