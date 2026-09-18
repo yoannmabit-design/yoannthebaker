@@ -241,6 +241,51 @@
     .pousse .sc-touches,.pousse .po-anneau{animation:none}
     .pousse .sc-tiroir{transform:translateY(18px)}
     .pousse .sc-piece{opacity:1;transform:translateY(-58px)}}
+
+  /* ---------- Voile d'envoi ----------
+     Entre le clic sur « Send my order » et l'affichage de la confirmation, il
+     s'écoule une à trois secondes pendant lesquelles rien ne bouge. Le client
+     doute, revient en arrière, revalide — d'où les commandes en double.
+
+     Ce voile occupe l'écran dès le clic, empêche tout second clic, et passe à
+     une coche verte dès que la commande est écrite. Le client sait que c'est
+     parti avant même d'arriver sur la confirmation. */
+  .voile{
+    position:fixed;inset:0;z-index:99;display:none;
+    flex-direction:column;align-items:center;justify-content:center;gap:18px;
+    padding:30px;text-align:center;
+    background:rgba(245,234,216,.97);
+    -webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px);
+  }
+  .voile.ouvert{display:flex}
+  .voile h2{
+    font-family:Caprasimo,"Iowan Old Style",Georgia,serif;
+    font-size:25px;font-weight:400;margin:0;
+  }
+  .voile p{margin:0;font-size:16.5px;color:var(--encre-doux);max-width:330px}
+  .voile .ref{
+    font-size:17px;letter-spacing:.09em;color:var(--encre);
+    border:1px dashed var(--trait);border-radius:var(--r);padding:8px 15px;
+  }
+  .voile svg{width:120px;height:120px}
+
+  /* Cercle et coche tracés au trait, pas remplis : le dessin se fait sous les
+     yeux du client, ce qui se lit comme « c'est en train d'aboutir ». */
+  .coche-cercle{
+    fill:none;stroke:#4f8a4a;stroke-width:5;
+    stroke-dasharray:326;stroke-dashoffset:326;
+    animation:tracer-cercle .55s ease-out forwards;
+  }
+  .coche-trait{
+    fill:none;stroke:#4f8a4a;stroke-width:7;stroke-linecap:round;stroke-linejoin:round;
+    stroke-dasharray:70;stroke-dashoffset:70;
+    animation:tracer-coche .35s .5s ease-out forwards;
+  }
+  @keyframes tracer-cercle{to{stroke-dashoffset:0}}
+  @keyframes tracer-coche{to{stroke-dashoffset:0}}
+  @media (prefers-reduced-motion: reduce){
+    .coche-cercle,.coche-trait{animation:none;stroke-dashoffset:0}
+  }
 </style>
 </head>
 <body>
@@ -1451,6 +1496,9 @@ $("btnEnvoyer").onclick = async () => {
 
   $("btnEnvoyer").disabled = true;
   $("erreur").textContent = "";
+  /* Le voile couvre l'écran dès le clic : plus rien n'est cliquable, et le
+     client voit qu'il se passe quelque chose. echec() le retire. */
+  voileEnvoi();
 
   // Dernière vérification du code au moment de valider : il a pu être
   // désactivé pendant que le client remplissait le formulaire.
@@ -1570,7 +1618,11 @@ $("btnEnvoyer").onclick = async () => {
       oublierCode();
       sessionStorage.setItem("commande", JSON.stringify(commande));
     } catch {}
-    window.location.href = "confirmation.html";
+    /* Coche verte, puis redirection après une courte pause. Le client voit
+       que c'est passé avant que la page change — c'est ce moment précis qui
+       manquait et qui le poussait à revalider. */
+    voileReussi(commande.numero || "");
+    setTimeout(() => { window.location.href = "confirmation.html"; }, 1100);
   } catch (e) {
     console.error(e);
     // Un refus des règles Firestore ("permission-denied") n'est pas un
@@ -1582,7 +1634,38 @@ $("btnEnvoyer").onclick = async () => {
   }
 };
 
+/* ---------- Voile d'envoi ---------- */
+function voileEnvoi() {
+  $("voileContenu").innerHTML = `
+    <div class="pousse" style="padding:0">
+      <svg viewBox="0 0 320 320" aria-hidden="true">
+        <circle cx="160" cy="160" r="132" fill="none" stroke="#F4ECE1" stroke-width="2.5"/>
+        <circle class="po-anneau" cx="160" cy="160" r="132" fill="none" stroke="#D97706"
+          stroke-width="3" stroke-linecap="round" opacity=".8" stroke-dasharray="70 760"/>
+      </svg>
+    </div>
+    <h2>Sending your order…</h2>
+    <p>One moment — please don't close this page or go back.</p>`;
+  $("voile").classList.add("ouvert");
+}
+
+function voileReussi(ref) {
+  $("voileContenu").innerHTML = `
+    <svg viewBox="0 0 120 120" aria-hidden="true">
+      <circle class="coche-cercle" cx="60" cy="60" r="52"/>
+      <path class="coche-trait" d="M36 62 L53 79 L85 44"/>
+    </svg>
+    <h2>Order sent</h2>
+    ${ref ? `<p class="ref">${echapper(ref)}</p>` : ""}
+    <p>Taking you to your order details…</p>`;
+}
+
+function voileFerme() {
+  $("voile").classList.remove("ouvert");
+}
+
 function echec(texte) {
+  voileFerme();
   $("erreur").textContent = texte;
   $("btnEnvoyer").disabled = false;
   $("erreur").scrollIntoView({ behavior: "smooth", block: "center" });
@@ -1596,5 +1679,9 @@ function reference() {
 }
 
 </script>
+<div class="voile" id="voile" role="status" aria-live="assertive">
+  <div id="voileContenu"></div>
+</div>
+
 </body>
 </html>
