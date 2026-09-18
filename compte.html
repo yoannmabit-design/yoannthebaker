@@ -197,6 +197,23 @@
     background:var(--accent);color:#fff;font:inherit;font-size:17px;cursor:pointer;
   }
   .ligne-tel button:disabled{opacity:.55;cursor:default}
+  /* Notices : le seul bloc de la page dont on repart avec quelque chose,
+     d'où le liseré jaune et le pictogramme — mêmes couleurs que sur la page
+     de confirmation, pour que ce soit reconnaissable. */
+  .bloc.notices{border-left:5px solid #e6a817;background:#fffcf2}
+  .pdf-liste{display:flex;flex-direction:column;gap:9px;margin-top:12px}
+  .canal.pdf{
+    display:flex;align-items:flex-start;gap:13px;padding:13px 15px;
+    border:1px solid var(--trait);border-radius:var(--r);
+    background:#fff;text-decoration:none;color:var(--encre);font-size:17px;
+  }
+  .canal.pdf .pict{flex-shrink:0;width:26px;height:32px;margin-top:1px}
+  .canal.pdf .intitule{display:flex;flex-direction:column;gap:2px;min-width:0}
+  .canal.pdf .intitule .titre{overflow-wrap:anywhere}
+  .canal.pdf .intitule .format{
+    font-size:13.5px;color:var(--encre-doux);letter-spacing:.04em;
+  }
+  .canal.pdf .fleche{margin-left:auto;align-self:center;opacity:.5}
   .qui{font-size:15px;color:var(--encre-doux);text-align:center;margin-top:14px}
   .qui button{background:none;border:none;color:var(--accent);
     text-decoration:underline;cursor:pointer;font-size:15px;padding:0}
@@ -418,6 +435,91 @@ const PAIEMENTS = {
   "en attente": { texte: "Awaiting confirmation", classe: "" },
   "rembourse":  { texte: "Refunded",              classe: "morte" }
 };
+
+const PICTO_PDF = `
+  <svg class="pict" viewBox="0 0 24 30" aria-hidden="true">
+    <path d="M2 1h13l7 7v20a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1z"
+          fill="#fff" stroke="#c9a227" stroke-width="1.4"/>
+    <path d="M15 1v7h7" fill="none" stroke="#c9a227" stroke-width="1.4"/>
+    <text x="12" y="23" text-anchor="middle" font-size="7.5"
+          font-family="ui-sans-serif,sans-serif" font-weight="700"
+          fill="#b3891a">PDF</text>
+  </svg>`;
+
+/* ---------- Notices de cuisson ----------
+   Les produits surgelés crus viennent avec un mode d'emploi : la
+   confirmation de commande le propose déjà, mais elle ne se voit qu'une
+   fois, le jour de la commande. Or le client en a besoin bien plus tard,
+   le soir où il sort le produit du congélateur — et à ce moment-là, il n'a
+   plus que cette page.
+
+   Rassemblées en un seul bloc et non répétées sous chaque commande : c'est
+   un document par produit, pas par commande, et on vient le chercher sans
+   se souvenir de quand on a commandé.
+
+   Portée sur tout l'historique, pas seulement sur les commandes affichées :
+   la notice d'un produit acheté il y a deux mois sert toujours. */
+let notices = [];
+
+async function chargerNotices(commandes) {
+  notices = [];
+  const codes = new Set();
+  commandes.forEach(c => (c.panier || []).forEach(l => {
+    if (l.code) codes.add(l.code);
+  }));
+  if (!codes.size) return;
+
+  try {
+    const cat = await getDocs(collection(db, "boutique_produits"));
+    cat.forEach(d => {
+      const v = d.data();
+      if (codes.has(d.id) && v.notice) {
+        notices.push({ nom: v.nom || d.id, fichier: v.notice, taille: "" });
+      }
+    });
+    notices.sort((a, b) => a.nom.localeCompare(b.nom));
+
+    /* Poids du fichier, quand le serveur veut bien le dire : sur données
+       mobiles, savoir ce qu'on télécharge avant de l'ouvrir compte. Une
+       requête qui échoue laisse simplement la mention « PDF » seule. */
+    await Promise.all(notices.map(async n => {
+      try {
+        const r = await fetch(n.fichier, { method: "HEAD" });
+        const octets = Number(r.headers.get("content-length")) || 0;
+        if (octets > 0) {
+          n.taille = octets >= 1048576
+            ? (octets / 1048576).toFixed(1).replace(".", ",") + " MB"
+            : Math.max(1, Math.round(octets / 1024)) + " KB";
+        }
+      } catch {}
+    }));
+  } catch (e) {
+    // Catalogue illisible : la page vaut mieux sans les notices qu'en panne.
+    console.error("Notices", e);
+    notices = [];
+  }
+}
+
+function blocNotices() {
+  if (!notices.length) return "";
+  return `
+    <div class="bloc notices">
+      <h2>Your baking guides</h2>
+      <p class="aide">For the items you take home raw and frozen — how to keep
+        them, how to thaw them, and how to bake them off. Save them to your
+        phone; you'll want them on the night, not today.</p>
+      <div class="pdf-liste">
+        ${notices.map(n => `<a class="canal pdf" href="${ech(n.fichier)}"
+          target="_blank" rel="noopener" download>
+          ${PICTO_PDF}
+          <span class="intitule">
+            <span class="titre">${ech(n.nom)}</span>
+            <span class="format">PDF${n.taille ? " &middot; " + n.taille : ""}</span>
+          </span>
+          <span class="fleche">&#8681;</span></a>`).join("")}
+      </div>
+    </div>`;
+}
 
 const ETATS = {
   "nouvelle":      { texte: "Received",    classe: "" },
@@ -989,6 +1091,8 @@ async function ecranCompte(user) {
     // lecture supplémentaire, la page a déjà payé le coût de la requête.
     toutesCommandes = commandes;
     commandes = commandes.slice(0, DERNIERES);
+    // Notices des produits déjà commandés : lues après, jamais bloquantes.
+    await chargerNotices(toutesCommandes);
   } catch (e) {
     console.error(e);
     commandesLues = false;   // règles Firestore, le plus souvent
@@ -1087,6 +1191,8 @@ async function ecranCompte(user) {
       <h2>Store credit activity</h2>
       ${histo}
     </div>
+
+    ${blocNotices()}
 
     <a class="lien" href="./">Back to the menu</a>
     <p class="qui">Signed in as ${ech(user.email || user.displayName || "")} —
