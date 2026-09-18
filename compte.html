@@ -1016,8 +1016,29 @@ async function ecranCompte(user) {
   const ref = doc(db, "comptes", user.uid);
   let fiche = null;
 
+  /* Les quatre lectures partent ensemble et non l'une après l'autre.
+
+     Aucune ne dépend du résultat d'une autre : la fiche, les mouvements de
+     crédit, les commandes et les abonnements se demandent tous par l'uid déjà
+     connu. Enchaînées, leurs latences s'additionnaient — quatre allers-retours
+     à 300 ou 400 ms sur un réseau mobile, soit plus d'une seconde d'attente
+     pour rien. En parallèle, on ne paie que la plus lente.
+
+     Les erreurs sont récupérées individuellement : un échec sur les
+     abonnements ne doit pas priver le client de son solde. */
+  const [rFiche, rMouvements, rCommandes, rAbonnements] = await Promise.allSettled([
+    getDoc(ref),
+    getDocs(query(collection(db, "comptes", user.uid, "mouvements"),
+                  orderBy("quand", "desc"), limit(20))),
+    getDocs(query(collection(db, "commandes"),
+                  where("compte_uid", "==", user.uid), limit(50))),
+    getDocs(query(collection(db, "abonnements"),
+                  where("client.uid", "==", user.uid), limit(20)))
+  ]);
+
   try {
-    const s = await getDoc(ref);
+    if (rFiche.status === "rejected") throw rFiche.reason;
+    const s = rFiche.value;
     if (s.exists()) {
       fiche = s.data();
     } else {
@@ -1064,12 +1085,9 @@ async function ecranCompte(user) {
     </div>`;
 
   let mouvements = [];
-  try {
-    const q = query(collection(db, "comptes", user.uid, "mouvements"),
-                    orderBy("quand", "desc"), limit(20));
-    const s = await getDocs(q);
-    s.forEach(d => mouvements.push(d.data()));
-  } catch (e) { console.error(e); }
+  if (rMouvements.status === "fulfilled") {
+    rMouvements.value.forEach(d => mouvements.push(d.data()));
+  } else { console.error(rMouvements.reason); }
 
   /* Commandes du client, lues sur le serveur : le stockage local ne garde
      que la dernière, et rien ne suit d'un appareil à l'autre.
@@ -1079,10 +1097,8 @@ async function ecranCompte(user) {
   let commandesLues = true;
   const DERNIERES = 3;
   try {
-    const q = query(collection(db, "commandes"),
-                    where("compte_uid", "==", user.uid), limit(50));
-    const s = await getDocs(q);
-    s.forEach(d => commandes.push({ id: d.id, ...d.data() }));
+    if (rCommandes.status === "rejected") throw rCommandes.reason;
+    rCommandes.value.forEach(d => commandes.push({ id: d.id, ...d.data() }));
     commandes.sort((a, b) => String(b.cree_le || "").localeCompare(String(a.cree_le || "")));
     // Limiter dans la requête donnerait trois commandes au hasard : sans
     // orderBy, Firestore coupe selon l'identifiant, qui n'a rien de
@@ -1091,8 +1107,6 @@ async function ecranCompte(user) {
     // lecture supplémentaire, la page a déjà payé le coût de la requête.
     toutesCommandes = commandes;
     commandes = commandes.slice(0, DERNIERES);
-    // Notices des produits déjà commandés : lues après, jamais bloquantes.
-    await chargerNotices(toutesCommandes);
   } catch (e) {
     console.error(e);
     commandesLues = false;   // règles Firestore, le plus souvent
@@ -1104,11 +1118,9 @@ async function ecranCompte(user) {
      minuscule. */
   let abonnementsLus = true;
   try {
-    const q = query(collection(db, "abonnements"),
-                    where("client.uid", "==", user.uid), limit(20));
-    const s = await getDocs(q);
+    if (rAbonnements.status === "rejected") throw rAbonnements.reason;
     abonnements = [];
-    s.forEach(d => abonnements.push({ id: d.id, ...d.data() }));
+    rAbonnements.value.forEach(d => abonnements.push({ id: d.id, ...d.data() }));
     // Les plans en cours d'abord, les terminés ensuite, puis du plus
     // récent au plus ancien.
     const ordre = { actif: 0, nouveau: 1, termine: 2, arrete: 3 };
@@ -1192,11 +1204,25 @@ async function ecranCompte(user) {
       ${histo}
     </div>
 
-    ${blocNotices()}
+    <div id="zoneNotices"></div>
 
     <a class="lien" href="./">Back to the menu</a>
     <p class="qui">Signed in as ${ech(user.email || user.displayName || "")} —
       <button id="btnSortir">sign out</button></p>`;
+
+  /* Notices : lues après l'affichage, pas avant.
+
+     Elles exigent le catalogue entier, soit la lecture la plus lourde de la
+     page — et elles ne servent qu'à un bloc en bas, consulté des jours plus
+     tard. La faire attendre au client avant de voir son solde et ses
+     commandes était une erreur de ma part. Le bloc apparaît quand il est
+     prêt, sans rien retarder. */
+  chargerNotices(toutesCommandes).then(() => {
+    const zone = $("zoneNotices");
+    // La page a pu être redessinée entre-temps : on ne peint que si la zone
+    // est toujours celle qu'on a laissée.
+    if (zone) zone.innerHTML = blocNotices();
+  });
 
   brancherCommandes();
   brancherAbonnements();
