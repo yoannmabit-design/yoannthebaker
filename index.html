@@ -1,467 +1,476 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Commandes — Yoann's French Bakery</title>
-<meta name="theme-color" content="#1a1a1a">
-<link rel="icon" href="logo.png" type="image/png">
-<link rel="apple-touch-icon" href="logo.png">
+<title>Yoann's French Bakery — Order online</title>
+<meta name="description" content="Authentic French artisan bread and pastries, baked to order in Manila.">
+<meta name="theme-color" content="#201e1d">
 <link rel="manifest" href="manifest.json">
+<link rel="icon" href="logo.jpg">
+<link rel="apple-touch-icon" href="logo.jpg">
+<!-- Une seule police web, et pour les titres seulement : le texte courant
+     garde la police du système, qui ne coûte aucun aller-retour réseau.
+     display=swap laisse le titre s'afficher tout de suite en police de
+     secours, la page ne reste jamais muette en attendant Google. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Caprasimo&display=swap">
 <style>
+  /* Palette « Terracotta & Sage ».
+     Le terracotta porte tout ce qui se tape, la sauge tout ce qui rassure
+     (confirmations, disponibilité). Les noms de variables ne changent pas :
+     toute la feuille de style et le JavaScript continuent de s'y référer,
+     seule la valeur derrière change. */
   :root{
-    --creme:#fdf6ec;--papier:#fffdf9;--encre:#1f1b16;
-    --encre-doux:#6b6157;--trait:#e2d7c6;--accent:#2f4858;
-    --alerte:#8c2f22;--ok:#3d6b3d;--r:6px;
+    --creme:#f5ead8;
+    --papier:#ffffff;
+    --encre:#201e1d;
+    --encre-doux:#5c5449;
+    --trait:#e3d4b8;
+    --accent:#c67139;        /* terracotta — actions */
+    --accent-fonce:#a85a26;  /* survol */
+    --sauge:#7a8a5e;         /* états positifs */
+    --epuise:#9a9188;
+    --r:10px;
   }
   *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
   body{
     margin:0;background:var(--creme);color:var(--encre);
     font:18px/1.55 ui-sans-serif,-apple-system,"Segoe UI",Roboto,sans-serif;
+    padding-bottom:96px;
   }
-  header{
-    background:var(--encre);color:var(--creme);padding:14px 18px;
-    display:flex;align-items:center;gap:12px;flex-wrap:wrap;
-    position:sticky;top:0;z-index:5;
-  }
-  header h1{font-size:19px;margin:0;font-weight:600}
-  header .qui{margin-left:auto;font-size:14.5px;opacity:.72}
-  header button{
-    background:transparent;border:1px solid #4a443c;color:var(--creme);
-    padding:8px 13px;border-radius:var(--r);font-size:15px;cursor:pointer;
-  }
-  main{max-width:820px;margin:0 auto;padding:20px 16px 120px}
 
-  .filtres{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:14px}
-  #recherche{
-    display:block;width:100%;box-sizing:border-box;padding:10px 13px;
-    margin-bottom:20px;border:1px solid var(--trait);border-radius:var(--r);
-    font:inherit;font-size:16px;background:#fff;color:var(--encre);
+  /* ---------- En-tête ---------- */
+  .banniere{
+    background:var(--encre);color:var(--creme);
+    padding:30px 20px;text-align:center;
   }
-  #recherche:focus{outline:2px solid var(--accent);outline-offset:1px}
-  .filtres button{
-    border:1px solid var(--trait);background:transparent;color:var(--encre-doux);
-    padding:8px 15px;border-radius:var(--r);font-size:16px;cursor:pointer;
+  .banniere .logo{
+    width:112px;height:112px;border-radius:50%;
+    object-fit:contain;background:var(--creme);
+    display:block;margin:0 auto 18px;
   }
-  .filtres button[aria-pressed="true"]{
-    background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600;
+  .banniere h1{
+    font-family:Caprasimo,"Iowan Old Style",Georgia,"Times New Roman",serif;
+    font-size:clamp(27px,7vw,40px);font-weight:400;
+    margin:0;letter-spacing:.015em;
   }
-  /* Compteur des nouvelles commandes : rouge même quand le bouton n'est pas
-     actif, sinon la seule information qui doit sauter aux yeux se fondrait
-     dans la barre. Masqué à zéro — un compteur à 0 n'apprend rien et use
-     l'attention pour rien. */
-  .filtres button .compteur{
-    display:inline-block;min-width:20px;margin-left:6px;padding:1px 6px;
-    border-radius:99px;background:var(--alerte);color:#fff;
-    font-size:13.5px;font-weight:700;line-height:1.5;
+  .banniere .lien-compte{
+    display:inline-block;margin:14px 4px 0;color:var(--creme);
+    font-size:14.5px;letter-spacing:.06em;text-transform:uppercase;
+    text-decoration:none;border:1px solid rgba(253,246,236,.35);
+    padding:8px 16px;border-radius:999px;
   }
-  .filtres button[aria-pressed="true"] .compteur{background:#fff;color:var(--alerte)}
-  /* Deuxième rang de filtres : critères plus rares que les trois vues, donc
-     repliés par défaut pour ne pas alourdir l'écran de tous les jours. */
-  .filtres-plus{
-    display:none;gap:9px;flex-wrap:wrap;align-items:flex-end;margin:-6px 0 14px;
-    padding:12px 13px;border:1px solid var(--trait);border-radius:var(--r);
-    background:#fffdf8;
+  /* Deux lignes dans la pastille, la seconde plus petite et atténuée : elle
+     précise sans concurrencer le libellé. */
+  .banniere .lien-compte.deux-lignes{
+    display:inline-flex;flex-direction:column;align-items:center;
+    line-height:1.25;padding:7px 16px;
   }
-  .filtres-plus.ouvert{display:flex}
-  .filtres-plus label{
-    display:block;font-size:13.5px;color:var(--encre-doux);margin-bottom:3px;
+  .banniere .sous-lien{
+    font-size:11.5px;letter-spacing:.08em;opacity:.7;margin-top:2px;
   }
-  .filtres-plus input,.filtres-plus select{
-    padding:8px 10px;border:1px solid var(--trait);border-radius:var(--r);
-    font:inherit;font-size:15.5px;background:#fff;color:var(--encre);
+  .banniere .sous{
+    margin:9px 0 0;font-size:14px;letter-spacing:.19em;
+    text-transform:uppercase;opacity:.72;
   }
-  /* Critères actifs : sans rappel visible, on cherche pendant dix minutes
-     pourquoi une commande n'apparaît pas alors qu'un filtre est resté posé. */
-  .rappel-import{
-    padding:11px 14px;margin:0 0 14px;border-radius:var(--r);
-    border:1px solid var(--trait);border-left:3px solid #2f4858;
-    background:#f3f6f9;font-size:15.5px;color:var(--encre);
+  .avis{
+    background:#eadcc1;border-bottom:1px solid var(--trait);
+    padding:13px 20px;text-align:center;font-size:16.5px;color:var(--encre-doux);
   }
-  .rappel-import[hidden]{display:none}
-  .rappel-import a{color:var(--accent)}
-  .criteres{display:flex;gap:7px;flex-wrap:wrap;margin:0 0 14px}
-  .criteres:empty{display:none}
-  .criteres .crit{
-    display:inline-flex;align-items:center;gap:7px;padding:5px 7px 5px 11px;
-    border:1px solid var(--trait);border-radius:99px;background:#fff;
-    font-size:14.5px;color:var(--encre);
+  /* Le texte par défaut ci-dessous est écrit en dur dans le HTML pour que le
+     bandeau s'affiche immédiatement, sans attendre la lecture Firestore.
+     Sans cela, ce bloc devenait le plus grand élément de la page et n'arrivait
+     qu'après le réseau : LCP à 6 s et toute la page poussée vers le bas.
+     La hauteur minimale absorbe l'écart si le texte enregistré depuis
+     l'onglet Boutique est un peu plus long que le défaut. */
+  @media (max-width:600px){ .avis{ min-height:104px; } }
+  .vacances{
+    background:var(--papier);border-bottom:1px solid var(--trait);
+    padding:26px 20px;text-align:center;
   }
-  .criteres .crit button{
-    border:none;background:transparent;color:var(--encre-doux);
-    font-size:17px;line-height:1;cursor:pointer;padding:0 3px;
+  .vacances img{
+    display:block;max-width:320px;width:100%;height:auto;margin:0 auto 16px;
+    border-radius:var(--r);
   }
-  .compte-res{font-size:14.5px;color:var(--encre-doux);margin:0 0 12px}
+  .vacances .titre{
+    font-family:Caprasimo,"Iowan Old Style",Georgia,serif;font-size:23.5px;margin:0 0 8px;
+  }
+  .vacances p{margin:0;font-size:17.5px;color:var(--encre-doux);
+    max-width:460px;margin-inline:auto;line-height:1.5}
 
-  .jour{font-size:16px;color:var(--encre-doux);margin:22px 0 9px;font-weight:600}
-  .cmd{
-    background:var(--papier);border:1px solid var(--trait);
-    border-radius:var(--r);padding:14px;margin-bottom:10px;
+  main{max-width:760px;margin:0 auto;padding:22px 16px 30px}
+  .reprise{
+    background:#faf3e6;border-bottom:1px solid var(--trait);
+    padding:14px 18px;display:flex;gap:12px;align-items:center;
+    flex-wrap:wrap;justify-content:center;font-size:16.5px;
   }
-  .cmd.impaye{border-left:4px solid var(--alerte)}
-  .cmd.reglee{border-left:4px solid var(--ok)}
-  /* Repérage temporaire en arrivant depuis "Commandes à venir" sur
-     l'accueil — un halo qui s'estompe, pour ne pas laisser une carte
-     encadrée en permanence après le premier coup d'œil. */
-  .cmd.cible{
-    animation:surligne-cmd 2.6s ease-out;
-  }
-  @keyframes surligne-cmd{
-    0%   {box-shadow:0 0 0 3px var(--accent)}
-    75%  {box-shadow:0 0 0 3px var(--accent)}
-    100% {box-shadow:0 0 0 0 transparent}
-  }
-  .tete{display:flex;gap:12px;align-items:baseline;flex-wrap:wrap;cursor:pointer}
-  .tete .ref{font-family:ui-monospace,monospace;font-size:14.5px;color:var(--encre-doux)}
-  .tete .nom{font-weight:600;flex:1;min-width:120px}
-  /* Souligné en pointillé plutôt qu'en plein : c'est un lien, mais il ne doit
-     pas attirer l'œil plus que le nom lui-même. */
-  .tete .nom-lien{
-    color:inherit;text-decoration:underline;text-decoration-style:dotted;
-    text-underline-offset:3px;text-decoration-color:var(--encre-doux);
-  }
-  .tete .nom-lien:hover{text-decoration-color:var(--accent);color:var(--accent)}
-  .tete .montant{font-weight:600;font-variant-numeric:tabular-nums}
-  .tete .quand{color:var(--encre-doux);font-size:15px}
-  .tete .fleche{color:var(--encre-doux);font-size:13px}
-  .resume{font-size:15px;color:var(--encre-doux);margin-top:4px}
-
-  .detail{margin-top:13px;padding-top:13px;border-top:1px dashed var(--trait)}
-  .detail[hidden]{display:none}
-  .detail .l{display:flex;justify-content:space-between;gap:12px;font-size:16.5px;padding:2px 0}
-  .info{font-size:16px;color:var(--encre-doux);margin:3px 0}
-  .info b{color:var(--encre);font-weight:600}
-
-  .actions{display:flex;gap:9px;flex-wrap:wrap;align-items:center;margin-top:14px}
-  select{
-    padding:9px 10px;border:1px solid var(--trait);border-radius:var(--r);
-    background:#fff;font:inherit;font-size:16.5px;color:var(--encre);
-  }
-  .lien{
-    display:inline-block;padding:9px 14px;border:1px solid var(--trait);
-    border-radius:var(--r);text-decoration:none;color:var(--accent);font-size:16px;
-  }
-  .etiq{
-    font-size:13px;letter-spacing:.07em;text-transform:uppercase;
-    padding:3px 8px;border-radius:3px;background:#efe6d8;color:var(--encre-doux);
-  }
-  .etiq.rouge{background:#f6e2de;color:var(--alerte)}
-  /* Fiche à compléter : bleu et non rouge — ce n'est pas une alerte, c'est un
-     travail à faire avant de lancer une course. */
-  .etiq.neuf{background:#e0e8f0;color:#2f4858;font-weight:700}
-  /* Adresse ponctuelle : même famille que les alertes, parce que c'est une
-     commande où l'automatisme de livraison ne s'applique pas. */
-  .etiq.ponctuelle{background:#f6e2de;color:var(--alerte);font-weight:700}
-  .etiq.verte{background:#e2eede;color:var(--ok)}
-  .etiq.bleue{background:#dfe8ee;color:var(--accent)}
-  /* COD : ni payé ni "à encaisser en ligne" — l'argent arrive à la
-     remise, pas de preuve à vérifier. Une couleur neutre à part pour ne
-     pas la confondre avec l'alerte rouge d'un paiement en ligne manquant. */
-  .etiq.cod{background:#eae6df;color:#6d665c}
-
-  /* Une couleur par statut, du plus froid au plus chaud : la commande
-     avance vers le pain prêt, puis s'éteint une fois remise. */
-  .etiq.st-nouvelle      {background:#e6e3f0;color:#4a4270}
-  .etiq.st-confirmee     {background:#dfe8ee;color:#2d5771}
-  .etiq.st-production    {background:#fbead2;color:#8a5a1c}
-  .etiq.st-prete         {background:#e2eede;color:#33632f}
-  .etiq.st-remise        {background:#eae6df;color:#6d665c}
-  .etiq.st-annulee       {background:#f6e2de;color:var(--alerte);
-                          text-decoration:line-through}
-
-  /* Le même code couleur en filet à gauche de la carte : la liste se lit
-     d'un coup d'œil sans avoir à relire chaque étiquette. */
-  .cmd{border-left:3px solid transparent}
-  .cmd.b-nouvelle   {border-left-color:#8b83b5}
-  .cmd.b-confirmee  {border-left-color:#5b8bab}
-  .cmd.b-production {border-left-color:#d09a3f}
-  .cmd.b-prete      {border-left-color:#5f9257}
-  .cmd.b-remise     {border-left-color:#c3bcb0}
-  .cmd.b-annulee    {border-left-color:#c1705f}
-
-  /* Confirmée ET payée : rien à faire sur cette commande. Le filet vert vif
-     l'emporte sur la couleur de statut — c'est la combinaison des deux qui
-     compte, pas l'un ou l'autre séparément. Un balayage du regard suffit :
-     ce qui est vert est réglé, tout le reste demande quelque chose. */
-  .cmd.rien-a-faire{border-left-color:#00c853;border-left-width:4px}
-  .cmd.compacte{padding:9px 14px;opacity:.82}
-  .cmd.compacte .tete{gap:10px}
-
-  /* ---------- Modification d'une commande ---------- */
-  /* Ces deux classes n'existaient pas dans cette page : l'écran de
-     modification est le premier à avoir de vrais boutons d'action. */
-  .action{
-    background:var(--accent);color:#fff;border:none;padding:10px 18px;
-    border-radius:var(--r);font:inherit;font-size:16.5px;font-weight:600;cursor:pointer;
-  }
-  .action:disabled{opacity:.5;cursor:default}
-  .mineur{
-    background:none;border:1px solid var(--trait);color:var(--accent);
-    padding:9px 14px;border-radius:var(--r);font:inherit;font-size:16px;cursor:pointer;
-  }
-  .edition{
-    margin-top:14px;padding-top:14px;border-top:1px dashed var(--trait);
-  }
-  .edition .edit-l{
-    display:flex;align-items:center;gap:9px;padding:6px 0;
-    border-bottom:1px solid var(--trait);
-  }
-  .edition .edit-l .n{flex:1;font-size:16.5px}
-  .edition .edit-l .q{
-    width:62px;padding:6px 8px;border:1px solid var(--trait);
-    border-radius:var(--r);font:inherit;font-size:16.5px;text-align:center;
-  }
-  .edition .edit-l .p{
-    min-width:74px;text-align:right;font-variant-numeric:tabular-nums;font-size:16.5px;
-  }
-  .edition .edit-l .retirer{
-    background:none;border:none;color:var(--alerte);
-    font-size:17px;cursor:pointer;padding:4px 6px;
-  }
-  .edition .edit-vide{
-    padding:10px 0;color:var(--alerte);font-size:16px;
-  }
-  .edition .edit-ajout{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
-  .edition .edit-ajout select{
-    flex:1;min-width:150px;padding:8px 10px;border:1px solid var(--trait);
-    border-radius:var(--r);background:#fff;font:inherit;font-size:16.5px;
-  }
-  .edition .edit-ajout .edit-qte{
-    width:70px;padding:8px;border:1px solid var(--trait);
-    border-radius:var(--r);font:inherit;font-size:16.5px;text-align:center;
-  }
-  .edition .edit-date{
-    display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-top:14px;
-  }
-  .edition .edit-date label{font-size:15px;color:var(--encre-doux)}
-  .edition .edit-date input{
-    padding:8px 10px;border:1px solid var(--trait);border-radius:var(--r);
-    font:inherit;font-size:16.5px;
-  }
-  .edition .edit-avertit{font-size:14.5px;color:var(--alerte);flex:1;min-width:150px}
-  .edition .edit-livraison-champ{
-    display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-top:14px;
-  }
-  .edition .edit-livraison-champ label{font-size:15px;color:var(--encre-doux)}
-  .edition .edit-livraison-champ select{
-    padding:8px 10px;border:1px solid var(--trait);border-radius:var(--r);
-    font:inherit;font-size:16.5px;background:#fff;min-width:220px;
-  }
-  .edition .edit-bilan{margin-top:14px;font-size:16.5px}
-  .edition .edit-bilan .l{
-    display:flex;justify-content:space-between;gap:12px;padding:3px 0;
-  }
-  .edition .edit-bilan .l.somme{
-    border-top:1px solid var(--trait);margin-top:6px;padding-top:7px;font-weight:600;
-  }
-  .edition .edit-bilan .l.ecart{color:var(--alerte);font-weight:600}
-  .edition .edit-alerte{
-    margin-top:10px;padding:10px 12px;border-radius:var(--r);
-    background:#f6e2de;color:var(--alerte);font-size:15px;line-height:1.45;
-  }
-  .edition .edit-actions{display:flex;gap:9px;margin-top:14px;flex-wrap:wrap}
-
-  .coche{width:19px;height:19px;flex-shrink:0;accent-color:var(--accent);cursor:pointer}
-  .jour{display:flex;align-items:center;gap:10px}
-  .jour .tout{
-    font-size:14px;color:var(--accent);background:none;border:none;
-    cursor:pointer;text-decoration:underline;padding:0;font-weight:400;
-  }
-  .lot{
-    position:fixed;left:0;right:0;bottom:0;background:var(--encre);color:var(--creme);
-    padding:12px 16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;
-    transform:translateY(120%);transition:transform .18s ease;z-index:6;
-  }
-  .lot.vu{transform:translateY(0)}
-  .lot .n{font-weight:600;margin-right:auto}
-  .lot select{font-size:16px;padding:8px 9px}
-  .lot .appliquer{
-    background:var(--creme);color:var(--encre);border:none;padding:10px 16px;
+  .reprise button{
+    background:var(--accent);color:#fff;border:none;padding:9px 16px;
     border-radius:var(--r);font-size:16.5px;font-weight:600;cursor:pointer;
   }
-  .lot .appliquer:disabled{opacity:.45;cursor:default}
-  .lot .annuler{
-    background:transparent;border:1px solid #4a443c;color:var(--creme);
-    padding:9px 13px;border-radius:var(--r);font-size:16px;cursor:pointer;
+  .rayons{
+    display:flex;gap:8px;overflow-x:auto;-webkit-overflow-scrolling:touch;
+    padding:12px 16px;background:var(--papier);
+    border-bottom:1px solid var(--trait);position:sticky;top:0;z-index:5;
   }
-  .lot .danger{
-    background:transparent;border:1px solid #a8503f;color:#f0a795;
-    padding:9px 13px;border-radius:var(--r);font-size:16px;cursor:pointer;
+  .rayons a{
+    white-space:nowrap;text-decoration:none;color:var(--encre-doux);
+    font-size:15px;letter-spacing:.04em;text-transform:uppercase;
+    border:1.5px solid var(--trait);border-radius:999px;padding:8px 16px;
+  }
+  .rayons a:hover{border-color:var(--accent);color:var(--accent)}
+  .rayons a:active{background:var(--sauge);border-color:var(--sauge);color:var(--creme)}
+
+  /* ---------- Catégories ---------- */
+  .categorie{margin-bottom:34px}
+  .categorie{scroll-margin-top:64px}
+  .categorie h2{
+    font-family:Caprasimo,"Iowan Old Style",Georgia,serif;
+    font-size:22.5px;font-weight:400;margin:0 0 3px;
+  }
+  /* Conseil affiché sous le titre du rayon (conservation, réchauffage...).
+     Le texte vient de parametres/boutique, champ rayons_notes. */
+  .categorie .note{
+    font-style:italic;
+    font-size:clamp(.82rem,2.2vw,.92rem);
+    line-height:1.45;
+    color:var(--sauge);
+    margin:0 0 10px;
+    max-width:60ch;
+  }
+  .categorie .filet{height:1px;background:var(--trait);margin-bottom:16px}
+
+  /* ---------- Produit ---------- */
+  /* Grille de tuiles carrées : deux par ligne sur téléphone, trois dès que
+     l'écran le permet. align-items:start pour qu'une tuile dépliée pousse sa
+     seule colonne, sans étirer ses voisines. */
+  .grille{
+    display:grid;grid-template-columns:repeat(2,1fr);
+    gap:14px;align-items:start;
+  }
+  @media (min-width:600px){
+    .grille{grid-template-columns:repeat(3,1fr)}
   }
 
-  /* Couleur des menus de statut : l'état d'une commande se lit de loin,
-     sans avoir à déplier la carte. */
-  select[data-v]{font-weight:600}
-  select[data-v="nouvelle"]     {color:#8c2f22;border-color:#d9a79c}
-  select[data-v="confirmee"]    {color:#2f4858;border-color:#a9bcc7}
-  select[data-v="en production"]{color:#8a5a12;border-color:#dcbe8a}
-  select[data-v="prete"]        {color:#3d6b3d;border-color:#a9c7a9}
-  select[data-v="remise"]       {color:#6b6157;border-color:var(--trait)}
-  select[data-v="annulee"]      {color:#9a9188;border-color:var(--trait)}
-  select[data-v="en attente"]   {color:#8c2f22;border-color:#d9a79c}
-  select[data-v="paye"]         {color:#3d6b3d;border-color:#a9c7a9}
-  select[data-v="rembourse"]    {color:#6b6157;border-color:var(--trait)}
-  .vide{padding:44px;text-align:center;color:var(--encre-doux)}
-  .connexion{max-width:400px;margin:14vh auto;text-align:center;padding:0 20px}
-  .connexion h1{font-size:25px;margin:0 0 20px}
-  .connexion button{
-    background:var(--accent);color:#fff;border:none;padding:12px 22px;
+  .produit{
+    background:var(--papier);border:1px solid var(--trait);
+    border-radius:var(--r);overflow:hidden;
+  }
+  .produit .visuel{
+    display:block;width:100%;aspect-ratio:1/1;position:relative;
+    background:#eadcc1;border:none;padding:0;cursor:pointer;
+    text-align:left;font:inherit;color:inherit;
+  }
+  .produit .visuel img{
+    width:100%;height:100%;object-fit:cover;display:block;
+  }
+  /* Sans photo : une plaque neutre plutôt qu'un trou dans la grille. */
+  .produit .visuel .sans-photo{
+    position:absolute;inset:0;display:flex;align-items:center;
+    justify-content:center;color:var(--encre-doux);font-size:14px;
+    text-align:center;padding:10px;
+  }
+  .produit .visuel:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+
+  /* Ruban : posé en haut à gauche de la photo. Le .visuel est déjà en
+     position:relative, rien d'autre à restructurer.
+     Une couleur par valeur, choisie pour que le sens se lise sans lire :
+     terracotta = nouveauté, rouge = prix, sauge = recommandation,
+     encre = distinction, crème = simple information.
+     pointer-events:none pour que le clic passe au travers et continue
+     d'ouvrir le descriptif comme avant. */
+  .produit .ruban{
+    position:absolute;top:0;left:0;z-index:1;pointer-events:none;
+    padding:5px 11px;border-bottom-right-radius:var(--r);
+    font-size:11.5px;font-weight:700;letter-spacing:.06em;
+    text-transform:uppercase;line-height:1.2;
+    background:var(--accent);color:#fff;
+  }
+  .produit .ruban.promo{background:var(--alerte, #8c2f22)}
+  .produit .ruban.best{background:var(--sauge)}
+  .produit .ruban.mois{background:var(--encre)}
+  .produit .ruban.precommande{background:var(--encre);color:var(--creme);opacity:.9}
+
+  .produit .corps{padding:11px 12px 12px}
+  .infos{min-width:0}
+  .infos .nom{font-weight:600;font-size:17px;line-height:1.3}
+  .infos .prix{font-size:16.5px;margin-top:4px}
+  /* Le descriptif ne s'affiche qu'une fois la tuile ouverte : une à trois
+     lignes de texte n'ont pas à encombrer la grille. */
+  .infos .desc{
+    font-size:15px;color:var(--encre-doux);margin-top:7px;
+  }
+  .produit:not(.ouvert) .infos .desc{display:none}
+  .produit .chevron{
+    float:right;margin-left:8px;color:var(--encre-doux);font-size:14px;
+    transition:transform .15s ease;
+  }
+  .produit.ouvert .chevron{transform:rotate(180deg)}
+
+  .produit.indispo{opacity:.55}
+  .indispo .etiquette{
+    font-size:13px;letter-spacing:.09em;text-transform:uppercase;
+    color:var(--epuise);margin-top:5px;
+  }
+  .produit .action{margin-top:10px}
+
+  /* ---------- Compteur ---------- */
+  .compteur{display:flex;align-items:center;gap:9px;flex-shrink:0}
+  .compteur button{
+    width:38px;height:38px;border-radius:50%;
+    border:1px solid var(--trait);background:var(--papier);
+    font-size:21.5px;line-height:1;color:var(--encre);cursor:pointer;
+  }
+  .compteur button:active{background:var(--trait)}
+  .compteur button:disabled{opacity:.3;cursor:default}
+  .compteur .n{min-width:20px;text-align:center;font-variant-numeric:tabular-nums}
+  .ajouter{
+    border:1px solid var(--accent);background:transparent;color:var(--accent);
+    padding:9px 17px;border-radius:var(--r);font-size:16.5px;
+    font-weight:600;cursor:pointer;white-space:nowrap;
+    /* Dans une tuile, le bouton occupe toute la largeur : la cible est plus
+       grande et les tuiles s'alignent. */
+    width:100%;
+  }
+  .action .compteur{justify-content:space-between}
+  .ajouter:active{background:var(--accent);color:#fff}
+
+  /* ---------- Panier ---------- */
+  .panier{
+    position:fixed;left:0;right:0;bottom:0;
+    background:var(--encre);color:var(--creme);
+    padding:14px 18px;display:flex;align-items:center;gap:14px;
+    transform:translateY(110%);transition:transform .22s ease;
+  }
+  .panier.visible{transform:translateY(0)}
+  .panier .resume{flex:1;min-width:0}
+  .panier .articles{font-size:14.5px;opacity:.75}
+  .panier .total{font-size:21.5px;font-weight:600;font-variant-numeric:tabular-nums}
+  .panier button{
+    background:var(--creme);color:var(--encre);border:none;
+    padding:13px 22px;border-radius:var(--r);
+    font-size:17.5px;font-weight:600;cursor:pointer;
+  }
+
+  /* ---------- Code promo ---------- */
+  .promo{
+    max-width:760px;margin:0 auto 26px;padding:16px;
+    background:var(--papier);border:1px solid var(--trait);border-radius:var(--r);
+  }
+  .promo .titre{
+    font-size:14.5px;letter-spacing:.08em;text-transform:uppercase;
+    color:var(--encre-doux);margin:0 0 10px;
+  }
+  .promo .saisie{display:flex;gap:9px;flex-wrap:wrap}
+  .promo input{
+    flex:1;min-width:150px;padding:11px 12px;border:1px solid var(--trait);
+    border-radius:var(--r);background:#fff;font:inherit;font-size:17px;
+    text-transform:uppercase;letter-spacing:.06em;color:var(--encre);
+  }
+  .promo button{
+    background:var(--accent);color:#fff;border:none;padding:11px 20px;
     border-radius:var(--r);font-size:17px;font-weight:600;cursor:pointer;
   }
-  .etat{
-    position:fixed;bottom:84px;left:50%;transform:translateX(-50%);
-    background:var(--encre);color:var(--creme);padding:10px 18px;
-    border-radius:var(--r);font-size:16px;opacity:0;transition:opacity .2s;
+  .promo button:disabled{opacity:.5;cursor:default}
+  .promo .etat{margin:10px 0 0;font-size:16px;color:var(--encre-doux)}
+  .promo .etat.ok{color:var(--sauge)}
+  .promo .etat.err{color:#8c2f22}
+  .promo .etat a{color:var(--accent)}
+  .promo .retirer{
+    background:none;border:none;color:var(--accent);padding:0;
+    font-size:16px;text-decoration:underline;cursor:pointer;margin-left:8px;
   }
-  .etat.vu{opacity:1}
-  .etat.ok{background:#33632f}
-  .etat.err{background:var(--alerte)}
+  .panier .economie{font-size:14px;opacity:.8}
+
+  /* ---------- Partage ---------- */
+  .partage{
+    max-width:760px;margin:0 auto 26px;padding:16px;text-align:center;
+    background:var(--papier);border:1px solid var(--trait);border-radius:var(--r);
+  }
+  .partage .titre{
+    font-size:14.5px;letter-spacing:.08em;text-transform:uppercase;
+    color:var(--encre-doux);margin:0 0 12px;
+  }
+  .partage .rangee{display:flex;gap:9px;flex-wrap:wrap;justify-content:center}
+  .partage button{
+    background:var(--accent);color:#fff;border:none;padding:10px 18px;
+    border-radius:var(--r);font-size:17px;font-weight:600;cursor:pointer;
+  }
+  .partage button.mineur{
+    background:none;border:1px solid var(--trait);color:var(--accent);font-weight:400;
+  }
+  .partage .code{margin-top:16px}
+  .partage .code svg{
+    width:200px;height:200px;display:block;margin:0 auto;
+    border:1px solid var(--trait);border-radius:var(--r);
+  }
+  .partage .sous{font-size:14.5px;color:var(--encre-doux);margin:8px 0 0}
+  .partage .etat{font-size:15px;color:var(--ok);margin:10px 0 0;min-height:1em}
+
+  .message{padding:52px 20px;text-align:center;color:var(--encre-doux)}
+  footer{
+    text-align:center;padding:24px 20px 34px;
+    font-size:14.5px;color:var(--encre-doux);
+  }
+  @media (prefers-reduced-motion:reduce){
+    .panier{transition:none}
+  }
+  @media (max-width:420px){
+    .compteur button{width:36px;height:36px}
+  }
+  .recherche-produits{margin:0 0 22px}
+  .recherche-produits input{
+    width:100%;box-sizing:border-box;padding:11px 14px;
+    border:1px solid var(--trait);border-radius:var(--r);
+    font:inherit;font-size:16px;color:var(--encre);background:#fff;
+  }
+  .recherche-produits input:focus{
+    outline:2px solid var(--accent);outline-offset:1px;
+  }
+
+  /* ---------- Scènes d'attente ----------
+     Une scène par page, plutôt qu'un même dessin partout : le client passe
+     de l'une à l'autre et l'attente se remarque moins. Toutes partagent le
+     cadre — même viewBox, même anneau, mêmes couleurs — pour rester d'une
+     seule famille.
+
+     Cycle court à dessein : les pages se chargent en 3 à 7 secondes sur un
+     téléphone. Un cycle plus long ne montrerait que le début de la scène à
+     ceux qui arrivent sur les pages rapides.
+
+     Tout est préfixé et scopé sous .pousse : ces SVG vivent à l'intérieur
+     de la page, leurs classes ne doivent rien heurter. */
+  .pousse{--po-duree:3.4s;text-align:center;padding:34px 20px;color:var(--encre-doux)}
+  .pousse svg{width:190px;height:190px;display:block;margin:0 auto 4px}
+  .pousse p{margin:0;font-size:16.5px;letter-spacing:.03em}
+  /* Rotation continue, sans début ni fin : l'anneau dit « ça travaille », il
+     ne prétend pas mesurer une progression qu'on ne connaît pas. */
+  .pousse .po-anneau{transform-origin:160px 160px;animation:po-tourner 1.9s linear infinite}
+  @keyframes po-tourner{to{transform:rotate(360deg)}}
+
+  /* --- Vitrine : le pâton lève, dore, s'ouvre aux grignes et fume. --- */
+  .pousse .po-pain{transform-origin:160px 190px;
+    animation:po-lever var(--po-duree) cubic-bezier(.4,0,.2,1) infinite}
+  .pousse .po-croute{animation:po-dorer var(--po-duree) ease-in-out infinite}
+  .pousse .po-grignes{transform-origin:160px 150px;
+    animation:po-grigner var(--po-duree) cubic-bezier(.4,0,.2,1) infinite}
+  .pousse .po-buee{opacity:0;animation:po-buee var(--po-duree) ease-out infinite}
+  .pousse .po-buee.b2{animation-delay:.15s}
+  .pousse .po-buee.b3{animation-delay:.3s}
+  @keyframes po-lever{
+    0%       {transform:scale(.8,.65) translateY(18px)}
+    35%      {transform:scale(.95,.88) translateY(6px)}
+    55%,85%  {transform:scale(1.04,1.02) translateY(-2px)}
+    95%,100% {transform:scale(.8,.65) translateY(18px)}}
+  @keyframes po-dorer{
+    0%,25%   {fill:#FBF0DF;stroke:#D6C29E}
+    40%      {fill:#F6D59E;stroke:#C29658}
+    60%,85%  {fill:#C26E23;stroke:#78350F}
+    95%,100% {fill:#FBF0DF;stroke:#D6C29E}}
+  @keyframes po-grigner{
+    0%,30%   {stroke-width:2.5px;stroke:#D6C29E;opacity:.7}
+    45%      {stroke-width:5px;stroke:#FDE68A;opacity:1}
+    65%,85%  {stroke-width:8.5px;stroke:#FEF08A;opacity:1}
+    95%,100% {stroke-width:2.5px;stroke:#D6C29E;opacity:.7}}
+  @keyframes po-buee{
+    0%,50% {opacity:0;transform:translateY(0) scaleY(.7)}
+    60%    {opacity:.7}
+    85%    {opacity:0;transform:translateY(-28px) scaleY(1.3)}
+    100%   {opacity:0;transform:translateY(0)}}
+  @media (prefers-reduced-motion: reduce){
+    .pousse .po-pain,.pousse .po-croute,.pousse .po-grignes,
+    .pousse .po-anneau,.pousse .po-buee{animation:none}
+    .pousse .po-croute{fill:#C26E23;stroke:#78350F}
+    .pousse .po-grignes{stroke:#FEF08A;stroke-width:8.5px;opacity:1}
+    .pousse .po-buee{opacity:.6}}
 </style>
 </head>
 <body>
 
-<div id="ecranConnexion" class="connexion">
-  <h1>Commandes</h1>
-  <button id="btnConnexion">Se connecter avec Google</button>
-  <p id="msgConnexion" style="margin-top:18px;font-size:16px"></p>
+<div class="banniere">
+  <img class="logo" src="logo.jpg" alt="Yoann's French Bakery"
+       onerror="this.remove()">
+  <h1>Yoann's French Bakery</h1>
+  <p class="sous">Baked to order in Manila</p>
+  <a class="lien-compte" href="compte.html">My account</a>
+  <!-- Sous-titre dans le bouton : la page Bread plan affiche les tarifs
+       abonné, plus bas que les prix de la boutique. Quelqu'un qui l'ouvre par
+       curiosité — souvent le premier bouton cliquable pendant que la vitrine
+       charge — croyait voir les prix courants, puis se sentait floué au
+       checkout. Le mot « subscription » suffit à lever le malentendu. -->
+  <a class="lien-compte deux-lignes" href="abonnement.html">Bread plan
+    <span class="sous-lien">Weekly subscription</span></a>
+  <a class="lien-compte" href="faq.html">FAQ</a>
 </div>
 
-<div id="app" hidden>
-  <header>
-    <h1>Commandes</h1>
-    <span class="qui" id="qui"></span>
-    <button id="btnRecharger">Actualiser</button>
-    <button id="btnNouvelleCommande" class="action">➕ Nouvelle commande</button>
-    <button id="btnDeconnexion">Quitter</button>
-  </header>
-  <main>
-    <div class="cmd" id="panneauNouvelle" hidden style="border-left:3px solid var(--accent)">
-      <h2 style="margin:0 0 4px">Nouvelle commande</h2>
-      <p style="margin:0 0 10px;font-size:14.5px;color:var(--encre-doux)">
-        Pour un client qui commande par téléphone ou en personne — même
-        calcul de prix, mêmes options que la vitrine.
-      </p>
-      <div class="edition" style="border-top:none;padding-top:0;margin-top:0">
+<div class="vacances" id="vacances" hidden></div>
+<!-- Texte par défaut = copie de message_accueil (parametres/boutique).
+     À resynchroniser ici si le message change durablement dans l'admin. -->
+<div class="avis" id="avis">Baking on Wednesdays, Saturdays and Sundays. Please, place your order anytime up to 4pm, the day before. Present on Legazpi sunday Market, Makati. You can order anytime, cut-off 5pm the day before delivery.</div>
 
-        <div class="edit-livraison-champ">
-          <label>Téléphone</label>
-          <input type="tel" id="nc-tel" placeholder="09xx xxx xxxx" style="flex:1;min-width:180px;padding:8px 10px;border:1px solid var(--trait);border-radius:var(--r);font:inherit;font-size:16.5px">
-        </div>
-        <div id="nc-compte-etat" style="margin-top:6px;font-size:14.5px;color:var(--encre-doux)"></div>
+<nav class="rayons" id="rayons" hidden></nav>
 
-        <div class="edit-livraison-champ">
-          <label>Nom</label>
-          <input type="text" id="nc-nom" style="flex:1;min-width:180px;padding:8px 10px;border:1px solid var(--trait);border-radius:var(--r);font:inherit;font-size:16.5px">
-        </div>
-
-        <div class="edit-livraison-champ" id="nc-adresse-champ" hidden>
-          <label>Adresse</label>
-          <input type="text" id="nc-adresse" style="flex:1;min-width:220px;padding:8px 10px;border:1px solid var(--trait);border-radius:var(--r);font:inherit;font-size:16.5px">
-        </div>
-
-        <div class="edit-lignes" id="nc-lignes"></div>
-
-        <div class="edit-ajout">
-          <select id="nc-produit"></select>
-          <input type="number" class="edit-qte" id="nc-qte" min="1" step="1" value="1">
-          <button type="button" class="mineur" id="nc-ajouter">Ajouter</button>
-        </div>
-
-        <div class="edit-livraison-champ" id="nc-promo-champ" hidden>
-          <label>Code promo</label>
-          <input type="text" id="nc-promo" placeholder="CODE" style="width:140px;padding:8px 10px;border:1px solid var(--trait);border-radius:var(--r);font:inherit;font-size:16.5px;text-transform:uppercase">
-          <button type="button" class="mineur" id="nc-promo-appliquer">Appliquer</button>
-          <span id="nc-promo-msg" style="font-size:14.5px"></span>
-        </div>
-
-        <div class="edit-date">
-          <label>Date de retrait</label>
-          <input type="date" id="nc-date">
-          <span class="edit-avertit" id="nc-avertit"></span>
-        </div>
-
-        <div class="edit-livraison-champ">
-          <label>Mode de retrait / livraison</label>
-          <select id="nc-livraison"></select>
-        </div>
-
-        <div class="edit-bilan" id="nc-bilan"></div>
-
-        <div class="edit-actions">
-          <button type="button" class="action" id="nc-creer">Créer la commande</button>
-          <button type="button" class="mineur" id="nc-annuler">Annuler</button>
-        </div>
-      </div>
-    </div>
-
-    <div class="filtres" id="filtres">
-      <button data-f="nouvelles" aria-pressed="false">Nouvelles<span class="compteur" id="cptNouvelles" hidden>0</span></button>
-      <button data-f="actives" aria-pressed="true">À traiter</button>
-      <button data-f="impayees" aria-pressed="false">Impayées</button>
-      <button data-f="toutes" aria-pressed="false">Toutes</button>
-      <button type="button" id="btnPlus" title="Filtrer par date, tag client ou code produit">＋ Filtres</button>
-      <button type="button" id="btnReclasser" title="Remonter en tête ce qui attend encore une action"
-              style="margin-left:auto">↕ Reclasser</button>
-    </div>
-    <input type="search" id="recherche"
-           placeholder="Chercher un client, un article, un n° de commande ou un code produit…">
-
-    <!-- Critères secondaires. La recherche libre ci-dessus couvre déjà le nom,
-         l'article, le numéro et le code : ce panneau sert aux bornes et aux
-         listes fermées, qu'on ne peut pas taper au clavier. -->
-    <div class="filtres-plus" id="filtresPlus">
-      <div><label for="fCode">Code produit</label>
-        <input type="text" id="fCode" list="codesConnus" placeholder="PAI-BAG" size="10"></div>
-      <div><label for="fTag">Tag client</label>
-        <select id="fTag"><option value="">Tous</option></select></div>
-      <div><label for="fDu">Commandée du</label>
-        <input type="date" id="fDu"></div>
-      <div><label for="fAu">au</label>
-        <input type="date" id="fAu"></div>
-      <button type="button" class="mineur" id="btnEffacerFiltres">Tout effacer</button>
-    </div>
-    <datalist id="codesConnus"></datalist>
-    <!-- Rappel d'import : une commande dont le client n'a pas de fiche ne
-         peut ni recevoir de tag, ni porter de point de livraison, ni afficher
-         son tarif. L'oubli est facile — la commande, elle, s'affiche très
-         bien. -->
-    <div class="rappel-import" id="rappelImport" hidden></div>
-    <div class="criteres" id="criteres"></div>
-    <div class="compte-res" id="compteRes" hidden></div>
-    <div id="liste"><div class="vide">Chargement…</div></div>
-  </main>
+<div class="recherche-produits">
+  <input type="search" id="rechercheProduits"
+         placeholder="Search a product…" aria-label="Search a product">
 </div>
 
-<div class="lot" id="lot">
-  <span class="n" id="lotN"></span>
-  <select id="lotStatut">
-    <option value="">Avancement…</option>
-  </select>
-  <select id="lotPaiement">
-    <option value="">Paiement…</option>
-  </select>
-  <button class="appliquer" id="lotAppliquer" disabled>Appliquer</button>
-  <button class="annuler" id="lotImprimer">Imprimer les étiquettes</button>
-  <button class="danger" id="lotSupprimer">Supprimer</button>
-  <button class="annuler" id="lotAnnuler">Annuler</button>
+<div class="reprise" id="reprise" hidden></div>
+
+<main id="catalogue">
+  <div class="pousse" role="status" aria-live="polite"><svg viewBox="0 0 320 320" aria-hidden="true"><circle cx="160" cy="160" r="132" fill="none" stroke="#F4ECE1" stroke-width="2.5"/><circle class="po-anneau" cx="160" cy="160" r="132" fill="none" stroke="#D97706" stroke-width="3" stroke-linecap="round" opacity=".8" stroke-dasharray="70 760"/><defs><filter id="po-ombre" x="-15%" y="-15%" width="130%" height="130%"><feDropShadow dx="0" dy="6" stdDeviation="5" flood-color="#451A03" flood-opacity=".18"/></filter></defs><g filter="url(#po-ombre)"><path d="M 50 206 C 50 200, 270 200, 270 206 L 260 216 C 260 220, 60 220, 60 216 Z" fill="#D4A373"/><path d="M 50 206 L 270 206 L 260 214 L 60 214 Z" fill="#C58F5B"/></g><g fill="none" stroke="#D97706" stroke-width="2.5" stroke-linecap="round" opacity=".6"><path class="po-buee" d="M 140 102 Q 134 85 142 72 Q 150 58 140 45"/><path class="po-buee b2" d="M 160 96 Q 168 80 160 66 Q 152 52 162 38"/><path class="po-buee b3" d="M 180 102 Q 174 85 182 72 Q 190 58 180 45"/></g><g class="po-pain" filter="url(#po-ombre)"><path class="po-croute" d="M 85 192 C 75 145, 115 110, 160 110 C 205 110, 245 145, 235 192 C 220 202, 100 202, 85 192 Z" stroke-width="3.5" stroke-linejoin="round"/><path d="M 98 182 C 94 165 106 142 120 134 C 114 148 112 168 120 180 Z" fill="#FFF" opacity=".35"/><path d="M 222 182 C 226 165 214 142 200 134 C 206 148 208 168 200 180 Z" fill="#FFF" opacity=".35"/><g class="po-grignes" fill="none" stroke-linecap="round"><path d="M 120 142 Q 128 158 136 174"/><path d="M 152 136 Q 160 156 168 176"/><path d="M 184 142 Q 192 158 200 174"/></g><path d="M 142 178 Q 146 182 150 180" stroke="#78350F" stroke-width="1.5" stroke-linecap="round" opacity=".5" fill="none"/><path d="M 174 178 Q 178 182 182 180" stroke="#78350F" stroke-width="1.5" stroke-linecap="round" opacity=".5" fill="none"/></g></svg><p>Warming the oven…</p></div>
+</main>
+
+<section class="promo" id="promo" hidden>
+  <p class="titre">Promo code</p>
+  <div class="saisie">
+    <input type="text" id="champCode" placeholder="Enter your code"
+           autocomplete="off" autocapitalize="characters" spellcheck="false"
+           aria-label="Promo code">
+    <button type="button" id="btnCode">Apply</button>
+  </div>
+  <p class="etat" id="etatPromo"></p>
+</section>
+
+<section class="partage" id="partage">
+  <p class="titre">Share the bakery</p>
+  <div class="rangee">
+    <button type="button" id="btnPartager">Share</button>
+    <button type="button" class="mineur" id="btnCopier">Copy link</button>
+    <button type="button" class="mineur" id="btnQr">Show QR code</button>
+  </div>
+  <div class="code" id="zoneQr" hidden>
+    <div id="dessinQr"></div>
+    <p class="sous">Have a friend scan this</p>
+  </div>
+  <p class="etat" id="etatPartage" role="status"></p>
+</section>
+
+<footer id="pied"></footer>
+
+<div class="panier" id="panier">
+  <div class="resume">
+    <div class="articles" id="panierArticles"></div>
+    <div class="total" id="panierTotal"></div>
+    <div class="economie" id="panierEconomie" hidden></div>
+  </div>
+  <button id="btnCommander">Checkout</button>
 </div>
 
-<div class="etat" id="etat"></div>
-
-<script src="admin-nav.js" defer></script>
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged }
-  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import { getFirestore, collection, getDocs, doc, getDoc, setDoc, updateDoc, writeBatch, increment,
-         query, where, limit }
+import { getFirestore, collection, getDocs, doc, getDoc, setDoc, increment }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-import { getFunctions, httpsCallable }
-  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-functions.js";
-// Même règle de prix que la vitrine et le checkout : un article ajouté ici
-// suit le tarif de groupe et le code promo exactement comme à la commande.
-import { calculerPrix, prixUnitaire, rayonDe, chargerCode, verifierCode, usagesClient, normaliserCode }
-  from "./promo.js";
+import { getAuth, onAuthStateChanged }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { qrSvg } from "./qr.js";
+import { normaliserCode, lireCodeMemorise, memoriserCode, oublierCode,
+         chargerCode, verifierCode, calculerPrix, prixUnitaire, libelleCode,
+         RAYONS, rayonDe, libellePortee }
+  from "./promo.js?v=2";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDuq8KS8M_Z8U7BlSp6MvE-6Y9OYYaDujE",
@@ -472,2683 +481,721 @@ const firebaseConfig = {
   appId: "1:978584667113:web:868cc89788aff27717c178"
 };
 
-const app  = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db   = getFirestore(app);
-// Les clés Lalamove vivent côté serveur : cette page ne fait qu'appeler les
-// fonctions. La région doit correspondre au déploiement, sinon appel dans le vide.
-const fns  = getFunctions(app, "asia-southeast1");
-const $    = (id) => document.getElementById(id);
-const peso = (n) => "₱" + Number(n || 0).toLocaleString("en-PH");
+const appF = initializeApp(firebaseConfig);
+const db   = getFirestore(appF);
+const auth = getAuth(appF);
+const $  = (id) => document.getElementById(id);
 
-const STATUTS = ["nouvelle","confirmee","en production","prete","remise","annulee"];
-const LIBELLES = {
-  "nouvelle":"Nouvelle", "confirmee":"Confirmée", "en production":"En production",
-  "prete":"Prête", "remise":"Remise", "annulee":"Annulée"
-};
-const PAIEMENTS = { "en attente":"En attente", "paye":"Payé", "rembourse":"Remboursé" };
+/* Rayons de la vitrine : la liste et le repli viennent du module partagé,
+   pour que le classement du catalogue et la portée des codes promo
+   reposent sur la même règle. */
+const ORDRE = RAYONS;
+const rayon = rayonDe;
 
-/* Libellés des moyens de paiement choisis au checkout (c.paiement.methode).
-   "especes" est le seul réglé à la remise : c'est lui qui déclenche le
-   badge COD plutôt que "À encaisser". Les autres attendent une preuve
-   (GCash, Maya, virement) et gardent le badge rouge existant. */
-const MOYENS_PAIEMENT = {
-  gcash: "GCash", maya: "Maya", virement: "Virement", especes: "Cash"
-};
-function estCOD(c) { return c.paiement?.methode === "especes"; }
+let produits = [];
+let panier   = {};   // { idProduit: quantité }
+let ferme    = false;   // mode vacances
+let remise   = 0;       // tarif de groupe du client connecté, en pourcentage
+let connecte = false;   // un code promo suppose un compte
+let promo    = null;    // fiche du code promo appliqué
+let sourceRemise = "aucune";   // "groupe" | "promo" | "aucune"
 
-// « en production » contient une espace : on la retire pour en faire une classe.
-const CLASSE_STATUT = {
-  "nouvelle":"nouvelle", "confirmee":"confirmee", "en production":"production",
-  "prete":"prete", "remise":"remise", "annulee":"annulee"
-};
+/* Conseils par rayon, lus dans parametres/boutique (champ rayons_notes).
+   Volontairement dans le document déjà chargé au démarrage : pas de lecture
+   supplémentaire, donc pas de retard à l'affichage. Objet vide = rien ne
+   s'affiche, la vitrine fonctionne comme avant. */
+let notesRayons = {};
 
-// Portée de la génération des commandes d'abonnement, en jours.
-const FENETRE_JOURS = 10;
-
-/* Vue de départ. La page d'accueil peut la fixer via ?vue=nouvelles quand
-   elle a compté des commandes non traitées : un seul clic depuis l'accueil
-   au lieu d'arriver sur « À traiter » puis de rebasculer. Toute autre valeur
-   est ignorée plutôt que de laisser la page dans un état inconnu. */
-const VUES = ["nouvelles", "actives", "impayees", "toutes"];
-const vueDemandee = new URLSearchParams(location.search).get("vue");
-let commandes = [], filtre = VUES.includes(vueDemandee) ? vueDemandee : "actives";
-let joursFermes = [];   // 0 = lundi
-let optionsRetrait = []; // options de retrait/livraison — pour la modification
-let catalogue = {};     // { code : { nom, prix_vente, rayon } } — pour la modification
-let stockLimite = {};   // { code produit : true } — produits à stock décompté
-let nomVersCode = {};   // rattrapage : nom du produit -> code, pour les commandes d'avant les codes
-let abonnements = [];   // échéances d'abonnement à ajouter à la production
-let clients = [];       // pour la recherche par téléphone en création de commande
-let comptes = [];       // idem, pour retrouver un tarif de groupe existant
-
-// Même normalisation que clients-admin.html : ne garder que les chiffres,
-// et seulement les 10 derniers, pour ignorer les préfixes (+63, 0…).
-function cleTel(t) {
-  const chiffres = String(t || "").replace(/\D/g, "");
-  return chiffres.length > 10 ? chiffres.slice(-10) : chiffres;
+/* ---------- Panier conservé sur l'appareil du client ---------- */
+function chargerPanier() {
+  try { panier = JSON.parse(localStorage.getItem("panier") || "{}"); }
+  catch { panier = {}; }
 }
-const selection = new Set();
+function sauverPanier() {
+  try { localStorage.setItem("panier", JSON.stringify(panier)); } catch {}
+}
 
-/* ---------- Connexion ---------- */
-$("btnConnexion").onclick = async () => {
-  try { await signInWithPopup(auth, new GoogleAuthProvider()); }
-  catch (e) {
-    $("msgConnexion").textContent = "Connexion impossible. Autorisez les fenêtres surgissantes.";
-    console.error(e);
-  }
-};
-$("btnDeconnexion").onclick = () => signOut(auth);
-$("btnRecharger").onclick   = charger;
+const peso = (n) => "₱" + Number(n).toLocaleString("en-PH");
 
-onAuthStateChanged(auth, async (user) => {
-  if (!user) { $("app").hidden = true; $("ecranConnexion").hidden = false; return; }
+// Le prix affiché par produit dépend de la remise retenue : au tarif de
+// groupe la réduction est dans la ligne, avec un code promo elle porte
+// sur le total et les lignes gardent leur prix catalogue.
+function prixClient(p) {
+  return prixUnitaire(p.prix_vente, remise, sourceRemise);
+}
 
-  let autorise = false;
-  try { autorise = (await getDoc(doc(db, "admins", user.uid))).exists(); }
-  catch (e) { console.error(e); }
-
-  if (!autorise) {
-    await signOut(auth);
-    $("msgConnexion").innerHTML =
-      "Ce compte n'a pas accès.<br>Identifiant : <code>" + user.uid + "</code>";
-    return;
-  }
-  $("ecranConnexion").hidden = true;
-  $("app").hidden = false;
-  $("qui").textContent = user.email;
-  charger();
-});
+// Lignes du panier, dans la forme attendue par le module de calcul.
+function lignesPanier() {
+  const l = [];
+  produits.forEach(p => {
+    const q = panier[p.id];
+    if (q) l.push({ qte: q, prixBase: Number(p.prix_vente) || 0, rayon: rayon(p) });
+  });
+  return l;
+}
 
 /* ---------- Chargement ---------- */
-async function charger() {
+/* ---------- Compteur de visites ----------
+   Un document par jour dans « visites », incrémenté au premier chargement de
+   la vitrine. Compté une fois par session et non par page vue : recharger ou
+   revenir du checkout ne doit pas gonfler le chiffre.
+
+   Volontairement minimal — pas de traçage, aucune donnée sur le visiteur,
+   rien qui sorte de Firestore. La question à laquelle ça répond est « est-ce
+   que le site est visité et est-ce que ça progresse », pas « qui est venu ».
+
+   L'échec est silencieux et sans conséquence : un compteur n'a pas à empêcher
+   quelqu'un de commander du pain. */
+async function compterVisite() {
   try {
-    // Quels produits ont un stock à décompter ?
-    try {
-      const p = await getDoc(doc(db, "parametres", "boutique"));
-      if (p.exists()) {
-        joursFermes = p.data().jours_fermes || [];
-        optionsRetrait = p.data().options_retrait || [];
+    if (sessionStorage.getItem("visite-comptee")) return;
+    sessionStorage.setItem("visite-comptee", "1");
+    const d = new Date();
+    const jour = new Date(d.getTime() - d.getTimezoneOffset() * 60000)
+      .toISOString().slice(0, 10);
+    await setDoc(doc(db, "visites", jour), { visites: increment(1) }, { merge: true });
+  } catch (e) {
+    console.debug("Compteur de visites indisponible", e);
+  }
+}
+
+async function demarrer() {
+  chargerPanier();
+  // Lancé sans await : la vitrine ne doit pas attendre après un compteur.
+  compterVisite();
+  try {
+    const [params, catalogue] = await Promise.all([
+      getDoc(doc(db, "parametres", "boutique")),
+      getDocs(collection(db, "boutique_produits"))
+    ]);
+
+    if (params.exists()) {
+      const p = params.data();
+
+      // Conseils par rayon. Absent ou mal typé : on repart d'un objet vide.
+      notesRayons = (p.rayons_notes && typeof p.rayons_notes === "object")
+        ? p.rayons_notes : {};
+
+      const vac = p.vacances || {};
+      ferme = !!vac.actif;
+      if (ferme) {
+        const zone = $("vacances");
+        zone.innerHTML =
+          (vac.image ? `<img src="${vac.image}" alt="" onerror="this.remove()">` : "") +
+          '<p class="titre">We are closed at the moment</p><p></p>';
+        zone.querySelector("p:last-child").textContent =
+          vac.message || "Online orders are paused. Thank you for your patience.";
+        zone.hidden = false;
       }
-    } catch (e) { console.error(e); }
 
-    try {
-      const cat = await getDocs(collection(db, "boutique_produits"));
-      stockLimite = {}; nomVersCode = {}; catalogue = {};
-      cat.forEach(d => {
-        const v = d.data();
-        if (v.mode_stock === "limite") stockLimite[d.id] = true;
-        if (v.nom) nomVersCode[cle(v.nom)] = d.id;
-        catalogue[d.id] = {
-          nom: v.nom || d.id,
-          prix_vente: Number(v.prix_vente) || 0,
-          rayon: rayonDe(v),
-          publie: v.publie !== false
-        };
-      });
-    } catch (e) { console.error(e); }
-
-    try {
-      const sa = await getDocs(collection(db, "abonnements"));
-      abonnements = [];
-      sa.forEach(d => abonnements.push({ id: d.id, ...d.data() }));
-    } catch (e) {
-      console.warn("Abonnements non lus (règles Firestore ?) :", e.message);
-      abonnements = [];
+      // Le bandeau est déjà affiché avec son texte par défaut. On ne le touche
+      // que si l'admin a enregistré autre chose, pour ne pas provoquer de
+      // décalage inutile quand les deux textes sont identiques.
+      const avis = $("avis");
+      if (p.message_accueil && p.message_accueil !== avis.textContent.trim()) {
+        avis.textContent = p.message_accueil;
+      } else if (!p.message_accueil) {
+        avis.hidden = true;   // message vidé depuis l'admin
+      }
+      /* Le pied garde le contact direct, et pointe la FAQ à côté : c'est là
+         qu'on cherche les réponses avant de commander, et une question lue
+         est un message de moins à écrire. */
+      const liens = ['<a href="faq.html" style="color:var(--accent)">What\'s the FAQ?</a>'];
+      if (p.whatsapp) {
+        liens.push('<a href="https://wa.me/' + p.whatsapp +
+          '" style="color:var(--accent)">Message me on WhatsApp</a>');
+      }
+      $("pied").innerHTML = 'Questions? ' + liens.join(' &middot; ');
     }
 
-    try {
-      const scl = await getDocs(collection(db, "clients"));
-      clients = [];
-      scl.forEach(d => clients.push({ id: d.id, ...d.data() }));
-    } catch (e) { console.error(e); clients = []; }
+    produits = [];
+    catalogue.forEach(s => {
+      const d = s.data();
+      if (d.visible === false) return;
+      produits.push({ id: s.id, ...d });
+    });
 
-    try {
-      const sco = await getDocs(collection(db, "comptes"));
-      comptes = [];
-      sco.forEach(d => comptes.push({ id: d.id, ...d.data() }));
-    } catch (e) { console.error(e); comptes = []; }
+    // Le panier peut contenir des produits retirés depuis la dernière visite.
+    Object.keys(panier).forEach(id => {
+      const p = produits.find(x => x.id === id);
+      if (!p || p.disponible === false) { delete panier[id]; return; }
+      const reste = restant(p);
+      if (reste !== null) {
+        if (reste <= 0) delete panier[id];
+        else if (panier[id] > reste) panier[id] = reste;
+      }
+    });
+    sauverPanier();
 
-    const s = await getDocs(collection(db, "commandes"));
-    commandes = [];
-    s.forEach(d => commandes.push({ id: d.id, ...d.data() }));
-    trierCommandes();
-    const crees = await materialiserAbonnements();
-    if (crees) {
-      trierCommandes();
-      signaler(crees + " commande(s) d'abonnement générée(s).");
-    }
-
-    majListesFiltres();
     afficher();
-    // Les destinations d'expédition conditionnent l'affichage du bouton de
-    // tournée : une fois connues, on redessine.
-    if (!configLieux) {
-      lireLieuxLalamove()
-        .then(cfg => { configLieux = cfg; afficher(); })
-        .catch(e => console.warn("Lieux Lalamove non lus :", e.message));
-    }
-    publierProduction();
-    publierCharges();
-    allerVersCommandeCiblee();
+    proposerDerniere();
+
+    // Champ de recherche : posé une fois le catalogue chargé (les produits
+    // existent déjà). Léger anti-rebond pour ne pas re-filtrer à chaque
+    // frappe sur les catalogues un peu longs.
+    const champRecherche = $("rechercheProduits");
+    let attente;
+    champRecherche.addEventListener("input", () => {
+      clearTimeout(attente);
+      attente = setTimeout(() => {
+        filtreRecherche = champRecherche.value;
+        afficher();
+      }, 120);
+    });
   } catch (e) {
     console.error(e);
-    $("liste").innerHTML = '<div class="vide">Les commandes n\'ont pas pu être chargées.</div>';
+    $("catalogue").innerHTML =
+      '<div class="message">The menu could not be loaded. Please refresh the page.</div>';
   }
 }
 
-/* ---------- Arrivée depuis la page d'accueil ("Commandes à venir") ---------- */
-// Le lien pointe vers ?commande=ID. On force la vue "Toutes" pour être
-// sûr de la trouver même si son statut sort du filtre actif par défaut
-// (remise, annulée...), puis on l'amène à l'écran et on la met en
-// évidence un instant — sans quoi, en fin de liste, elle se noierait
-// exactement comme depuis la page d'accueil, ce qui annulerait l'intérêt
-// du lien.
-function allerVersCommandeCiblee() {
-  const id = new URLSearchParams(location.search).get("commande");
-  if (!id) return;
+/* ---------- Reprise de la dernière commande ----------
+   Proposée seulement quand le panier est vide : sinon elle gênerait
+   plus qu'elle n'aiderait. */
+function proposerDerniere() {
+  if (ferme || Object.keys(panier).length) return;
+  let d = null;
+  try { d = JSON.parse(localStorage.getItem("derniere_commande") || "null"); } catch {}
+  if (!d || !(d.lignes || []).length) return;
 
-  const cible = commandes.find(c => c.id === id);
-  if (!cible) return;
+  const encore = d.lignes.filter(l =>
+    produits.some(p => p.id === l.id && p.disponible !== false));
+  if (!encore.length) return;
 
-  if (filtre !== "toutes") {
-    filtre = "toutes";
-    $("filtres").querySelectorAll("button").forEach(b =>
-      b.setAttribute("aria-pressed", b.dataset.f === "toutes"));
+  const zone = $("reprise");
+  zone.innerHTML = `<span>Same as last time? ${
+    encore.map(l => l.qte + " × " + l.nom).join(", ")}</span>
+    <button id="btnReprise">Add to basket</button>`;
+  zone.hidden = false;
+
+  $("btnReprise").onclick = () => {
+    encore.forEach(l => { panier[l.id] = (panier[l.id] || 0) + l.qte; });
+    sauverPanier();
+    zone.hidden = true;
     afficher();
-  }
-
-  // Nettoie l'URL pour qu'un rechargement ou un retour en arrière ne
-  // re-déclenche pas le même repérage indéfiniment.
-  history.replaceState(null, "", location.pathname);
-
-  const el = document.getElementById("cmd-" + id);
-  if (!el) return;
-  el.scrollIntoView({ behavior: "smooth", block: "center" });
-  el.classList.add("cible");
-  setTimeout(() => el.classList.remove("cible"), 2600);
+  };
 }
 
-/* ---------- Filtres ---------- */
-/* Reclasser à la demande : la liste ne bouge jamais toute seule, mais on
-   doit pouvoir la ranger quand on a fini de traiter une série. */
-$("btnReclasser").onclick = () => { afficher(true); };
+/* ---------- Affichage ---------- */
+let filtreRecherche = "";
 
-// Le bouton actif est écrit en dur dans le HTML sur « À traiter » : si l'URL
-// a demandé une autre vue, il faut le remettre d'accord avec l'état réel.
-$("filtres").querySelectorAll("button[data-f]").forEach(b =>
-  b.setAttribute("aria-pressed", b.dataset.f === filtre ? "true" : "false"));
-
-$("filtres").onclick = (e) => {
-  const b = e.target.closest("button");
-  if (!b || !b.dataset.f) return;
-  filtre = b.dataset.f;
-  $("filtres").querySelectorAll("button").forEach(x =>
-    x.setAttribute("aria-pressed", x === b));
-  afficher();
-};
-
-// Léger anti-rebond : évite de refiltrer toute la liste à chaque frappe
-// sur un historique de commandes qui peut être long.
-let attenteRecherche;
-$("recherche").addEventListener("input", (e) => {
-  clearTimeout(attenteRecherche);
-  attenteRecherche = setTimeout(() => {
-    recherche = normaliser(e.target.value.trim());
-    afficher();
-  }, 120);
-});
-
-function retenue(c) {
-  if (filtre === "toutes") return true;
-  // Statut « nouvelle » et rien d'autre : ce que personne n'a encore regardé.
-  // Volontairement sans borne de date — une nouvelle commande dont la date de
-  // retrait est déjà passée est justement celle qu'il ne faut pas rater.
-  if (filtre === "nouvelles") return c.statut === "nouvelle";
-  if (filtre === "impayees")
-    return (c.paiement?.statut || "en attente") === "en attente" && c.statut !== "annulee";
-  return !["remise", "annulee"].includes(c.statut);
-}
-
-// Insensible aux accents : "eclair" doit trouver "éclair", pareil pour un nom client.
+// Insensible aux accents : "eclair" doit trouver "éclair".
 function normaliser(s) {
   return String(s || "").toLowerCase()
     .normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 }
 
-let recherche = "";
-function correspond(c) {
-  if (!recherche) return true;
-  if (normaliser(c.client?.nom).includes(recherche)) return true;
-  // Numéro de commande : on cherche aussi sur l'identifiant Firestore, seul
-  // repère des commandes anciennes qui n'ont pas de numéro lisible.
-  if (normaliser(c.numero || "").includes(recherche)) return true;
-  if (normaliser(c.id).includes(recherche)) return true;
-  return (c.panier || []).some(l =>
-    normaliser(l.nom).includes(recherche) ||
-    normaliser(codeLigne(l) || "").includes(recherche));
+function correspond(p, terme) {
+  if (!terme) return true;
+  return normaliser(p.nom).includes(terme) ||
+         normaliser(p.description_client).includes(terme);
 }
 
-/* ---------- Critères secondaires ----------
-   Tout se filtre en mémoire : la page charge déjà la collection entière, une
-   requête Firestore par critère n'apporterait rien et imposerait des index
-   composites. */
-const crit = { code: "", tag: "", du: "", au: "" };
+function afficher() {
+  const zone = $("catalogue");
 
-// Le tag vit sur la fiche client (champ « groupe »), pas sur la commande :
-// on rapproche par téléphone, comme partout ailleurs dans cette page.
-function tagDe(c) {
-  const k = cleTel(c.client?.telephone);
-  if (!k) return "";
-  const fiche = clients.find(x => cleTel(x.telephone || x.id) === k);
-  return fiche ? (fiche.groupe || "") : "";
-}
+  // La remise retenue décide de l'affichage des prix : on tranche avant
+  // de dessiner les lignes.
+  sourceRemise = calculerPrix(lignesPanier(), remise, promo).source;
 
-function passeCriteres(c) {
-  if (crit.code) {
-    const cherche = crit.code.trim().toUpperCase();
-    if (!(c.panier || []).some(l => String(codeLigne(l) || "").toUpperCase() === cherche))
-      return false;
-  }
-  if (crit.tag && tagDe(c) !== crit.tag) return false;
-  // Date de commande, pas date de retrait : « cree_le » est un horodatage ISO,
-  // les dix premiers caractères suffisent à le comparer à une date de champ.
-  const jour = (c.cree_le || "").slice(0, 10);
-  if (crit.du && (!jour || jour < crit.du)) return false;
-  if (crit.au && (!jour || jour > crit.au)) return false;
-  return true;
-}
-
-function critereActif() {
-  return !!(crit.code || crit.tag || crit.du || crit.au || recherche);
-}
-
-/* Rappel visible des critères posés, chacun retirable d'un clic. Sans lui,
-   un filtre oublié se lit comme une commande disparue. */
-function peindreCriteres() {
-  const boite = $("criteres");
-  const puces = [];
-  if (recherche)  puces.push(["recherche", "« " + $("recherche").value.trim() + " »"]);
-  if (crit.code)  puces.push(["code", "Code " + crit.code.toUpperCase()]);
-  if (crit.tag)   puces.push(["tag", "Tag " + crit.tag]);
-  if (crit.du)    puces.push(["du", "À partir du " + crit.du]);
-  if (crit.au)    puces.push(["au", "Jusqu'au " + crit.au]);
-  boite.innerHTML = puces.map(([k, t]) =>
-    `<span class="crit">${echapper(t)}<button type="button" data-crit="${k}"
-       title="Retirer ce critère" aria-label="Retirer ce critère">×</button></span>`).join("");
-}
-
-$("criteres").onclick = (e) => {
-  const b = e.target.closest("button[data-crit]");
-  if (!b) return;
-  const k = b.dataset.crit;
-  if (k === "recherche") { $("recherche").value = ""; recherche = ""; }
-  else { crit[k] = ""; $({ code: "fCode", tag: "fTag", du: "fDu", au: "fAu" }[k]).value = ""; }
-  afficher();
-};
-
-$("btnPlus").onclick = () => {
-  const p = $("filtresPlus");
-  p.classList.toggle("ouvert");
-  $("btnPlus").setAttribute("aria-pressed", p.classList.contains("ouvert") ? "true" : "false");
-};
-
-["fCode", "fTag", "fDu", "fAu"].forEach(id => {
-  $(id).oninput = () => {
-    crit.code = $("fCode").value.trim();
-    crit.tag  = $("fTag").value;
-    crit.du   = $("fDu").value;
-    crit.au   = $("fAu").value;
-    afficher();
-  };
-});
-
-$("btnEffacerFiltres").onclick = () => {
-  crit.code = crit.tag = crit.du = crit.au = "";
-  ["fCode", "fTag", "fDu", "fAu"].forEach(id => $(id).value = "");
-  $("recherche").value = ""; recherche = "";
-  afficher();
-};
-
-// Listes d'aide à la saisie, remplies d'après ce qui existe réellement :
-// proposer un code ou un tag inutilisé ne ferait que produire des vues vides.
-function majListesFiltres() {
-  const codes = new Set();
-  commandes.forEach(c => (c.panier || []).forEach(l => {
-    const k = codeLigne(l); if (k) codes.add(k);
-  }));
-  $("codesConnus").innerHTML =
-    [...codes].sort().map(k => `<option value="${echapper(k)}">`).join("");
-
-  const tags = [...new Set(clients.map(x => x.groupe).filter(Boolean))].sort();
-  const garde = $("fTag").value;
-  $("fTag").innerHTML = '<option value="">Tous</option>' +
-    tags.map(t => `<option value="${echapper(t)}">${echapper(t)}</option>`).join("");
-  if (tags.includes(garde)) $("fTag").value = garde;
-}
-
-/* Compteur des nouvelles commandes. Il compte sur la collection entière et
-   non sur la vue courante : c'est un rappel permanent, il ne doit pas
-   disparaître parce qu'on regarde ailleurs. */
-function majCompteurNouvelles() {
-  const n = commandes.filter(c => c.statut === "nouvelle").length;
-  const el = $("cptNouvelles");
-  el.textContent = n;
-  el.hidden = n === 0;
-}
-
-/* ---------- Affichage ---------- */
-/* Ordre affiché à l'écran, figé. Une commande sur laquelle on vient d'agir
-   ne doit pas se déplacer sous les doigts : confirmer une commande la ferait
-   sortir du groupe « à traiter » et il faudrait la rechercher pour pointer
-   son paiement. Le classement se recalcule au chargement, au changement de
-   filtre et à la recherche — jamais après un enregistrement. */
-let ordreFige = null;
-
-function afficher(reclasser = true) {
-  const liste = $("liste");
-  majCompteurNouvelles();
-  majRappelImport();
-  peindreCriteres();
-  let vues = commandes.filter(retenue).filter(correspond).filter(passeCriteres);
-
-  // Combien on voit sur combien : affiché seulement quand un critère est posé,
-  // sinon le total de l'historique s'afficherait en permanence sans utilité.
-  const cr = $("compteRes");
-  cr.hidden = !critereActif();
-  if (!cr.hidden) cr.textContent = vues.length + " commande(s) sur " + commandes.length;
-  // Seule la vue « Toutes » mélange des commandes closes et actives : elle
-  // seule a besoin de les séparer.
-  if (filtre === "toutes") vues = trierPourToutes(vues);
-
-  if (reclasser) {
-    ordreFige = vues.map(c => c.id);
-  } else if (ordreFige) {
-    // Une commande absente du classement figé (rare : arrivée entre-temps)
-    // est renvoyée en fin de liste plutôt que placée au hasard.
-    const rang = new Map(ordreFige.map((id, i) => [id, i]));
-    vues.sort((a, b) => (rang.has(a.id) ? rang.get(a.id) : Infinity)
-                      - (rang.has(b.id) ? rang.get(b.id) : Infinity));
-  }
-
-  liste.innerHTML = "";
-
-  if (!vues.length) {
-    liste.innerHTML = critereActif()
-      ? '<div class="vide">Aucune commande ne correspond aux critères.' +
-        '<br><br>Les filtres portent sur tout l\'historique : si rien ne sort, ' +
-        'c\'est que la commande cherchée n\'existe pas sous cette forme.</div>'
-      : '<div class="vide">Aucune commande dans cette vue.</div>';
+  if (!produits.length) {
+    zone.innerHTML =
+      '<div class="message">No products available right now. Please check back soon.</div>';
+    majPanier();
     return;
   }
 
-  // Une commande sortie de la vue ne doit pas rester sélectionnée en douce.
-  const visibles = new Set(vues.map(c => c.id));
-  [...selection].forEach(id => { if (!visibles.has(id)) selection.delete(id); });
+  const terme = normaliser(filtreRecherche.trim());
+  const visibles = produits.filter(p => correspond(p, terme));
 
-  let jourCourant = null;
-  vues.forEach(c => {
-    if (c.date_retrait !== jourCourant) {
-      jourCourant = c.date_retrait;
-      const t = document.createElement("div");
-      t.className = "jour";
-      const duJour = vues.filter(x => x.date_retrait === jourCourant).map(x => x.id);
-      const toutes = duJour.every(id => selection.has(id));
-      t.innerHTML = '<span></span><button type="button" class="tout"></button>' +
-        '<button type="button" class="tout tournee"></button>';
-      t.querySelector("span").textContent = dateLongue(jourCourant);
-      const bTout = t.querySelector(".tout");
-      bTout.textContent = toutes ? "Tout désélectionner" : "Tout sélectionner";
-      bTout.onclick = () => {
-        duJour.forEach(id => toutes ? selection.delete(id) : selection.add(id));
-        afficher(false);
-      };
+  if (terme && !visibles.length) {
+    zone.innerHTML = '<div class="message">No product matches your search.</div>';
+    $("rayons").hidden = true;
+    majPanier();
+    return;
+  }
 
-      /* Une tournée n'appartient à aucune commande en particulier : elle se
-         lance depuis la journée, pas depuis une carte. Le bouton n'apparaît
-         que s'il reste au moins deux livraisons groupables ce jour-là. */
-      const dateDuJour = jourCourant;
-      const bTournee = t.querySelector(".tournee");
-      const groupables = vues.filter(x => x.date_retrait === dateDuJour)
-                             .filter(estGroupable);
-      // Une destination fixe compte comme un arrêt possible : expédier vers
-      // une delivery area est une course à part entière.
-      if (groupables.length + destinationsLalamove().length >= 2) {
-        bTournee.textContent = "🛵 Grouper une tournée";
-        bTournee.onclick = () => ouvrirTournee(dateDuJour, groupables, panneau);
-      } else {
-        bTournee.remove();
-      }
-      liste.appendChild(t);
-
-      const panneau = document.createElement("div");
-      panneau.className = "cmd";
-      panneau.hidden = true;
-      panneau.style.borderLeft = "3px solid var(--accent)";
-      liste.appendChild(panneau);
-    }
-    liste.appendChild(carte(c));
+  const groupes = {};
+  visibles.forEach(p => {
+    const c = rayon(p);
+    (groupes[c] = groupes[c] || []).push(p);
   });
 
-  majLot();
-}
+  const cles = Object.keys(groupes).sort((a, b) => {
+    const ia = ORDRE.indexOf(a), ib = ORDRE.indexOf(b);
+    return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib) || a.localeCompare(b);
+  });
 
-// Date courte, pour les cartes réduites : le jour du mois suffit, la
-// date longue avec l'année n'apporte rien sur une commande déjà classée.
-function dateCourte(iso) {
-  if (!iso) return "";
-  const d = new Date(iso + "T12:00:00");
-  if (isNaN(d)) return iso;
-  return d.toLocaleDateString("fr-FR", { day: "numeric", month: "short" });
-}
+  zone.innerHTML = "";
 
-function dateLongue(iso) {
-  if (!iso) return "Sans date";
-  const d = new Date(iso + "T12:00:00");
-  const texte = d.toLocaleDateString("fr-FR",
-    { weekday: "long", day: "numeric", month: "long" });
-  // Les deux repères sont pris à midi : comparer une date à midi avec un
-  // aujourd'hui à minuit donnait un demi-jour d'écart, arrondi à un jour
-  // entier — toutes les journées étaient annoncées avec un jour d'avance.
-  const auj = new Date(); auj.setHours(12, 0, 0, 0);
-  const ecart = Math.round((d - auj) / 86400000);
-  if (ecart === 0) return "Aujourd'hui — " + texte;
-  if (ecart === 1) return "Demain — " + texte;
-  if (ecart < 0)   return "Passée — " + texte;
-  return texte;
-}
-
-/* ---------- Lalamove ----------
-   Les coordonnées de livraison vivent sur la fiche client, pas sur la
-   commande : la collection « clients » est déjà chargée en mémoire pour la
-   création de commande, on la réutilise plutôt que de relire Firestore.
-   Rapprochement par téléphone, comme partout ailleurs dans cette page. */
-/* Le numéro que le motard appellera. Beaucoup de clients sont des étrangers
-   résidant ici : leur WhatsApp d'origine ne sonne pas depuis un téléphone
-   philippin. Trois sources, de la plus récente à la plus ancienne — celle
-   saisie au checkout prime sur celle tapée à la main, qui prime sur le
-   numéro de contact habituel. */
-function telLivraison(c) {
-  const surCommande = (c.client?.telephone_local || "").trim();
-  if (surCommande) return surCommande;
-
-  const k = cleTel(c.client?.telephone);
-  const fiche = k ? clients.find(x => cleTel(x.telephone || x.id) === k) : null;
-  const surFiche = fiche ? String(fiche.telephone_local || "").trim() : "";
-  if (surFiche) return surFiche;
-
-  return c.client?.telephone || "";
-}
-
-function coordonneesDe(c) {
-  /* Livraison ponctuelle ailleurs : le client a coché « livrer ailleurs cette
-     fois » au checkout. Le point GPS de la fiche désigne son domicile
-     habituel — l'envoyer à Lalamove ferait partir le motard au mauvais
-     endroit sans que rien ne le signale. Pas de coordonnées, donc pas de
-     course automatique : la commande sort des tournées et le bloc Lalamove
-     explique pourquoi (voir monterLalamove). */
-  if (c.client?.adresse_ponctuelle) return null;
-  const k = cleTel(c.client?.telephone);
-  if (!k) return null;
-  const fiche = clients.find(x => cleTel(x.telephone || x.id) === k);
-  const co = fiche && fiche.coordonnees;
-  return (co && co.lat && co.lng) ? co : null;
-}
-
-/* Points de départ : lus une seule fois par ouverture de page et partagés
-   par toutes les commandes. Ajouter un lieu se fait dans Firestore, sans
-   toucher à cette page. */
-/* Lieux Lalamove gardés en mémoire dès le premier chargement : le bouton de
-   tournée doit pouvoir décider s'il s'affiche sans attendre le serveur. */
-let configLieux = null;
-
-/* Un lieu porteur d'un contact est aussi une destination : on peut y expédier
-   du pain, pas seulement en partir. C'est le cas de la delivery area d'un
-   immeuble, où le pain de plusieurs résidents est déposé en une fois. */
-function destinationsLalamove() {
-  return ((configLieux && configLieux.lieux) || [])
-    .filter(l => l.contact_nom && l.contact_tel && l.lat && l.lng);
-}
-
-let promesseLieux = null;
-function lireLieuxLalamove() {
-  if (!promesseLieux) {
-    promesseLieux = httpsCallable(fns, "lalamoveLieux")()
-      .then(r => r.data)
-      .catch(e => { promesseLieux = null; throw e; });
-  }
-  return promesseLieux;
-}
-
-function carte(c) {
-  const paye = (c.paiement?.statut || "en attente") === "paye";
-  // Montant réellement réglé au moment où "Payé" a été coché — capturé à cet
-  // instant précis (voir enregistrer()), pas recalculé après coup. Un ajout
-  // à la commande APRÈS ce moment fait grimper le total sans toucher ce
-  // chiffre : l'écart entre les deux est ce qu'il reste à encaisser.
-  const montantPaye = Number(c.paiement?.montant_paye) || 0;
-  /* Absent (et non zéro) quand la commande n'a jamais été réglée en son nom
-     propre : c'est le cas des livraisons d'abonnement, payées en un lot au
-     niveau de l'abonnement. Sans cette distinction, le champ manquant était
-     lu comme « zéro encaissé » et le badge réclamait la totalité du montant
-     sur des commandes pourtant soldées. */
-  const aMontantConnu = c.paiement?.montant_paye != null;
-  const resteAPayer = (paye && aMontantConnu)
-    ? Math.max(0, (c.total || 0) - montantPaye) : 0;
-  const el = document.createElement("div");
-  el.id = "cmd-" + c.id;
-  // Confirmée et payée : la commande n'attend plus rien de vous.
-  const rienAFaire = paye && ["confirmee", "en production", "prete", "remise"]
-    .includes(c.statut);
-
-  // Remise ou annulée, et le paiement réglé dans un sens ou dans l'autre :
-  // il n'y a plus jamais rien à faire ni à vérifier dessus. La carte se
-  // réduit à l'essentiel, pour que les commandes qui attendent encore une
-  // action ne se noient pas dans celles qui sont closes depuis longtemps.
-  // Le détail reste consultable au clic — passée ou remboursée, une
-  // commande peut toujours être recherchée si un client la questionne.
-  const etatPaiement = c.paiement?.statut || "en attente";
-  const compacte = ["remise", "annulee"].includes(c.statut)
-                 && ["paye", "rembourse"].includes(etatPaiement);
-
-  el.className = "cmd " + (paye ? "reglee" : "impaye") +
-                 " b-" + (CLASSE_STATUT[c.statut] || "nouvelle") +
-                 (rienAFaire ? " rien-a-faire" : "") +
-                 (compacte ? " compacte" : "");
-
-  const articles = (c.panier || []).reduce((n, l) => n + l.qte, 0);
-
-  el.innerHTML = compacte ? `
-    <div class="tete">
-      <input type="checkbox" class="coche" aria-label="Sélectionner">
-      <span class="ref">${echapper(c.numero || c.id)}</span>
-      <span class="nom"></span>
-      <span class="quand">${echapper(dateCourte(c.date_retrait))}</span>
-      <span class="fleche">▾</span>
-    </div>
-    <div class="detail" hidden>
-      <div class="lignes"></div>
-      <p class="info" style="margin-top:11px"><b>Contact</b> ${
-        echapper(c.client?.telephone || "")}</p>
-      ${c.client?.adresse ? '<p class="info adresse"></p>' : ""}
-      ${c.option?.lieu ? '<p class="info lieu"></p>' : ""}
-      ${c.notes ? '<p class="info notes"></p>' : ""}
-    </div>` : `
-    <div class="tete">
-      <input type="checkbox" class="coche" aria-label="Sélectionner">
-      <span class="ref">${echapper(c.numero || c.id)}</span>
-      <span class="nom"></span>
-      ${c.abonnement_id ? `<span class="etiq bleue">Abonnement${
-        c.abonnement_rang ? " " + c.abonnement_rang +
-          (c.abonnement_total ? "/" + c.abonnement_total : "") : ""}</span>` : ""}
-      ${c.credit_utilise > 0 ? `<span class="etiq">crédit ${peso(c.credit_utilise)}</span>` : ""}
-      ${c.client?.adresse_ponctuelle ? `<span class="etiq ponctuelle"
-        title="Livraison ailleurs pour cette commande — le point GPS de la fiche ne s'applique pas"
-        >Adresse ponctuelle</span>` : ""}
-      ${ficheAVerifier(c) ? `<span class="etiq neuf"
-        title="Fiche client à compléter : ${echapper(ficheAVerifier(c))}"
-        >Nouveau · ${echapper(ficheAVerifier(c))}</span>` : ""}
-      <span class="etiq st-${CLASSE_STATUT[c.statut] || "nouvelle"}">${
-        LIBELLES[c.statut] || c.statut}</span>
-      ${c.paiement?.methode ? `<span class="etiq">${
-        echapper(MOYENS_PAIEMENT[c.paiement.methode] || c.paiement.methode)}</span>` : ""}
-      <span class="etiq ${paye ? "verte" : (estCOD(c) ? "cod" : "rouge")}">${
-        paye ? "Payé" : (estCOD(c) ? "COD" : "À encaisser")}</span>
-      ${resteAPayer > 0 ? `<span class="etiq rouge btnResteAPayer" title="Un ajout à la commande a fait grimper le total après le paiement — clique une fois la différence encaissée" style="cursor:pointer;">Reste à payer : ${peso(resteAPayer)}</span>` : ""}
-      <span class="montant">${peso(c.total)}</span>
-    </div>
-    <div class="resume"></div>
-    <div class="detail" hidden>
-      <div class="lignes"></div>
-      <p class="info" style="margin-top:11px"><b>Contact</b> ${
-        echapper(c.client?.telephone || "")}</p>
-      ${c.client?.adresse ? '<p class="info adresse"></p>' : ""}
-      ${c.option?.lieu ? '<p class="info lieu"></p>' : ""}
-      ${c.notes ? '<p class="info notes"></p>' : ""}
-      <div class="actions">
-        <select class="selStatut">
-          ${STATUTS.map(s => `<option value="${s}">${LIBELLES[s]}</option>`).join("")}
-        </select>
-        <select class="selPaiement">
-          ${Object.entries(PAIEMENTS).map(([v, t]) =>
-            `<option value="${v}">${t}</option>`).join("")}
-        </select>
-        <select class="selMethode">
-          <option value="">Moyen non précisé</option>
-          ${Object.entries(MOYENS_PAIEMENT).map(([v, t]) =>
-            `<option value="${v}">${t}</option>`).join("")}
-        </select>
-        <a class="lien lienClient" target="_blank" rel="noopener">WhatsApp client</a>
-        <button type="button" class="mineur btnModifier">Modifier la commande</button>
-      </div>
-
-      <div class="lala" hidden style="margin-top:12px;padding-top:12px;
-           border-top:1px dashed var(--trait)"></div>
-
-      <div class="edition" hidden></div>
-    </div>`;
-
-  /* Trois zones cliquables distinctes sur la carte : la case coche
-     sélectionne, le nom ouvre la fiche client, tout le reste déplie la
-     commande. Le nom devient un vrai lien (nouvel onglet, clic milieu, copie
-     de l'adresse) plutôt qu'un gestionnaire de clic, mais il faut arrêter la
-     propagation, sinon partir vers la fiche déplierait la carte au passage. */
-  const zoneNom = el.querySelector(".nom");
-  const telClient = cleTel(c.client?.telephone);
-  const ficheClient = telClient
-    ? clients.find(x => cleTel(x.telephone || x.id) === telClient) : null;
-  if (ficheClient) {
-    const a = document.createElement("a");
-    a.className = "nom-lien";
-    a.href = "clients-admin.html?client=" + encodeURIComponent(ficheClient.id);
-    a.textContent = nomDe(c) || "—";
-    a.title = "Ouvrir la fiche client";
-    a.onclick = (e) => e.stopPropagation();
-    zoneNom.textContent = "";
-    zoneNom.appendChild(a);
+  // Barre de navigation entre rayons, masquée s'il n'y en a qu'un.
+  const barre = $("rayons");
+  if (cles.length > 1) {
+    barre.innerHTML = cles.map(c =>
+      `<a href="#rayon-${c.replace(/\s+/g, "-")}">${c}</a>`).join("");
+    barre.hidden = false;
   } else {
-    // Pas de fiche : un lien mènerait à une page vide. Le nom reste du texte,
-    // et déplier la carte marche comme partout ailleurs.
-    zoneNom.textContent = nomDe(c) || "—";
-  }
-  if (!compacte) {
-    // Le statut est déjà dans l'étiquette colorée de l'en-tête.
-    el.querySelector(".resume").textContent =
-      [c.option?.nom, c.creneau,
-       articles + (articles > 1 ? " articles" : " article")]
-      .filter(Boolean).join(" · ");
+    barre.hidden = true;
   }
 
-  el.querySelector(".lignes").innerHTML = (c.panier || []).map(l =>
-    `<div class="l"><span>${l.qte} × ${echapper(l.nom)}</span>
-     <span>${peso(l.qte * l.prix)}</span></div>`).join("") +
-    (c.frais_livraison > 0
-      ? `<div class="l"><span>${echapper(c.option?.nom || "Livraison")}</span>
-         <span>${peso(c.frais_livraison)}</span></div>` : "") +
-    (c.frais_a_confirmer
-      ? `<div class="l"><span>${echapper(c.option?.nom || "")}</span>
-         <span>à confirmer</span></div>` : "");
+  cles.forEach(cle => {
+    const bloc = document.createElement("section");
+    bloc.className = "categorie";
+    bloc.id = "rayon-" + cle.replace(/\s+/g, "-");
 
-  /* Afficher l'adresse qui servira réellement à livrer, et non celle tapée au
-     checkout : sans cela, on corrige une adresse dans le fichier clients et
-     la carte continue d'afficher l'ancienne, ce qui donne à penser que la
-     correction n'a pas pris. */
-  if (c.client?.adresse) {
-    el.querySelector(".adresse").textContent =
-      (c.option?.type === "livraison") ? adresseLivraison(c) : c.client.adresse;
-  }
-  if (c.option?.lieu)    el.querySelector(".lieu").textContent = c.option.lieu;
-  if (c.notes)           el.querySelector(".notes").textContent = "Note : " + c.notes;
+    const titre = document.createElement("h2");
+    titre.textContent = cle;
+    bloc.appendChild(titre);
 
-  const detail = el.querySelector(".detail");
-  el.querySelector(".tete").onclick = () => { detail.hidden = !detail.hidden; };
-
-  const coche = el.querySelector(".coche");
-  coche.checked = selection.has(c.id);
-  coche.onclick = (e) => e.stopPropagation();   // ne pas déplier la carte
-  coche.onchange = () => {
-    coche.checked ? selection.add(c.id) : selection.delete(c.id);
-    majLot();
-  };
-
-  // Rien à faire sur une commande classée : ni statut à changer, ni
-  // paiement à pointer, ni modification possible. Câbler ces éléments
-  // sur une carte qui ne les contient pas ferait planter le rendu.
-  if (!compacte) {
-    el.querySelector(".btnModifier").onclick = () => {
-      const zone = el.querySelector(".edition");
-      if (!zone.hidden) { zone.hidden = true; zone.innerHTML = ""; return; }
-      ouvrirModification(c, el);
-    };
-
-    const selS = el.querySelector(".selStatut");
-    const selP = el.querySelector(".selPaiement");
-    const selM = el.querySelector(".selMethode");
-    selS.value = c.statut || "nouvelle";
-    selP.value = c.paiement?.statut || "en attente";
-    selM.value = c.paiement?.methode || "";
-    // La valeur est recopiée dans un attribut : le CSS ne peut pas cibler
-    // la sélection courante d'un menu autrement.
-    const teinter = (sel) => sel.dataset.v = sel.value;
-    teinter(selS); teinter(selP);
-    selS.onchange = () => { teinter(selS); enregistrer(c, { statut: selS.value }); };
-    selP.onchange = () => {
-      teinter(selP);
-      const champs = { "paiement.statut": selP.value };
-      // Capturé à cet instant : un ajout ultérieur à la commande fera
-      // grimper le total sans toucher ce chiffre, ce qui fait apparaître
-      // le reste à payer (voir carte()).
-      if (selP.value === "paye") champs["paiement.montant_paye"] = c.total || 0;
-      enregistrer(c, champs);
-    };
-    selM.onchange = () => enregistrer(c, { "paiement.methode": selM.value });
-
-    el.querySelector(".lienClient").href =
-      "https://wa.me/" + (c.client?.telephone || "").replace(/\D/g, "");
-
-    const btnReste = el.querySelector(".btnResteAPayer");
-    if (btnReste) {
-      btnReste.onclick = () => {
-        if (!confirm(`Marquer ${peso(resteAPayer)} comme encaissé pour cette commande ?`)) return;
-        enregistrer(c, { "paiement.montant_paye": c.total || 0 });
-      };
+    /* Conseil du rayon, juste sous le titre. textContent et non innerHTML :
+       le texte vient de l'admin, on ne lui laisse pas injecter de balises. */
+    const note = notesRayons[cle];
+    if (note && String(note).trim()) {
+      const p = document.createElement("p");
+      p.className = "note";
+      p.textContent = String(note).trim();
+      bloc.appendChild(p);
     }
 
-    monterLalamove(c, el);
+    bloc.insertAdjacentHTML("beforeend", '<div class="filet"></div>');
+
+    const grille = document.createElement("div");
+    grille.className = "grille";
+    groupes[cle]
+      .sort((a, b) => a.nom.localeCompare(b.nom))
+      .forEach(p => grille.appendChild(ligneProduit(p)));
+    bloc.appendChild(grille);
+
+    zone.appendChild(bloc);
+  });
+
+  majPanier();
+}
+
+function restant(p) {
+  // null = toujours disponible ; sinon nombre de pièces encore vendables.
+  return p.mode_stock === "limite" ? Math.max(0, Number(p.stock) || 0) : null;
+}
+
+function ligneProduit(p) {
+  const reste = restant(p);
+  const dispo = !ferme && p.disponible !== false && (reste === null || reste > 0);
+  const el = document.createElement("div");
+  el.className = "produit" + (dispo ? "" : " indispo");
+
+  /* Le visuel est un bouton : il ouvre et referme le descriptif. Un bouton
+     plutôt qu'une image cliquable — on reste dans la page, et le focus
+     clavier vient sans rien faire. */
+  const visuel = document.createElement("button");
+  visuel.type = "button";
+  visuel.className = "visuel";
+
+  // À défaut d'adresse saisie : photos/<identifiant>.webp, puis .jpg, puis rien.
+  const img = document.createElement("img");
+  img.alt = "";
+  img.loading = "lazy";
+
+  const sansPhoto = () => {
+    img.remove();
+    const vide = document.createElement("span");
+    vide.className = "sans-photo";
+    vide.textContent = p.nom;
+    visuel.appendChild(vide);
+  };
+
+  if (p.photo_url) {
+    img.src = p.photo_url;
+    img.onerror = sansPhoto;
+  } else {
+    const base = "photos/" + String(p.id).toLowerCase();
+    const essais = [".webp", ".jpg", ".jpeg", ".png"].map(e => base + e);
+    let n = 0;
+    img.onerror = () => {
+      n += 1;
+      if (n < essais.length) img.src = essais[n];
+      else sansPhoto();
+    };
+    img.src = essais[0];
+  }
+  visuel.appendChild(img);
+
+  /* Ruban, si la fiche produit en porte un. Le libellé vient tel quel de
+     l'admin ; la classe de couleur est déduite du texte, avec repli sur le
+     terracotta si le libellé ne correspond à aucun cas connu — un ruban
+     inattendu s'affiche donc quand même, il est juste moins coloré.
+     Le ruban suit l'opacité de la carte quand le produit est épuisé :
+     un « NEW » bien vif sur un produit indisponible serait frustrant. */
+  if (p.ruban) {
+    const cle = String(p.ruban).toLowerCase();
+    let teinte = "";
+    if (cle.includes("promo")) teinte = " promo";
+    else if (cle.includes("best")) teinte = " best";
+    else if (cle.includes("month") || cle.includes("mois")) teinte = " mois";
+    else if (cle.includes("pre-order") || cle.includes("preorder")) teinte = " precommande";
+
+    const ruban = document.createElement("span");
+    ruban.className = "ruban" + teinte;
+    ruban.textContent = p.ruban;
+    visuel.appendChild(ruban);
+  }
+
+  el.appendChild(visuel);
+
+  const corps = document.createElement("div");
+  corps.className = "corps";
+
+  const infos = document.createElement("div");
+  infos.className = "infos";
+
+  const nom = document.createElement("div");
+  nom.className = "nom";
+  nom.textContent = p.nom;
+  if (p.description_client) {
+    const chevron = document.createElement("span");
+    chevron.className = "chevron";
+    chevron.setAttribute("aria-hidden", "true");
+    chevron.textContent = "▼";
+    nom.prepend(chevron);
+  }
+  infos.appendChild(nom);
+
+  const prix = document.createElement("div");
+  prix.className = "prix";
+  if (sourceRemise === "groupe") {
+    prix.innerHTML = `<span style="text-decoration:line-through;color:var(--epuise)">${
+      peso(p.prix_vente || 0)}</span> <strong>${peso(prixClient(p))}</strong>`;
+  } else {
+    prix.textContent = peso(p.prix_vente || 0);
+  }
+  infos.appendChild(prix);
+
+  if (p.description_client) {
+    const d = document.createElement("div");
+    d.className = "desc";
+    d.textContent = p.description_client;
+    infos.appendChild(d);
+  }
+
+  if (!dispo && !ferme) {
+    const e = document.createElement("div");
+    e.className = "etiquette";
+    e.textContent = "Sold out";
+    infos.appendChild(e);
+  } else if (reste !== null && reste <= 5) {
+    const e = document.createElement("div");
+    e.className = "etiquette";
+    e.style.color = "var(--accent)";
+    e.textContent = "Only " + reste + " left";
+    infos.appendChild(e);
+  }
+  corps.appendChild(infos);
+
+  /* Le bouton d'ajout reste toujours visible : commander ne doit jamais
+     coûter un clic de plus que nécessaire. Seul le descriptif se déplie. */
+  if (dispo) {
+    const action = document.createElement("div");
+    action.className = "action";
+    action.appendChild(controle(p));
+    corps.appendChild(action);
+  }
+
+  el.appendChild(corps);
+
+  if (p.description_client) {
+    visuel.setAttribute("aria-expanded", "false");
+    visuel.onclick = () => {
+      const ouvert = el.classList.contains("ouvert");
+      // Une seule tuile ouverte à la fois : sinon la grille se disloque.
+      document.querySelectorAll(".produit.ouvert").forEach(x => {
+        x.classList.remove("ouvert");
+        const b = x.querySelector(".visuel");
+        if (b) b.setAttribute("aria-expanded", "false");
+      });
+      if (!ouvert) {
+        el.classList.add("ouvert");
+        visuel.setAttribute("aria-expanded", "true");
+      }
+    };
+  } else {
+    // Rien à déplier : le visuel ne prétend pas être interactif.
+    visuel.disabled = true;
+    visuel.style.cursor = "default";
   }
 
   return el;
 }
 
-/* Une commande est groupable si elle a un point de livraison, aucune course
-   déjà commandée, et n'est pas annulée. Même règle que le bloc individuel :
-   les clients en retrait n'apparaissent jamais. */
-function estGroupable(c) {
-  if (c.statut === "annulee") return false;
-  if (c.lalamove && c.lalamove.orderId) return false;
-  return !!coordonneesDe(c);
-}
+function controle(p) {
+  const n = panier[p.id] || 0;
+  const reste = restant(p);
 
-/* ---------- Panneau de tournée ----------
-   Trois arrêts au maximum : une moto porte trois sacs. La limite est aussi
-   refusée côté serveur, celle-ci n'est là que pour éviter de cocher pour rien. */
-const MAX_ARRETS = 3;
-
-function ouvrirTournee(date, groupables, panneau) {
-  if (!panneau.hidden) { panneau.hidden = true; panneau.innerHTML = ""; return; }
-  panneau.hidden = false;
-
-  /* Commandes et destinations fixes deviennent des « cibles » de même nature :
-     le panneau ne fait plus la différence, seul l'enregistrement final la
-     refait — une destination n'a pas de commande à marquer. */
-  const cibles = [
-    ...groupables.map(c => {
-      const co = coordonneesDe(c);
-      return {
-        cle: c.id,
-        titre: (nomDe(c) || "—") + " · " + (adresseLivraison(c) || "sans adresse"),
-        marque: c.numero || c.id,
-        commande: c,
-        arrivee: () => ({
-          lat: String(co.lat), lng: String(co.lng),
-          adresse: adresseLivraison(c),
-          nom: nomDe(c) || c.client?.telephone || "",
-          tel: telLivraison(c),
-          commandeId: c.id
-        })
-      };
-    }),
-    ...destinationsLalamove().map(l => ({
-      cle: "lieu:" + l.cle,
-      titre: l.contact_nom,
-      marque: "Dépôt",
-      commande: null,
-      // Fonction et non valeur figée : la consigne se tape après la
-      // construction de la liste, elle doit être lue au moment de l'envoi.
-      arrivee: () => ({
-        lat: String(l.lat), lng: String(l.lng),
-        adresse: [l.adresse || l.contact_nom, consignes["lieu:" + l.cle] || ""]
-                   .filter(Boolean).join(" — "),
-        nom: l.contact_nom,
-        tel: l.contact_tel,
-        commandeId: null
-      })
-    }))
-  ];
-
-  const choisis = new Set();
-  /* Consignes saisies pour une destination fixe : les résidents changent
-     d'une expédition à l'autre, elles ne peuvent donc pas vivre dans la
-     configuration du lieu. Elles ne valent que pour cette course. */
-  const consignes = {};
-  let cotation = null, cotationLe = 0, armee = 0;
-  const VALIDITE = 4 * 60 * 1000;
-
-  panneau.innerHTML = `
-    <h2 style="margin:0 0 4px;font-size:19px">Tournée du ${echapper(dateCourte(date))}</h2>
-    <p style="margin:0 0 10px;font-size:14.5px;color:var(--encre-doux)">
-      Un seul motard, jusqu'à ${MAX_ARRETS} arrêts. Lalamove choisit l'ordre
-      du trajet. Un dépôt compte comme un arrêt.</p>
-    <div class="tourneeListe"></div>
-    <div class="actions">
-      <select class="tourneeDepart"></select>
-      <button type="button" class="mineur tourneeCoter" disabled>Estimer la tournée</button>
-      <span class="info tourneeEtat" style="margin:0"></span>
-    </div>
-    <div class="actions" style="margin-top:8px">
-      <button type="button" class="mineur tourneeCourser" hidden
-              style="border-color:var(--alerte);color:var(--alerte)">Commander la tournée</button>
-      <span class="info tourneeCourseEtat" style="margin:0"></span>
-      <button type="button" class="mineur tourneeFermer">Fermer</button>
-    </div>`;
-
-  const zl        = panneau.querySelector(".tourneeListe");
-  const selDepart = panneau.querySelector(".tourneeDepart");
-  const btnCoter  = panneau.querySelector(".tourneeCoter");
-  const etatCoter = panneau.querySelector(".tourneeEtat");
-  const btnCourse = panneau.querySelector(".tourneeCourser");
-  const etatCourse= panneau.querySelector(".tourneeCourseEtat");
-
-  panneau.querySelector(".tourneeFermer").onclick = () => {
-    panneau.hidden = true; panneau.innerHTML = "";
-  };
-
-  lireLieuxLalamove().then(cfg => {
-    selDepart.innerHTML = (cfg.lieux || [])
-      .map(l => `<option value="${echapper(l.cle)}">${echapper(l.nom)}</option>`).join("");
-    if (cfg.defaut) selDepart.value = cfg.defaut;
-  }).catch(e => {
-    console.error(e);
-    etatCoter.textContent = "Points de départ indisponibles.";
-  });
-
-  // Toute modification de la sélection périme la cotation : le prix affiché
-  // ne correspondrait plus aux arrêts cochés.
-  function oublierCotation() {
-    cotation = null; cotationLe = 0; armee = 0;
-    btnCourse.hidden = true;
-    btnCourse.textContent = "Commander la tournée";
-    btnCourse.style.background = "";
-    etatCoter.textContent = "";
-    etatCourse.textContent = "";
+  if (!n) {
+    const b = document.createElement("button");
+    b.className = "ajouter";
+    b.textContent = "Add";
+    b.setAttribute("aria-label", "Add " + p.nom);
+    b.onclick = () => { panier[p.id] = 1; apresChangement(); };
+    return b;
   }
 
-  function dessiner() {
-    zl.innerHTML = "";
-    cibles.forEach(t => {
-      const ligne = document.createElement("div");
-      ligne.className = "edit-l";
-      ligne.innerHTML = `
-        <input type="checkbox" class="coche">
-        <span class="n"></span>
-        <span class="p" style="min-width:0"></span>`;
-      const coche = ligne.querySelector(".coche");
-      coche.checked = choisis.has(t.cle);
-      // Le plafond bloque les cases non cochées, jamais celles déjà cochées :
-      // il doit toujours rester possible de décocher pour changer d'avis.
-      coche.disabled = !coche.checked && choisis.size >= MAX_ARRETS;
-      coche.onchange = () => {
-        coche.checked ? choisis.add(t.cle) : choisis.delete(t.cle);
-        oublierCotation();
-        dessiner();
-      };
-      ligne.querySelector(".n").textContent = t.titre;
-      ligne.querySelector(".p").textContent = t.marque;
-      zl.appendChild(ligne);
+  const boite = document.createElement("div");
+  boite.className = "compteur";
 
-      /* Le commentaire part dans les remarques de l'arrêt : c'est ce que le
-         motard lit dans son application. Affiché seulement quand la
-         destination est cochée, pour ne pas encombrer la liste. */
-      if (!t.commande && coche.checked) {
-        const champ = document.createElement("input");
-        champ.type = "text";
-        champ.placeholder = "Noms et unités — ex. Cruz 12B / Reyes 4A";
-        champ.value = consignes[t.cle] || "";
-        champ.style.cssText = "width:100%;margin:4px 0 8px;padding:8px 10px;"
-          + "border:1px solid var(--trait);border-radius:var(--r);"
-          + "font:inherit;font-size:16px;background:#fff";
-        // Pas de redessin à la frappe : le champ perdrait le curseur.
-        champ.oninput = (e) => { consignes[t.cle] = e.target.value; };
-        zl.appendChild(champ);
-      }
-    });
-
-    // Un seul arrêt suffit : expédier uniquement vers un dépôt est une
-    // course légitime, et le serveur l'accepte.
-    btnCoter.disabled = choisis.size < 1;
-    const restant = MAX_ARRETS - choisis.size;
-    etatCoter.textContent = etatCoter.textContent ||
-      (choisis.size < 1 ? "Cochez au moins une destination."
-                        : restant > 0 ? restant + " arrêt(s) encore possible(s)." : "");
-  }
-  dessiner();
-
-  const selectionnees = () => cibles.filter(t => choisis.has(t.cle));
-  const arrivees = () => selectionnees().map(t => t.arrivee());
-
-  btnCoter.onclick = async () => {
-    btnCoter.disabled = true;
-    etatCoter.style.color = "";
-    etatCoter.textContent = "Cotation…";
-    try {
-      const r = await httpsCallable(fns, "lalamoveCotationTournee")({
-        depart: selDepart.value, arrivees: arrivees()
-      });
-      const q = r.data;
-      cotation = q; cotationLe = Date.now();
-      const dist = q.distance ? " · " + q.distance.value + " " + q.distance.unit : "";
-      etatCoter.style.color = "var(--ok)";
-      etatCoter.textContent = (q.devise || "PHP") + " " + q.total
-        + " pour " + q.nbArrets + " arrêts · départ " + q.depart + dist;
-      btnCourse.hidden = false;
-      etatCourse.textContent = "";
-    } catch (e) {
-      console.error(e);
-      etatCoter.style.color = "var(--alerte)";
-      etatCoter.textContent = e && e.message ? e.message : "Cotation impossible.";
-      cotation = null; btnCourse.hidden = true;
-    } finally {
-      btnCoter.disabled = choisis.size < 1;
-    }
+  const moins = document.createElement("button");
+  moins.textContent = "−";
+  moins.setAttribute("aria-label", "Remove one " + p.nom);
+  moins.onclick = () => {
+    panier[p.id] > 1 ? panier[p.id]-- : delete panier[p.id];
+    apresChangement();
   };
 
-  btnCourse.onclick = async () => {
-    if (!armee || Date.now() > armee) {
-      if (!cotation || (Date.now() - cotationLe) > VALIDITE) {
-        etatCourse.style.color = "";
-        etatCourse.textContent = "Cotation expirée — réestimez d'abord.";
-        oublierCotation();
-        return;
-      }
-      armee = Date.now() + 10000;
-      btnCourse.textContent = "Confirmer : " + (cotation.devise || "PHP") + " "
-        + cotation.total + " · " + choisis.size + " arrêts";
-      btnCourse.style.background = "#f6e2de";
-      etatCourse.style.color = "";
-      etatCourse.textContent = "Second clic dans les 10 secondes pour engager.";
-      setTimeout(() => {
-        if (armee && Date.now() > armee - 200) {
-          armee = 0;
-          btnCourse.textContent = "Commander la tournée";
-          btnCourse.style.background = "";
-          etatCourse.textContent = "Annulé — rien n'a été commandé.";
-        }
-      }, 10000);
-      return;
-    }
+  const compte = document.createElement("span");
+  compte.className = "n";
+  compte.textContent = n;
 
-    // Second clic : point de non-retour, un motard est assigné.
-    armee = 0;
-    btnCourse.disabled = true;
-    btnCourse.textContent = "Commander la tournée";
-    btnCourse.style.background = "";
-    etatCourse.style.color = "";
-    etatCourse.textContent = "Réservation…";
+  const plus = document.createElement("button");
+  plus.textContent = "+";
+  plus.setAttribute("aria-label", "Add one " + p.nom);
+  plus.disabled = reste !== null && n >= reste;
+  plus.onclick = () => { panier[p.id] = n + 1; apresChangement(); };
 
-    // Une destination fixe n'a pas de commande à marquer : elle peut être
-    // réexpédiée autant de fois que nécessaire.
-    const lot = selectionnees().filter(t => t.commande).map(t => t.commande);
-    try {
-      const r = await httpsCallable(fns, "lalamoveCourseTournee")({
-        quotationId: cotation.quotationId,
-        stops: cotation.stops,
-        departCoord: cotation.departCoord,
-        arrivees: arrivees()
-      });
-      const o = r.data;
-      const trace = {
-        orderId: o.orderId, statut: o.statut,
-        prix: (o.devise || "PHP") + " " + o.prix,
-        partageUrl: o.partageUrl || "",
-        tournee: choisis.size,
-        quand: new Date().toISOString()
-      };
-
-      /* La même course est écrite sur chaque commande du lot : c'est ce qui
-         les fait toutes sortir des groupables et empêche de les recommander.
-         Une écriture qui échoue n'annule pas la course, déjà partie. */
-      try {
-        if (lot.length) {
-          const paquet = writeBatch(db);
-          lot.forEach(c => paquet.update(doc(db, "commandes", c.id), { lalamove: trace }));
-          await paquet.commit();
-        }
-      } catch (err) {
-        console.error("Trace sur les commandes impossible", err);
-        signaler("Tournée commandée, mais non enregistrée sur les commandes.", "err");
-      }
-      lot.forEach(c => c.lalamove = trace);
-
-      panneau.hidden = true; panneau.innerHTML = "";
-      afficher();
-      signaler("Tournée Lalamove commandée (" + choisis.size + " arrêt(s)).", "ok");
-    } catch (e) {
-      console.error(e);
-      etatCourse.style.color = "var(--alerte)";
-      etatCourse.textContent = e && e.message ? e.message : "Réservation impossible.";
-      btnCourse.disabled = false;
-    }
-  };
+  boite.append(moins, compte, plus);
+  return boite;
 }
 
-/* ---------- Bloc Lalamove d'une commande ----------
-   Trois états : rien à faire (pas de coordonnées, commande annulée), à coter,
-   ou course déjà partie. L'orderId est écrit sur la commande dès qu'elle
-   existe : c'est ce qui empêche de payer deux fois la même livraison si la
-   page est rechargée ou la carte rouverte. */
-function monterLalamove(c, el) {
-  const zone = el.querySelector(".lala");
-  if (!zone) return;
+function apresChangement() {
+  sauverPanier();
+  afficher();
+}
 
-  // Une commande annulée n'a pas à être livrée.
-  if (c.statut === "annulee") return;
 
-  /* Adresse ponctuelle : dire pourquoi il n'y a pas de bouton, sinon son
-     absence passe pour une panne et on cherche ailleurs. La course reste
-     possible depuis l'application Lalamove, en tapant l'adresse à la main. */
-  if (c.client?.adresse_ponctuelle) {
-    zone.hidden = false;
-    zone.innerHTML = `
-      <div class="info"><b>Adresse ponctuelle</b> — le client a demandé une
-        livraison ailleurs pour cette commande. Le point GPS enregistré sur sa
-        fiche ne correspond pas : pas de course automatique, à commander à la
-        main sur l'adresse ci-dessus.</div>`;
+/* ---------- Partage ----------
+   Le QR est fabriqué dans la page : aucun service extérieur n'est appelé,
+   et le client peut le montrer même sans réseau une fois la page ouverte. */
+const LIEN = location.origin + location.pathname.replace(/index\.html$/, "");
+
+function direPartage(texte) {
+  const e = $("etatPartage");
+  e.textContent = texte;
+  clearTimeout(direPartage.minuteur);
+  direPartage.minuteur = setTimeout(() => e.textContent = "", 2600);
+}
+
+// Le partage natif du téléphone quand il existe, sinon la copie du lien.
+$("btnPartager").onclick = async () => {
+  const contenu = {
+    title: "Yoann's French Bakery",
+    text: "Real French bread, baked overnight in Manila.",
+    url: LIEN
+  };
+  if (navigator.share) {
+    try { await navigator.share(contenu); }
+    catch (e) { if (e.name !== "AbortError") console.error(e); }
     return;
   }
+  copier();
+};
 
-  // Course déjà commandée : plus de bouton, seulement le suivi.
-  if (c.lalamove && c.lalamove.orderId) {
-    zone.hidden = false;
-    zone.innerHTML = `
-      <div class="info"><b>Lalamove</b> course ${echapper(c.lalamove.orderId)}
-        — ${echapper(c.lalamove.statut || "")}
-        ${c.lalamove.prix ? "· " + echapper(String(c.lalamove.prix)) : ""}</div>`;
-    if (c.lalamove.partageUrl) {
-      const a = document.createElement("a");
-      a.className = "lien"; a.target = "_blank"; a.rel = "noopener";
-      a.href = c.lalamove.partageUrl; a.textContent = "Suivre le motard";
-      a.style.marginTop = "7px";
-      zone.appendChild(a);
-    }
-    return;
-  }
-
-  const co = coordonneesDe(c);
-  if (!co) return;   // client en retrait, ou fiche sans point de livraison
-
-  zone.hidden = false;
-  zone.innerHTML = `
-    <div class="actions" style="margin-top:0">
-      <select class="lalaDepart"></select>
-      <button type="button" class="mineur lalaCoter">Estimer la livraison</button>
-      <span class="info lalaEtat" style="margin:0"></span>
-    </div>
-    <div class="actions" style="margin-top:8px">
-      <button type="button" class="mineur lalaCourser" hidden
-              style="border-color:var(--alerte);color:var(--alerte)">Commander la course</button>
-      <span class="info lalaCourseEtat" style="margin:0"></span>
-    </div>`;
-
-  const selDepart  = zone.querySelector(".lalaDepart");
-  const btnCoter   = zone.querySelector(".lalaCoter");
-  const etatCoter  = zone.querySelector(".lalaEtat");
-  const btnCourse  = zone.querySelector(".lalaCourser");
-  const etatCourse = zone.querySelector(".lalaCourseEtat");
-
-  lireLieuxLalamove().then(cfg => {
-    selDepart.innerHTML = (cfg.lieux || [])
-      .map(l => `<option value="${echapper(l.cle)}">${echapper(l.nom)}</option>`).join("");
-    if (cfg.defaut) selDepart.value = cfg.defaut;
-  }).catch(e => {
+async function copier() {
+  try {
+    await navigator.clipboard.writeText(LIEN);
+    direPartage("Link copied.");
+  } catch (e) {
+    // Sans presse-papiers — navigateur ancien ou page non sécurisée — on
+    // sélectionne le lien pour que le client le copie lui-même.
     console.error(e);
-    etatCoter.textContent = "Points de départ indisponibles.";
-  });
-
-  /* Une cotation expire au bout de 5 minutes chez Lalamove. On retient une
-     minute de marge : mieux vaut recoter pour rien que voir la réservation
-     refusée entre deux clics. */
-  const VALIDITE = 4 * 60 * 1000;
-  let cotation = null, cotationLe = 0, armee = 0;
-
-  function desarmer() {
-    armee = 0;
-    btnCourse.textContent = "Commander la course";
-    btnCourse.style.background = "";
+    const champ = document.createElement("input");
+    champ.value = LIEN;
+    champ.style.cssText = "position:fixed;opacity:0";
+    document.body.appendChild(champ);
+    champ.select();
+    const ok = document.execCommand && document.execCommand("copy");
+    champ.remove();
+    direPartage(ok ? "Link copied." : LIEN);
   }
+}
+$("btnCopier").onclick = copier;
 
-  btnCoter.onclick = async () => {
-    btnCoter.disabled = true;
-    etatCoter.style.color = "";
-    etatCoter.textContent = "Cotation…";
+$("btnQr").onclick = () => {
+  const zone = $("zoneQr");
+  const montrer = zone.hidden;
+  if (montrer && !$("dessinQr").innerHTML) {
     try {
-      const r = await httpsCallable(fns, "lalamoveCotation")({
-        lat: String(co.lat), lng: String(co.lng),
-        adresse: adresseLivraison(c),
-        depart: selDepart.value
-      });
-      const q = r.data;
-      cotation = q; cotationLe = Date.now();
-      const dist = q.distance ? " · " + q.distance.value + " " + q.distance.unit : "";
-      etatCoter.style.color = "var(--ok)";
-      etatCoter.textContent = (q.devise || "PHP") + " " + q.total
-        + " · départ " + q.depart + dist;
-      btnCourse.hidden = false;
-      desarmer();
-      etatCourse.textContent = "";
+      $("dessinQr").innerHTML = qrSvg(LIEN, { niveau: "M", taille: 400 });
     } catch (e) {
       console.error(e);
-      etatCoter.style.color = "var(--alerte)";
-      etatCoter.textContent = e && e.message ? e.message : "Cotation impossible.";
-      cotation = null; btnCourse.hidden = true;
-    } finally {
-      btnCoter.disabled = false;
-    }
-  };
-
-  /* Confirmation en deux temps plutôt qu'une fenêtre système : à 6h du matin
-     on valide un confirm() sans le lire. Un bouton qui change de texte et
-     affiche le prix oblige à regarder ce qu'on engage. */
-  btnCourse.onclick = async () => {
-    if (!armee || Date.now() > armee) {
-      if (!cotation || (Date.now() - cotationLe) > VALIDITE) {
-        etatCourse.style.color = "";
-        etatCourse.textContent = "Cotation expirée — réestimez d'abord.";
-        cotation = null; btnCourse.hidden = true;
-        return;
-      }
-      armee = Date.now() + 10000;
-      btnCourse.textContent = "Confirmer : " + (cotation.devise || "PHP") + " "
-        + cotation.total + " → " + nomDe(c);
-      btnCourse.style.background = "#f6e2de";
-      etatCourse.style.color = "";
-      etatCourse.textContent = "Second clic dans les 10 secondes pour engager.";
-      setTimeout(() => {
-        if (armee && Date.now() > armee - 200) {
-          desarmer();
-          etatCourse.textContent = "Annulé — rien n'a été commandé.";
-        }
-      }, 10000);
+      direPartage("The QR code could not be created.");
       return;
     }
-
-    // Second clic : point de non-retour, un motard est assigné.
-    desarmer();
-    btnCourse.disabled = true;
-    etatCourse.style.color = "";
-    etatCourse.textContent = "Réservation…";
-    try {
-      const stops = cotation.stops || [];
-      const r = await httpsCallable(fns, "lalamoveCourse")({
-        quotationId: cotation.quotationId,
-        stopIdDepart: stops[0] && stops[0].stopId,
-        stopIdArrivee: stops[1] && stops[1].stopId,
-        nomClient: nomDe(c) || c.client?.telephone || "",
-        telClient: telLivraison(c),
-        consignes: adresseLivraison(c).slice(0, 200)
-      });
-      const o = r.data;
-
-      /* Écrit sur la commande, pas seulement dans « courses » : c'est ce
-         qui fait disparaître le bouton au rechargement et rend un second
-         paiement impossible. */
-      const trace = {
-        orderId: o.orderId, statut: o.statut,
-        prix: (o.devise || "PHP") + " " + o.prix,
-        partageUrl: o.partageUrl || "",
-        quand: new Date().toISOString()
-      };
-      try {
-        await updateDoc(doc(db, "commandes", c.id), { lalamove: trace });
-      } catch (err) {
-        // La course existe chez Lalamove : on n'annule rien, on signale.
-        console.error("Trace sur la commande impossible", err);
-        signaler("Course commandée, mais non enregistrée sur la commande.", "err");
-      }
-      c.lalamove = trace;
-      monterLalamove(c, el);
-      signaler("Course Lalamove commandée.", "ok");
-    } catch (e) {
-      console.error(e);
-      etatCourse.style.color = "var(--alerte)";
-      etatCourse.textContent = e && e.message ? e.message : "Réservation impossible.";
-      btnCourse.disabled = false;
-    }
-  };
-}
-
-function echapper(t) {
-  return String(t ?? "").replace(/[&<>"]/g, x =>
-    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[x]));
-}
-
-/* ---------- Les échéances d'abonnement deviennent des commandes ----------
-   Une échéance sans commande n'est ni imprimable, ni encaissable, ni suivable.
-   L'identifiant est déterministe : relancer la génération ne crée pas de doublon. */
-async function materialiserAbonnements() {
-  // Fenêtre glissante : tout ce qui est dû d'ici dix jours est généré, ainsi
-  // que les échéances en retard — une livraison due ne doit pas disparaître
-  // parce que la page n'a pas été ouverte le bon jour.
-  const limite = new Date(); limite.setHours(0, 0, 0, 0);
-  limite.setDate(limite.getDate() + FENETRE_JOURS);
-  const jusquA = iso(limite);
-
-  // Chaque échéance à traiter est repérée par son rang dans le plan : c'est
-  // ce rang, et non la date, qui fixe l'identifiant de la commande.
-  const aFaire = [];
-  abonnements.forEach(a => {
-    if (a.statut !== "actif") return;
-    (a.echeances || []).forEach((e, i) => {
-      if (e.statut === "planifiee" && e.date && e.date <= jusquA)
-        aFaire.push({ a, rang: i + 1, date: e.date });
-    });
-  });
-
-  console.log("Abonnements :", abonnements.length,
-    "· actifs :", abonnements.filter(a => a.statut === "actif").length,
-    "· échéances jusqu'au " + jusquA + " :", aFaire.length);
-  if (abonnements.length && !aFaire.length) {
-    abonnements.forEach(a => console.log("  ", a.id, "statut", a.statut,
-      "· échéances", (a.echeances || []).map(e => e.date + "/" + e.statut).join(" ")));
   }
-
-  if (!aFaire.length) return 0;
-
-  let creees = 0;
-  for (const { a, rang, date } of aFaire) {
-    // Rang sur deux chiffres : la commande garde le même identifiant même si
-    // sa date est décalée ensuite, donc pas de doublon à la génération suivante.
-    const id = "ABO-" + a.id + "-" + String(rang).padStart(2, "0");
-    if (commandes.some(c => c.id === id)) continue;   // déjà générée
-
-    const sousTotal = (a.panier || []).reduce((t, l) => t + (l.qte || 0) * (l.prix || 0), 0);
-
-    /* Le code promo retenu à la souscription est figé sur l'abonnement :
-       on n'interroge pas la fiche du code, qui a pu changer depuis. Il
-       couvre tout le plan par défaut, ou la seule première échéance quand
-       il a été restreint. Le rang suit la première livraison effective :
-       un report déplace donc la remise avec elle, ce qui est bien le sens
-       d'un geste d'accueil. */
-    const p = a.promo || null;
-    const remiseCode = p ? Number(p.remise_livraison) || 0 : 0;
-    const couvertes = p
-      ? (p.premiere_livraison_seulement === true
-          ? 1
-          : (Number(p.livraisons_couvertes) || (a.echeances || []).length))
-      : 0;
-    const remise = (remiseCode > 0 && rang <= couvertes) ? remiseCode : 0;
-
-    const frais = Number(a.frais_livraison) || 0;
-    const commande = {
-      numero: "ABO-" + date.slice(5).replace("-", "") + "-" +
-              (a.client?.nom || "").slice(0, 3).toUpperCase(),
-      statut: "confirmee",
-      abonnement_id: a.id,
-      abonnement_rang: rang,
-      abonnement_total: (a.echeances || []).length,
-      client: {
-        nom: a.client?.nom || "",
-        telephone: a.client?.telephone || "",
-        adresse: a.client?.adresse || ""
-      },
-      panier: (a.panier || []).map(l => ({ code: l.code, nom: l.nom, qte: l.qte, prix: l.prix })),
-      sous_total: sousTotal,
-      // Même forme que les commandes du checkout : l'édition de commande
-      // et le recalcul lisent cet objet, pas une chaîne.
-      remise_source: remise > 0 ? "promo" : "aucune",
-      code_promo: remise > 0
-        ? { code: p.code, type: p.type || "pourcentage",
-            valeur: Number(p.valeur) || 0,
-            rayons: Array.isArray(p.rayons) ? p.rayons : [],
-            montant: remise }
-        : null,
-      frais_livraison: frais,
-      frais_a_confirmer: false,
-      total: Math.max(0, sousTotal - remise) + frais,
-      option: a.option || {},
-      date_retrait: date,
-      creneau: "",
-      paiement: {
-        methode: a.paiement?.mode === "credit" ? "credit" : "avance",
-        statut: a.paiement?.mode === "credit" ? "en attente" : "paye"
-      },
-      notes: "Bread plan",
-      cree_le: new Date().toISOString()
-    };
-
-    try {
-      await setDoc(doc(db, "commandes", id), commande);
-      commandes.push({ id, ...commande });
-      creees += 1;
-    } catch (e) {
-      console.error("Génération de la commande d'abonnement", id, e);
-    }
-  }
-  return creees;
-}
-
-/* ---------- Pont vers la production ----------
-   Publie, pour la prochaine date de livraison, le total par code produit.
-   Aucune donnée client : ce document est lisible par l'ERP sans risque. */
-// Clé de rapprochement par nom, insensible aux accents et à la casse.
-function cle(t) {
-  return String(t || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase().replace(/[^a-z0-9]/g, "");
-}
-
-// Le code de la ligne, ou à défaut celui retrouvé d'après le nom du produit.
-function codeLigne(l) {
-  return l.code || nomVersCode[cle(l.nom)] || null;
-}
-
-function iso(d) {
-  return new Date(d.getTime() - d.getTimezoneOffset() * 60000)
-    .toISOString().slice(0, 10);
-}
-
-// Ordre d'affichage : date de retrait, puis mode de retrait/livraison
-// (pour regrouper les commandes à préparer pour un même point de dépose
-// ou une même tournée), puis les plus récemment reçues en premier.
-/* Ce qui attend un geste de votre part passe devant. Une commande qui vient
-   d'arriver n'est pas prioritaire parce qu'elle est récente, mais parce
-   qu'elle n'est pas encore confirmée : trier par heure de réception ferait
-   au contraire descendre une commande d'hier toujours en attente.
-
-     0 — nouvelle, à confirmer
-     1 — confirmée mais impayée, hors COD : un règlement en ligne est attendu
-     2 — le reste
-
-   Le classement suit donc ce que vous faites : confirmer une commande la
-   fait descendre d'elle-même, sans rien à manipuler. */
-function urgence(c) {
-  if (c.statut === "nouvelle") return 0;
-  const enAttente = (c.paiement?.statut || "en attente") === "en attente";
-  if (enAttente && !estCOD(c) && c.statut !== "annulee") return 1;
-  return 2;
-}
-
-// Une commande est close quand elle a été remise ou annulée : plus rien à
-// en attendre, elle n'a donc plus sa place en haut de l'historique.
-function close(c) {
-  return ["remise", "annulee"].includes(c.statut);
-}
-
-function trierCommandes() {
-  commandes.sort((a, b) =>
-    (a.date_retrait || "").localeCompare(b.date_retrait || "")
-    || urgence(a) - urgence(b)
-    || (a.option?.nom || "").localeCompare(b.option?.nom || "")
-    || (b.cree_le || "").localeCompare(a.cree_le || ""));
-}
-
-/* Vue « Toutes » : ce qui reste à traiter d'abord, de la livraison la plus
-   proche à la plus lointaine, puis les commandes closes — les plus récentes
-   en tête, puisqu'on ne les consulte qu'en remontant le temps. */
-function trierPourToutes(liste) {
-  return liste.slice().sort((a, b) => {
-    const ca = close(a), cb = close(b);
-    if (ca !== cb) return ca ? 1 : -1;
-    if (ca) return (b.date_retrait || "").localeCompare(a.date_retrait || "");
-    return (a.date_retrait || "").localeCompare(b.date_retrait || "")
-        || urgence(a) - urgence(b)
-        || (a.option?.nom || "").localeCompare(b.option?.nom || "")
-        || (b.cree_le || "").localeCompare(a.cree_le || "");
-  });
-}
-
-// Le jour que l'ERP doit préparer : le plus proche qui a encore des
-// commandes en attente de pesées ("confirmée", pas encore en production).
-// Dès que la dernière commande confirmée d'une date passe "en production",
-// cette date sort du calcul et l'ERP bascule tout seul sur la suivante —
-// c'est le geste de faire avancer une commande qui déclenche le
-// changement de jour, pas l'heure qu'il est.
-function prochaineLivraison() {
-  const dates = commandes
-    .filter(c => c.statut === "confirmee" && c.date_retrait)
-    .map(c => c.date_retrait);
-  if (dates.length) return dates.sort()[0];
-
-  // Repli : plus aucune commande en attente de pesées (tout est déjà en
-  // production, ou rien n'est encore confirmé) — on retombe sur le
-  // prochain jour ouvré, pour ne jamais publier une date qui ne veut
-  // plus rien dire.
-  const d = new Date(); d.setHours(0, 0, 0, 0);
-  for (let i = 0; i < 14; i++) {
-    if (!joursFermes.includes((d.getDay() + 6) % 7)) return iso(d);
-    d.setDate(d.getDate() + 1);
-  }
-  return iso(new Date());
-}
-
-// Une commande entre en production dès qu'elle est confirmée par vous.
-const RETENUS = ["confirmee", "en production", "prete"];
-
-async function publierProduction() {
-  try {
-    const date = prochaineLivraison();
-  const totaux = {}, noms = {};
-
-  commandes
-    .filter(c => c.date_retrait === date && RETENUS.includes(c.statut))
-    .forEach(c => (c.panier || []).forEach(l => {
-      const code = codeLigne(l);
-      if (!code) { console.warn("Ligne sans code produit :", l.nom); return; }
-      totaux[code] = (totaux[code] || 0) + (l.qte || 0);
-      noms[code] = l.nom || code;
-    }));
-
-    const nbAbos = commandes.filter(c =>
-      c.date_retrait === date && c.abonnement_id && RETENUS.includes(c.statut)).length;
-
-    await setDoc(doc(db, "production", "commandes_boutique"), {
-      date, totaux, noms,
-      nb_commandes: commandes.filter(c => c.date_retrait === date && RETENUS.includes(c.statut)).length,
-      nb_abonnements: nbAbos,
-      maj: new Date().toISOString()
-    });
-    console.log("Production publiée :", date, totaux, "dont", nbAbos, "abonnement(s)");
-  } catch (e) {
-    console.error("Publication production", e);
-    signaler("Publication vers l'ERP impossible.", "err");
-  }
-}
-
-
-/* ---------- Charge de production ----------
-   La vitrine ne peut pas additionner les commandes des autres clients :
-   depuis les règles Firestore, chacun ne lit que les siennes. On publie donc,
-   pour chaque jour à venir, ce qui est déjà commandé par produit — un document
-   par date, en lecture publique.
-
-   Le checkout incrémente ces compteurs au moment de la commande, mais c'est
-   ici que se fait la vérité : à chaque ouverture de cette page, tout est
-   recalculé depuis les commandes réelles. Un incrément manqué, une annulation,
-   une modification à la main : tout se corrige tout seul.
-
-   Attention au filtre : contrairement à la production, une commande reçue mais
-   pas encore confirmée occupe déjà le four. Elle compte donc. */
-const OCCUPANTS = ["nouvelle", "confirmee", "en production", "prete"];
-
-// Deux inventaires identiques doivent produire le même texte, quel que soit
-// l'ordre d'insertion des produits : sinon on réécrit pour rien.
-function empreinte(produits) {
-  return JSON.stringify(Object.keys(produits).sort().map(k => [k, produits[k]]));
-}
-
-async function publierCharges() {
-  try {
-    const aujourdhui = iso(new Date());
-
-    // Un inventaire vide par jour de la fenêtre : les jours sans commande
-    // doivent être publiés à zéro, sinon une annulation laisserait
-    // l'ancienne charge en place.
-    const parJour = {};
-    for (let i = 0; i <= FENETRE_JOURS; i++) {
-      const d = new Date();
-      d.setDate(d.getDate() + i);
-      parJour[iso(d)] = {};
-    }
-
-    commandes.forEach(c => {
-      const jour = parJour[c.date_retrait];
-      if (!jour || !OCCUPANTS.includes(c.statut)) return;
-      (c.panier || []).forEach(l => {
-        const code = codeLigne(l);
-        if (!code) return;
-        jour[code] = (jour[code] || 0) + (Number(l.qte) || 0);
-      });
-    });
-
-    const s = await getDocs(collection(db, "charge"));
-    const publie = {};
-    s.forEach(d => publie[d.id] = d.data());
-
-    const paquet = writeBatch(db);
-    let ecrits = 0;
-
-    Object.entries(parJour).forEach(([date, produits]) => {
-      const avant = publie[date] ? (publie[date].produits || {}) : null;
-      if (avant && empreinte(avant) === empreinte(produits)) return;   // inchangé
-      paquet.set(doc(db, "charge", date),
-                 { date, produits, maj: new Date().toISOString() });
-      ecrits++;
-    });
-
-    // Les jours passés n'intéressent plus personne : on garde la collection courte.
-    Object.keys(publie).forEach(date => {
-      if (date < aujourdhui) { paquet.delete(doc(db, "charge", date)); ecrits++; }
-    });
-
-    if (ecrits) await paquet.commit();
-    console.log("Charges publiées :", ecrits, "jour(s) mis à jour.");
-  } catch (e) {
-    console.error("Publication des charges", e);
-    signaler("Publication des capacités impossible.", "err");
-  }
-}
-
-/* ---------- Décompte du stock ----------
-   Confirmer une commande retire ses pièces du stock ; l'annuler les rend.
-   Le drapeau stock_deduit évite tout double décompte. */
-function ajustementsStock(c, nouveauStatut) {
-  const dejaDeduit = !!c.stock_deduit;
-  const doitDeduire = nouveauStatut === "confirmee" && !dejaDeduit;
-  const doitRendre  = nouveauStatut === "annulee" && dejaDeduit;
-  if (!doitDeduire && !doitRendre) return null;
-
-  const signe = doitDeduire ? -1 : 1;
-  const lignes = (c.panier || [])
-    .map(l => Object.assign({}, l, { code: codeLigne(l) }))
-    .filter(l => l.code && stockLimite[l.code]);
-  return { lignes, signe, drapeau: doitDeduire };
-}
-
-// Un crédit annoncé au checkout n'est réellement débité qu'à la confirmation,
-// et restitué si la commande est annulée.
-function appliquerCredit(paquet, c, nouveauStatut) {
-  const montant = Number(c.credit_utilise) || 0;
-  if (!montant || !c.compte_uid) return null;
-
-  const deja = !!c.credit_deduit;
-  const debiter = nouveauStatut === "confirmee" && !deja;
-  const rendre  = nouveauStatut === "annulee" && deja;
-  if (!debiter && !rendre) return null;
-
-  const signe = debiter ? -1 : 1;
-  paquet.set(doc(collection(db, "comptes", c.compte_uid, "mouvements")), {
-    type: debiter ? "depense" : "remboursement",
-    montant: signe * montant,
-    note: "Commande " + (c.numero || c.id),
-    quand: new Date().toISOString(),
-    par: auth.currentUser.email
-  });
-  paquet.update(doc(db, "comptes", c.compte_uid), { solde: increment(signe * montant) });
-  return debiter;
-}
-
-function appliquerStock(paquet, c, nouveauStatut) {
-  const a = ajustementsStock(c, nouveauStatut);
-  if (!a) return false;
-  a.lignes.forEach(l => {
-    paquet.update(doc(db, "boutique_produits", l.code),
-      { stock: increment(a.signe * (l.qte || 0)) });
-  });
-  return a.drapeau;
-}
-
-
-/* ---------- Modification d'une commande ----------
-   Ajouter, retirer, changer une quantité, déplacer la date — y compris sur
-   un jour de fermeture, pour les commandes spéciales.
-
-   Le prix : les lignes sont recalculées avec la même fonction que la vitrine
-   et le checkout, à partir du prix catalogue et de la remise portée par la
-   commande. Un article ajouté suit donc le tarif de groupe et le code promo
-   comme s'il avait été commandé le jour même.
-
-   Le stock : recalculé automatiquement, mais seulement si la commande a déjà
-   été confirmée — avant confirmation, rien n'a été déduit.
-
-   Le crédit : jamais touché. Si le total change alors qu'un crédit a été
-   prélevé, l'écart est signalé et se règle à la main depuis la page Crédit. */
-
-// Prix catalogue d'une ligne, avec repli sur le prix facturé si le produit
-// a disparu du catalogue.
-function prixBaseLigne(l) {
-  const code = codeLigne(l);
-  const fiche = code ? catalogue[code] : null;
-  return fiche ? fiche.prix_vente : (Number(l.prix) || 0);
-}
-
-function rayonLigne(l) {
-  const code = codeLigne(l);
-  return (code && catalogue[code]) ? catalogue[code].rayon : "Other";
-}
-
-// Recalcule prix unitaires, sous-total et total d'un panier donné.
-function recalculer(c, panier, option) {
-  const fiche = c.code_promo
-    ? { valeur: c.code_promo.valeur, type: c.code_promo.type,
-        rayons: c.code_promo.rayons || [] }
-    : null;
-
-  const pourCalcul = panier.map(l => ({
-    qte: Number(l.qte) || 0,
-    prixBase: prixBaseLigne(l),
-    rayon: rayonLigne(l)
-  }));
-
-  const calcul = calculerPrix(pourCalcul, Number(c.remise) || 0, fiche);
-
-  const lignes = panier.map(l => ({
-    code: codeLigne(l) || l.code || null,
-    nom: l.nom,
-    qte: Number(l.qte) || 0,
-    prix: prixUnitaire(prixBaseLigne(l), Number(c.remise) || 0, calcul.source)
-  }));
-
-  // Le mode de livraison peut être changé dans l'écran de modification :
-  // sans changement, on retombe sur le tarif déjà enregistré sur la commande.
-  const o = option || null;
-  const fraisAConfirmer = o ? !!o.tarif_variable : !!c.frais_a_confirmer;
-  const frais = fraisAConfirmer ? 0 :
-    (o ? (Number(o.tarif) || 0) : (Number(c.frais_livraison) || 0));
-
-  return {
-    lignes, calcul,
-    sous_total: calcul.sousTotal,
-    frais_livraison: frais,
-    frais_a_confirmer: fraisAConfirmer,
-    total: calcul.sousTotal + frais
-  };
-}
-
-/* Écarts de stock entre l'ancien et le nouveau panier.
-   Positif = pièces à rendre au stock, négatif = pièces à retirer. */
-function ecartsStock(avant, apres) {
-  const compte = (panier) => {
-    const t = {};
-    (panier || []).forEach(l => {
-      const code = codeLigne(l);
-      if (code && stockLimite[code]) t[code] = (t[code] || 0) + (Number(l.qte) || 0);
-    });
-    return t;
-  };
-  const a = compte(avant), b = compte(apres);
-  const ecarts = {};
-  new Set([...Object.keys(a), ...Object.keys(b)]).forEach(code => {
-    const d = (a[code] || 0) - (b[code] || 0);
-    if (d !== 0) ecarts[code] = d;
-  });
-  return ecarts;
-}
-
-function jourFerme(iso) {
-  if (!iso) return false;
-  const d = new Date(iso + "T12:00:00");
-  return joursFermes.includes((d.getDay() + 6) % 7);
-}
-
-/* ---------- Écran de modification ---------- */
-function ouvrirModification(c, el) {
-  // Copie de travail : rien n'est touché tant que l'on n'enregistre pas.
-  let panier = (c.panier || []).map(l => Object.assign({}, l));
-  let date = c.date_retrait || "";
-  // Mode de livraison en cours d'édition : si la commande utilise une
-  // option qui a depuis été supprimée des paramètres boutique, elle reste
-  // proposée en tête de liste pour ne pas la perdre silencieusement.
-  let optionCourante = optionsRetrait.find(o => o.nom === c.option?.nom) ||
-    (c.option?.nom ? { nom: c.option.nom, type: c.option.type,
-                        lieu: c.option.lieu, tarif: c.frais_livraison,
-                        tarif_variable: c.frais_a_confirmer } : null);
-  const optionsProposees = optionCourante &&
-    !optionsRetrait.some(o => o.nom === optionCourante.nom)
-    ? [optionCourante, ...optionsRetrait] : optionsRetrait;
-
-  const zone = el.querySelector(".edition");
-  zone.hidden = false;
-
-  const choixProduits = Object.entries(catalogue)
-    .filter(([, f]) => f.publie)
-    .sort((a, b) => a[1].nom.localeCompare(b[1].nom))
-    .map(([code, f]) => `<option value="${code}">${echapper(f.nom)}</option>`)
-    .join("");
-
-  function dessiner() {
-    const r = recalculer(c, panier, optionCourante);
-    const ecartTotal = r.total - (Number(c.total) || 0);
-    const credit = Number(c.credit_utilise) || 0;
-
-    zone.innerHTML = `
-      <div class="edit-lignes"></div>
-
-      <div class="edit-ajout">
-        <select class="edit-produit">${choixProduits}</select>
-        <input type="number" class="edit-qte" min="1" step="1" value="1">
-        <button type="button" class="mineur edit-plus">Ajouter</button>
-      </div>
-
-      <div class="edit-date">
-        <label>Date de retrait</label>
-        <input type="date" class="edit-jour" value="${date}">
-        <span class="edit-avertit"></span>
-      </div>
-
-      <div class="edit-livraison-champ">
-        <label>Mode de retrait / livraison</label>
-        <select class="edit-livraison">
-          ${optionsProposees.map(o => `<option value="${echapper(o.nom)}"${
-            optionCourante && o.nom === optionCourante.nom ? " selected" : ""
-          }>${echapper(o.nom)}${o.tarif_variable ? " (tarif à confirmer)" :
-            (Number(o.tarif) > 0 ? " — " + peso(Number(o.tarif)) : "")}</option>`).join("")}
-        </select>
-      </div>
-
-      <div class="edit-bilan">
-        <div class="l"><span>Sous-total</span><span>${peso(r.sous_total)}</span></div>
-        ${r.frais_a_confirmer ? "" : (r.frais_livraison > 0
-          ? `<div class="l"><span>${echapper(optionCourante?.nom || "Livraison")}</span>
-             <span>${peso(r.frais_livraison)}</span></div>` : "")}
-        <div class="l somme"><span>Total</span><span>${peso(r.total)}</span></div>
-        ${ecartTotal !== 0
-          ? `<div class="l ecart"><span>Écart avec le total actuel</span>
-             <span>${ecartTotal > 0 ? "+" : ""}${peso(ecartTotal)}</span></div>` : ""}
-        ${credit > 0 && ecartTotal !== 0
-          ? `<div class="edit-alerte">${peso(credit)} de crédit ont déjà été
-             annoncés sur cette commande. Le solde du client n'est pas modifié :
-             réglez l'écart de ${peso(Math.abs(ecartTotal))} à la main depuis la
-             page Crédit.</div>` : ""}
-        ${c.compte_uid
-          ? `<button type="button" class="mineur edit-recalc-tarif" style="margin-top:8px;">
-               🔄 Recalculer avec le tarif actuel du compte (${Number(c.remise) || 0}% appliqué ici)
-             </button>` : ""}
-      </div>
-
-      <div class="edit-actions">
-        <button type="button" class="action edit-ok">Enregistrer les modifications</button>
-        <button type="button" class="mineur edit-annuler">Annuler</button>
-      </div>`;
-
-    // Lignes du panier
-    const zl = zone.querySelector(".edit-lignes");
-    if (!panier.length) {
-      zl.innerHTML = '<div class="edit-vide">Plus aucun article. La commande ne peut pas être vide.</div>';
-    } else {
-      panier.forEach((l, i) => {
-        const ligne = document.createElement("div");
-        ligne.className = "edit-l";
-        ligne.innerHTML = `
-          <span class="n"></span>
-          <input type="number" class="q" min="1" step="1" value="${Number(l.qte) || 1}">
-          <span class="p">${peso(r.lignes[i].prix * (Number(l.qte) || 0))}</span>
-          <button type="button" class="retirer" aria-label="Retirer">✕</button>`;
-        ligne.querySelector(".n").textContent = l.nom || codeLigne(l) || "?";
-        ligne.querySelector(".q").onchange = (e) => {
-          const v = Math.max(1, Number(e.target.value) || 1);
-          panier[i].qte = v;
-          dessiner();
-        };
-        ligne.querySelector(".retirer").onclick = () => {
-          panier.splice(i, 1);
-          dessiner();
-        };
-        zl.appendChild(ligne);
-      });
-    }
-
-    // Ajout d'un produit
-    zone.querySelector(".edit-plus").onclick = () => {
-      const code = zone.querySelector(".edit-produit").value;
-      const qte = Math.max(1, Number(zone.querySelector(".edit-qte").value) || 1);
-      const fiche = catalogue[code];
-      if (!fiche) return;
-      const deja = panier.find(l => codeLigne(l) === code);
-      if (deja) deja.qte = (Number(deja.qte) || 0) + qte;   // pas de doublon
-      else panier.push({ code, nom: fiche.nom, qte, prix: fiche.prix_vente });
-      dessiner();
-    };
-
-    // Date, y compris un jour de fermeture
-    const champJour = zone.querySelector(".edit-jour");
-    const avertit = zone.querySelector(".edit-avertit");
-    const majAvertissement = () => {
-      avertit.textContent = jourFerme(champJour.value)
-        ? "Jour de fermeture — autorisé, mais rien d'autre n'est cuit ce jour-là."
-        : "";
-    };
-    majAvertissement();
-    champJour.onchange = () => { date = champJour.value; majAvertissement(); };
-
-    // Mode de retrait/livraison
-    zone.querySelector(".edit-livraison").onchange = (e) => {
-      optionCourante = optionsProposees.find(o => o.nom === e.target.value) || null;
-      dessiner();
-    };
-
-    zone.querySelector(".edit-annuler").onclick = () => {
-      zone.hidden = true;
-      zone.innerHTML = "";
-    };
-
-    // Le tarif de groupe d'une commande est figé au moment où elle a été
-    // créée — un compte réglé après coup ne la rattrape pas tout seul.
-    // Ce bouton va chercher le tarif actuel du compte et refait le calcul,
-    // sans rien enregistrer avant le clic sur "Enregistrer les modifications".
-    const btnRecalc = zone.querySelector(".edit-recalc-tarif");
-    if (btnRecalc) {
-      btnRecalc.onclick = async () => {
-        btnRecalc.disabled = true;
-        try {
-          const snap = await getDoc(doc(db, "comptes", c.compte_uid));
-          const nouvelleRemise = snap.exists() ? (Number(snap.data().remise) || 0) : 0;
-          if (nouvelleRemise === (Number(c.remise) || 0)) {
-            signaler("Déjà à jour — le compte a la même remise (" + nouvelleRemise + "%).");
-          } else {
-            c.remise = nouvelleRemise;
-            dessiner();
-            signaler("Tarif du compte repris : " + nouvelleRemise + "%. Vérifie et enregistre pour appliquer.");
-          }
-        } catch (e) {
-          console.error(e);
-          signaler("Impossible de lire le compte.", "err");
-        } finally {
-          btnRecalc.disabled = false;
-        }
-      };
-    }
-
-    zone.querySelector(".edit-ok").onclick = () =>
-      enregistrerModification(c, panier, date, optionCourante);
-  }
-
-  dessiner();
-}
-
-async function enregistrerModification(c, panier, date, option) {
-  if (!panier.length)
-    return signaler("Une commande ne peut pas être vide. Annulez-la plutôt.", "err");
-  if (!date)
-    return signaler("La date de retrait est obligatoire.", "err");
-
-  const r = recalculer(c, panier, option);
-  const ecarts = ecartsStock(c.panier, r.lignes);
-  // Le stock n'a été touché qu'à la confirmation : avant, il n'y a rien à rendre.
-  const toucherStock = !!c.stock_deduit;
-
-  const changeLivraison = option && option.nom !== c.option?.nom;
-
-  const resume = [
-    `${(c.panier || []).length} ligne(s) → ${r.lignes.length}`,
-    `total ${peso(c.total)} → ${peso(r.total)}`,
-    c.date_retrait !== date ? `date ${c.date_retrait} → ${date}` : null,
-    changeLivraison ? `mode ${c.option?.nom || "—"} → ${option.nom}` : null,
-    toucherStock && Object.keys(ecarts).length
-      ? "le stock sera ajusté en conséquence" : null
-  ].filter(Boolean).join("\n");
-
-  if (!confirm("Enregistrer ces modifications ?\n\n" + resume)) return;
-
-  try {
-    const paquet = writeBatch(db);
-
-    paquet.update(doc(db, "commandes", c.id), {
-      panier: r.lignes,
-      date_retrait: date,
-      remise: Number(c.remise) || 0,
-      sous_total: r.calcul.sousTotal,
-      sous_total_brut: r.calcul.base,
-      remise_montant: r.calcul.economie,
-      remise_source: r.calcul.source,
-      code_promo: c.code_promo
-        ? Object.assign({}, c.code_promo,
-            { montant: r.calcul.source === "promo" ? r.calcul.economie : 0 })
-        : null,
-      option: option
-        ? { nom: option.nom, type: option.type, lieu: option.lieu || "" }
-        : (c.option || null),
-      frais_livraison: r.frais_livraison,
-      frais_a_confirmer: r.frais_a_confirmer,
-      total: r.total,
-      modifiee_le: new Date().toISOString(),
-      modifiee_par: auth.currentUser?.email || ""
-    });
-
-    if (toucherStock) {
-      Object.entries(ecarts).forEach(([code, d]) => {
-        paquet.update(doc(db, "boutique_produits", code), { stock: increment(d) });
-      });
-    }
-
-    await paquet.commit();
-
-    // Mise à jour de la copie locale, sans recharger toute la page.
-    c.panier = r.lignes;
-    c.date_retrait = date;
-    c.sous_total = r.calcul.sousTotal;
-    c.total = r.total;
-    c.remise_source = r.calcul.source;
-    if (option) {
-      c.option = { nom: option.nom, type: option.type, lieu: option.lieu || "" };
-      c.frais_livraison = r.frais_livraison;
-      c.frais_a_confirmer = r.frais_a_confirmer;
-    }
-
-    trierCommandes();
-
-    afficher(false);
-    publierProduction();
-    publierCharges();
-
-    const credit = Number(c.credit_utilise) || 0;
-    signaler(credit > 0
-      ? "Commande modifiée. Vérifiez le crédit du client, il n'a pas été ajusté."
-      : "Commande modifiée.", "ok");
-  } catch (e) {
-    console.error(e);
-    signaler("La modification n'a pas pu être enregistrée.", "err");
-  }
-}
-
-/* ---------- Traitement par lot ---------- */
-$("lotStatut").innerHTML = '<option value="">Avancement…</option>' +
-  STATUTS.map(v => `<option value="${v}">${LIBELLES[v]}</option>`).join("");
-$("lotPaiement").innerHTML = '<option value="">Paiement…</option>' +
-  Object.entries(PAIEMENTS).map(([v, t]) => `<option value="${v}">${t}</option>`).join("");
-
-function majLot() {
-  const n = selection.size;
-  $("lot").classList.toggle("vu", n > 0);
-  $("lotN").textContent = n + (n > 1 ? " commandes sélectionnées" : " commande sélectionnée");
-  majBoutonLot();
-}
-function majBoutonLot() {
-  $("lotAppliquer").disabled =
-    !selection.size || (!$("lotStatut").value && !$("lotPaiement").value);
-}
-$("lotStatut").onchange = majBoutonLot;
-$("lotPaiement").onchange = majBoutonLot;
-
-$("lotAnnuler").onclick = () => {
-  selection.clear();
-  $("lotStatut").value = "";
-  $("lotPaiement").value = "";
-  afficher(false);
+  zone.hidden = !montrer;
+  $("btnQr").textContent = montrer ? "Hide QR code" : "Show QR code";
 };
 
-/* L'adresse imprimée sur l'étiquette de livraison vient de la fiche client
-   quand elle existe, pas de ce que le client a tapé au checkout.
-
-   Les deux divergent souvent : au checkout on reçoit « unit 4b near the church
-   tondo », sur la fiche l'adresse a été nettoyée à la main pour que la
-   géolocalisation tombe juste. C'est la version nettoyée que le motard doit
-   lire, et c'est aussi celle qui correspond au point GPS envoyé à Lalamove.
-
-   Repli sur l'adresse de la commande si la fiche n'existe pas ou n'a pas
-   d'adresse : mieux vaut le texte brut qu'une étiquette vide. Les retraits ne
-   sont pas concernés, ils n'impriment pas d'adresse.
-
-   La substitution se fait sur une copie : la commande en base garde ce que le
-   client a demandé ce jour-là. */
-/* Rappel visible tant que des commandes n'ont pas de fiche client. Compté sur
-   toute la collection et non sur la vue courante : le travail à faire ne
-   dépend pas de l'écran qu'on regarde. */
-function majRappelImport() {
-  const zone = $("rappelImport");
-  if (!zone) return;
-  const sansFiche = commandes.filter(c =>
-    c.statut !== "annulee" && ficheAVerifier(c) === "pas encore importé").length;
-  zone.hidden = sansFiche === 0;
-  if (!zone.hidden) {
-    zone.innerHTML = `<b>${sansFiche} commande(s)</b> dont le client n'a pas
-      encore de fiche. <a href="clients-admin.html">Importer depuis les
-      commandes</a> pour leur poser un tag et un point de livraison.`;
-  }
-}
-
-/* ---------- Fiche client à compléter ----------
-   Même règle que le bloc « À compléter » de l'écran Clients : pas de tag, ou
-   une adresse sans point de livraison. C'est le vrai sens de « nouveau
-   client » au moment de préparer une commande — non pas son ancienneté, mais
-   le fait qu'on ne peut pas encore livrer sans vérifier.
-
-   Une commande dont le téléphone ne correspond à aucune fiche compte aussi :
-   c'est le cas le plus courant, il suffit que l'import n'ait pas encore
-   tourné. La pastille sert alors de rappel.
-
-   Rend la raison, ou une chaîne vide si tout est en ordre. */
-function ficheAVerifier(c) {
-  const k = cleTel(c.client?.telephone);
-  if (!k) return "";
-  const fiche = clients.find(x => cleTel(x.telephone || x.id) === k);
-  if (!fiche) return "pas encore importé";
-  const manques = [];
-  if (!fiche.groupe) manques.push("tag");
-  const co = fiche.coordonnees;
-  if (fiche.adresse && String(fiche.adresse).trim() && !(co && co.lat && co.lng))
-    manques.push("point de livraison");
-  return manques.join(" et ");
-}
-
-/* ---------- Nom affichable ----------
-   Les clients tapent leur nom tout en capitales une fois sur trois, et une
-   liste de tournée qui crie est pénible à lire. On corrige à l'affichage
-   seulement : la donnée reste ce que le client a écrit, et si une fiche
-   porte un nom mis au propre à la main, c'est lui qui s'affiche.
-
-   Uniquement sur un nom entièrement en majuscules — « LE LAY » corrigé en
-   « Le Lay » est un gain, mais toucher à « McDonald » ou « van Dijk » serait
-   une dégradation, donc ces noms-là sont laissés tels quels.
-
-   Le trait d'union et l'apostrophe coupent les mots, pour que « Jean-Pierre »
-   et « O'Brien » reprennent leur majuscule au bon endroit. */
-function nomAffichable(n) {
-  const t = String(n || "").trim();
-  if (!t || t !== t.toUpperCase()) return t;   // pas tout en capitales : intact
-  return t.toLowerCase().replace(/\p{L}+/gu, m => m.charAt(0).toUpperCase() + m.slice(1));
-}
-
-function nomDe(c) {
-  // Le nom de la fiche client l'emporte : c'est celui que vous avez corrigé.
-  const k = cleTel(c.client?.telephone);
-  const fiche = k ? clients.find(x => cleTel(x.telephone || x.id) === k) : null;
-  return nomAffichable((fiche && fiche.nom) || c.client?.nom || "");
-}
-
-/* ---------- Adresse à utiliser pour une livraison ----------
-   L'adresse portée par la commande est celle tapée au checkout : en
-   majuscules, avec la ville écrite deux fois et trois repères de trop. Celle
-   de la fiche client a été nettoyée à la main pour que la géolocalisation
-   tombe juste et que le motard la lise.
-
-   C'est donc la fiche qui fait foi partout où une adresse sert à livrer —
-   étiquettes, panneau de tournée, course Lalamove — et non seulement à
-   l'impression comme c'était le cas jusqu'ici. Une correction faite dans le
-   fichier clients doit se voir immédiatement, sinon on la refait dix fois.
-
-   Deux exceptions : l'adresse ponctuelle, où le client a demandé une
-   livraison ailleurs pour cette fois, et la fiche sans adresse, où le texte
-   brut vaut mieux que rien. */
-function adresseLivraison(c) {
-  if (c.client?.adresse_ponctuelle) return c.client?.adresse || "";
-  const k = cleTel(c.client?.telephone);
-  const fiche = k ? clients.find(x => cleTel(x.telephone || x.id) === k) : null;
-  const surFiche = fiche ? String(fiche.adresse || "").trim() : "";
-  return surFiche || c.client?.adresse || "";
-}
-
-function pourEtiquette(c) {
-  if (c.option?.type !== "livraison") return c;
-  const a = adresseLivraison(c);
-  if (!a || a === c.client?.adresse) return c;
-  return { ...c, client: { ...c.client, adresse: a } };
-}
-
-$("lotImprimer").onclick = () => {
-  const choisies = commandes.filter(c => selection.has(c.id));
-  if (!choisies.length) return;
-  try {
-    sessionStorage.setItem("etiquettes", JSON.stringify(choisies.map(pourEtiquette)));
-    window.open("etiquettes.html", "_blank");
-  } catch (e) {
-    console.error(e);
-    signaler("Impossible d'ouvrir les étiquettes.", "err");
-  }
-};
-
-$("lotSupprimer").onclick = async () => {
-  const ids = [...selection];
-  if (!ids.length) return;
-
-  const choisies = ids.map(id => commandes.find(c => c.id === id)).filter(Boolean);
-  const validees = choisies.filter(c => !["nouvelle", "annulee"].includes(c.statut));
-  const issuesAbo = choisies.filter(c => c.abonnement_id);
-
-  let message = `Supprimer définitivement ${ids.length} commande(s) ?\n\n` +
-    "Cette action est irréversible.";
-  if (validees.length) {
-    message += `\n\n${validees.length} commande(s) déjà validée(s) : le stock et ` +
-      "les avoirs déjà décomptés ne seront pas rendus.";
-  }
-  if (issuesAbo.length) {
-    message += `\n\n${issuesAbo.length} commande(s) d'abonnement : l'échéance reste ` +
-      "planifiée, la commande sera regénérée au prochain chargement. Sautez " +
-      "l'échéance dans Abonnements pour l'éviter.";
-  }
-  if (!confirm(message)) return;
-
-  $("lotSupprimer").disabled = true;
-  signaler("Suppression…");
-
-  try {
-    // Firestore limite un lot à 500 écritures ; on découpe par prudence.
-    for (let i = 0; i < ids.length; i += 400) {
-      const paquet = writeBatch(db);
-      ids.slice(i, i + 400).forEach(id => paquet.delete(doc(db, "commandes", id)));
-      await paquet.commit();
-    }
-
-    commandes = commandes.filter(c => !selection.has(c.id));
-    selection.clear();
-    afficher(false);
-    publierProduction();
-    signaler(ids.length + " commande(s) supprimée(s).", "ok");
-  } catch (e) {
-    console.error(e);
-    signaler("La suppression a échoué.", "err");
-  } finally {
-    $("lotSupprimer").disabled = false;
-  }
-};
-
-$("lotAppliquer").onclick = async () => {
-  const statut = $("lotStatut").value;
-  const paiement = $("lotPaiement").value;
-  const ids = [...selection];
-  if (!ids.length || (!statut && !paiement)) return;
-
-  const quoi = [statut ? LIBELLES[statut] : null, paiement ? PAIEMENTS[paiement] : null]
-    .filter(Boolean).join(" et ");
-  if (!confirm(`Appliquer « ${quoi} » à ${ids.length} commande(s) ?`)) return;
-
-  $("lotAppliquer").disabled = true;
-  signaler("Application…");
-
-  try {
-    // Firestore limite un lot à 500 écritures ; on découpe par prudence.
-    for (let i = 0; i < ids.length; i += 400) {
-      const paquet = writeBatch(db);
-      ids.slice(i, i + 400).forEach(id => {
-        const c = commandes.find(x => x.id === id);
-        const champs = {};
-        if (statut)   champs.statut = statut;
-        if (paiement) champs["paiement.statut"] = paiement;
-        if (statut && c) {
-          const a = ajustementsStock(c, statut);
-          if (a) champs.stock_deduit = appliquerStock(paquet, c, statut);
-          const credit = appliquerCredit(paquet, c, statut);
-          if (credit !== null) champs.credit_deduit = credit;
-        }
-        paquet.update(doc(db, "commandes", id), champs);
-      });
-      await paquet.commit();
-    }
-
-    ids.forEach(id => {
-      const c = commandes.find(x => x.id === id);
-      if (!c) return;
-      if (statut) {
-        const a = ajustementsStock(c, statut);
-        if (a) c.stock_deduit = a.drapeau;
-        c.statut = statut;
-      }
-      if (paiement) { c.paiement = c.paiement || {}; c.paiement.statut = paiement; }
-    });
-
-    // Les échéances d'abonnement suivent, une par une : chacune peut toucher
-    // un compte différent, elles ne tiennent pas dans un lot commun.
-    if (statut && SUITE_ECHEANCE[statut]) {
-      for (const id of ids) {
-        const c = commandes.find(x => x.id === id);
-        if (c) await lierEcheance(c, statut);
-      }
-    }
-
-    /* Remboursement par lot : chaque commande se traite une par une, avec sa
-       propre confirmation. Poser la question globalement reviendrait à
-       créditer en bloc des clients aux situations différentes — l'un payé,
-       l'autre pas, un troisième sans compte. */
-    if (paiement === "rembourse") {
-      for (const id of ids) {
-        const c = commandes.find(x => x.id === id);
-        if (c) await proposerRemboursement(c);
-      }
-    }
-
-    selection.clear();
-    $("lotStatut").value = "";
-    $("lotPaiement").value = "";
-    afficher(false);
-    publierProduction();
-    publierCharges();
-    signaler(ids.length + " commande(s) mise(s) à jour.", "ok");
-  } catch (e) {
-    console.error(e);
-    signaler("Échec de la mise à jour groupée.", "err");
-    majBoutonLot();
-  }
-};
-
-
-/* ---------- Liaison commande → abonnement ----------
-   Une commande d'abonnement porte abonnement_id et abonnement_rang : elle sait
-   donc à quelle échéance elle correspond. Changer son statut ici met l'échéance
-   à jour, pour ne pas avoir à refaire le même geste sur la page Abonnements.
-
-     remise  → échéance livrée
-     annulee → échéance sautée
-
-   Un seul sens : la commande commande. La page Abonnements reste libre de
-   marquer une livraison à la main, ce qui n'écrase rien ici.
-
-   L'argent suit la livraison, comme sur la page Abonnements : quand
-   l'abonnement est payé sur le crédit, marquer livré prélève le montant et
-   inscrit le mouvement. Le drapeau echeance_appliquee évite tout double
-   prélèvement si le statut est remis deux fois. */
-const SUITE_ECHEANCE = { "remise": "livree", "annulee": "sautee" };
-
-async function lierEcheance(c, nouveauStatut) {
-  const suite = SUITE_ECHEANCE[nouveauStatut];
-  if (!c.abonnement_id || !c.abonnement_rang || !suite) return;
-  if (c.echeance_appliquee === suite) return;          // déjà fait
-
-  try {
-    const ref = doc(db, "abonnements", c.abonnement_id);
-    const s = await getDoc(ref);
-    if (!s.exists()) return;
-    const a = s.data();
-
-    // Le rang est de 1 à n ; l'échéance est à l'index rang − 1.
-    const i = Number(c.abonnement_rang) - 1;
-    const liste = a.echeances || [];
-    if (!liste[i]) return;
-    if (liste[i].statut === suite) {                   // déjà à jour côté abonnement
-      await updateDoc(doc(db, "commandes", c.id), { echeance_appliquee: suite });
-      c.echeance_appliquee = suite;
-      return;
-    }
-
-    const echeances = liste.map((e, n) => n === i
-      ? (suite === "livree"
-          ? { ...e, statut: "livree", livree_le: new Date().toISOString() }
-          : { ...e, statut: "sautee" })
-      : e);
-
-    const paquet = writeBatch(db);
-    paquet.update(ref, { echeances });
-
-    // Prélèvement du crédit, à l'identique de la page Abonnements.
-    const surCredit = a.paiement?.mode === "credit";
-    const montant = Number(a.total_par_livraison) || 0;
-    if (suite === "livree" && surCredit && montant > 0 && a.client?.uid) {
-      paquet.set(doc(collection(db, "comptes", a.client.uid, "mouvements")), {
-        type: "depense", montant: -montant,
-        note: "Livraison du " + liste[i].date,
-        quand: new Date().toISOString(), par: auth.currentUser?.email || ""
-      });
-      paquet.update(doc(db, "comptes", a.client.uid), { solde: increment(-montant) });
-    }
-
-    // Plus aucune échéance planifiée : l'abonnement est terminé.
-    if (!echeances.some(e => e.statut === "planifiee"))
-      paquet.update(ref, { statut: "termine" });
-
-    paquet.update(doc(db, "commandes", c.id), { echeance_appliquee: suite });
-    await paquet.commit();
-    c.echeance_appliquee = suite;
-
-    signaler("Échéance d'abonnement mise à jour (" + suite + ").", "ok");
-  } catch (e) {
-    // La commande, elle, est bien enregistrée : on ne la fait pas échouer.
-    console.error("Liaison échéance", e);
-    signaler("Commande enregistrée, mais l'échéance d'abonnement n'a pas suivi.", "err");
-  }
-}
-
-/* ---------- Passage en « Remboursé » ----------
-   Le crédit qui avait servi à payer la commande est restitué tout seul par
-   appliquerCredit() à l'annulation. L'argent réellement encaissé, lui, ne
-   l'est pas : il a quitté GCash ou la banque, rien dans la base ne le sait.
-
-   La FAQ promet au client que le montant revient en crédit sur son compte.
-   Cette promesse ne tient que si vous y pensez, et c'est exactement le genre
-   d'oubli qui se remarque du côté du client avant le vôtre.
-
-   Le déclencheur est le statut de paiement « Remboursé », et non l'annulation :
-   un article manquant ou une erreur de tarif se rembourse sans rien annuler,
-   et une commande annulée n'a pas toujours été encaissée. Le geste dit
-   l'intention, l'annulation non.
-
-   Rien n'est jamais écrit en silence : il arrive qu'on rembourse en espèces.
-
-   Rend true si un mouvement a été écrit. */
-async function proposerRemboursement(c) {
-  const paye = Number(c.paiement?.montant_paye) || 0;
-  /* Montant à rendre. Si le paiement est marqué payé sans montant saisi, on
-     retient le total de la commande : c'est le cas courant, et la question
-     laisse le dernier mot. */
-  const encaisse = paye > 0 ? paye : (Number(c.total) || 0);
-  // Le crédit déjà consommé revient par son propre chemin à l'annulation : on
-  // ne rembourse ici que la part payée en argent, sinon le client serait
-  // crédité deux fois du même montant.
-  const enArgent = Math.max(0, encaisse - (Number(c.credit_utilise) || 0));
-  if (enArgent <= 0) return false;
-  if (c.remboursee) return false;   // déjà fait, on ne repasse pas dessus
-
-  if (!c.compte_uid) {
-    signaler(peso(enArgent) + " à rembourser, mais aucun compte client " +
-      "rattaché à cette commande : à régler depuis Crédit.", "err");
-    return false;
-  }
-
-  if (!confirm(`Remettre ${peso(enArgent)} en crédit sur le compte de ` +
-               `${nomDe(c) || "ce client"} ?\n\n` +
-               (paye > 0 ? "" : "Aucun montant encaissé n'était saisi : c'est le " +
-                                "total de la commande qui est repris.\n\n") +
-               "Annuler si vous remboursez autrement.")) return false;
-
-  try {
-    const paquet = writeBatch(db);
-    paquet.set(doc(collection(db, "comptes", c.compte_uid, "mouvements")), {
-      type: "remboursement", montant: enArgent,
-      note: "Remboursement commande " + (c.numero || c.id),
-      quand: new Date().toISOString(), par: auth.currentUser.email
-    });
-    paquet.update(doc(db, "comptes", c.compte_uid), { solde: increment(enArgent) });
-    // Drapeau sur la commande : une seconde annulation ne recrédite pas.
-    paquet.update(doc(db, "commandes", c.id), { remboursee: true });
-    await paquet.commit();
-    c.remboursee = true;
-    signaler(peso(enArgent) + " remis en crédit.", "ok");
-    return true;
-  } catch (e) {
-    console.error("Remboursement", e);
-    signaler("Le crédit n'a pas pu être écrit — à saisir depuis Crédit.", "err");
-    return false;
-  }
-}
-
-/* ---------- Enregistrement ---------- */
-async function enregistrer(c, champs) {
-  try {
-    if (champs.statut) {
-      const paquet = writeBatch(db);
-      const deduit = appliquerStock(paquet, c, champs.statut);
-      const maj = Object.assign({}, champs);
-      const a = ajustementsStock(c, champs.statut);
-      if (a) maj.stock_deduit = deduit;
-      const credit = appliquerCredit(paquet, c, champs.statut);
-      if (credit !== null) maj.credit_deduit = credit;
-      paquet.update(doc(db, "commandes", c.id), maj);
-      await paquet.commit();
-      if (a) c.stock_deduit = deduit;
-    } else {
-      await updateDoc(doc(db, "commandes", c.id), champs);
-    }
-    if (champs.statut) {
-      c.statut = champs.statut;
-      await lierEcheance(c, champs.statut);
-    }
-    if (champs["paiement.statut"]) {
-      c.paiement = c.paiement || {};
-      c.paiement.statut = champs["paiement.statut"];
-      // Après coup : la commande est déjà enregistrée, un refus ou un échec
-      // ici ne la remet pas en cause.
-      if (champs["paiement.statut"] === "rembourse") await proposerRemboursement(c);
-    }
-    if ("paiement.methode" in champs) {
-      c.paiement = c.paiement || {};
-      c.paiement.methode = champs["paiement.methode"];
-    }
-    if ("paiement.montant_paye" in champs) {
-      c.paiement = c.paiement || {};
-      c.paiement.montant_paye = champs["paiement.montant_paye"];
-    }
-    afficher(false);
-    publierProduction();
-    signaler("Enregistré");
-  } catch (e) {
-    console.error(e);
-    signaler("Échec de l'enregistrement");
-  }
-}
-
-let minuteur;
-function signaler(texte, type = "") {
-  $("etat").textContent = texte;
-  $("etat").className = "etat vu " + type;
-  clearTimeout(minuteur);
-  minuteur = setTimeout(() => $("etat").classList.remove("vu"), 2600);
-}
-
-/* ==========================================================
-   NOUVELLE COMMANDE (depuis l'admin)
-   Pour un client qui commande par téléphone ou en personne. Réutilise
-   volontairement les mêmes briques que l'écran de modification
-   (recalculer via calculerPrix/prixUnitaire, options de retrait,
-   catalogue) plutôt que dupliquer la logique de prix.
-
-   Statut de départ : "confirmee" directement — c'est vous qui la créez,
-   il n'y a rien à confirmer après coup (décision explicite, pas un oubli).
-
-   Code promo : uniquement proposé si le téléphone correspond à un compte
-   existant, exactement comme sur la vitrine (verifierCode exige un
-   compte — un code est nominatif). Sans compte, tarif plein, comme une
-   commande sans compte classique — c'est le même chemin que d'habitude,
-   pas un chemin spécial pour l'admin.
-   ========================================================== */
-let ncPanier = [];
-let ncCompte = null;   // compte trouvé par téléphone, ou null
-let ncPromo = null;    // fiche du code promo appliqué, ou null
-
-function ncOuvrir() {
-  ncPanier = [];
-  ncCompte = null;
-  ncPromo = null;
-  $("nc-tel").value = "";
-  $("nc-nom").value = "";
-  $("nc-adresse").value = "";
-  $("nc-adresse-champ").hidden = true;
-  $("nc-compte-etat").textContent = "";
-  $("nc-promo").value = "";
-  $("nc-promo-msg").textContent = "";
-  $("nc-promo-champ").hidden = true;
-  $("nc-date").value = "";
-  $("nc-date").min = iso(new Date());
-
-  const choix = Object.entries(catalogue)
-    .filter(([, f]) => f.publie)
-    .sort((a, b) => a[1].nom.localeCompare(b[1].nom))
-    .map(([code, f]) => `<option value="${code}">${echapper(f.nom)}</option>`)
-    .join("");
-  $("nc-produit").innerHTML = choix;
-
-  $("nc-livraison").innerHTML = optionsRetrait.map((o, i) =>
-    `<option value="${i}">${echapper(o.nom)}${o.tarif_variable ? " (tarif à confirmer)" :
-      (Number(o.tarif) > 0 ? " — " + peso(Number(o.tarif)) : "")}</option>`).join("");
-  ncMajAdresseVisible();
-
-  $("panneauNouvelle").hidden = false;
-  ncDessiner();
-  $("panneauNouvelle").scrollIntoView({ behavior: "smooth", block: "start" });
-}
-
-function ncFermer() {
-  $("panneauNouvelle").hidden = true;
-}
-
-function ncOptionCourante() {
-  return optionsRetrait[Number($("nc-livraison").value) || 0] || null;
-}
-
-function ncMajAdresseVisible() {
-  const o = ncOptionCourante();
-  $("nc-adresse-champ").hidden = !(o && o.demander_adresse);
-}
-
-// Recherche par téléphone : ne remplit nom/adresse que si le champ est
-// encore vide, pour ne jamais écraser ce que vous êtes en train de taper.
-function ncChercherTelephone() {
-  const cle = cleTel($("nc-tel").value);
-  ncCompte = null;
-  $("nc-compte-etat").textContent = "";
-  $("nc-promo-champ").hidden = true;
-
-  if (!cle) return;
-
-  const client = clients.find(c => cleTel(c.telephone) === cle);
-  if (client) {
-    if (!$("nc-nom").value.trim()) $("nc-nom").value = client.nom || "";
-    if (!$("nc-adresse").value.trim()) $("nc-adresse").value = client.adresse || "";
-  }
-
-  const compte = comptes.find(c => cleTel(c.telephone) === cle);
-  if (compte) {
-    ncCompte = compte;
-    const remise = Number(compte.remise) || 0;
-    $("nc-compte-etat").innerHTML =
-      `Compte trouvé${compte.groupe ? " — groupe " + echapper(compte.groupe) : ""}` +
-      (remise > 0 ? `, remise ${remise}%` : "");
-    // Un code promo est nominatif : il ne peut s'appliquer que là où existe
-    // un compte à décompter, jamais sur une commande sans compte.
-    $("nc-promo-champ").hidden = false;
+/* ---------- Barre du panier ---------- */
+function majPanier() {
+  let articles = 0;
+  produits.forEach(p => { articles += panier[p.id] || 0; });
+
+  const calcul = calculerPrix(lignesPanier(), remise, promo);
+  sourceRemise = calcul.source;
+
+  $("panier").classList.toggle("visible", articles > 0 && !ferme);
+  $("panierArticles").textContent = articles + (articles === 1 ? " item" : " items");
+  $("panierTotal").textContent = peso(calcul.sousTotal);
+
+  const eco = $("panierEconomie");
+  if (calcul.source === "promo") {
+    eco.textContent = promo.id + " applied — you save " + peso(calcul.economie);
+    eco.hidden = false;
+  } else if (calcul.source === "groupe") {
+    eco.textContent = "Trade price applied — you save " + peso(calcul.economie);
+    eco.hidden = false;
   } else {
-    $("nc-compte-etat").textContent = "Aucun compte à ce numéro — tarif plein, sans code promo (comme une commande sans compte classique).";
+    eco.hidden = true;
   }
-  ncDessiner();
+
+  majPromo();
 }
 
-function ncAjouterLigne() {
-  const code = $("nc-produit").value;
-  const qte = Math.max(1, parseInt($("nc-qte").value) || 1);
-  const f = catalogue[code];
-  if (!f) return;
-
-  const existante = ncPanier.find(l => l.code === code);
-  if (existante) existante.qte += qte;
-  else ncPanier.push({ code, nom: f.nom, qte, prixBase: f.prix_vente, rayon: f.rayon });
-
-  ncDessiner();
+/* ---------- Code promo ---------- */
+function etatPromo(texte, type = "", html = false) {
+  const e = $("etatPromo");
+  if (html) e.innerHTML = texte; else e.textContent = texte;
+  e.className = "etat " + type;
 }
 
-function ncRetirerLigne(i) {
-  ncPanier.splice(i, 1);
-  ncDessiner();
-}
+function majPromo() {
+  const zone = $("promo");
+  zone.hidden = ferme;
+  if (ferme) return;
 
-async function ncAppliquerPromo() {
-  const saisie = normaliserCode($("nc-promo").value);
-  $("nc-promo-msg").textContent = "";
-  ncPromo = null;
-
-  if (!saisie) { ncDessiner(); return; }
-  if (!ncCompte) {
-    $("nc-promo-msg").textContent = "Un compte est nécessaire pour appliquer un code.";
+  if (!promo) {
+    $("champCode").hidden = false;
+    $("btnCode").hidden = false;
+    if (!connecte && $("champCode").value.trim()) {
+      etatPromo('Please <a href="compte.html">sign in</a> to use a promo code.',
+                "err", true);
+    }
     return;
   }
 
+  // Un code appliqué se remplace par sa ligne d'état.
+  $("champCode").hidden = true;
+  $("btnCode").hidden = true;
+
+  const calcul = calculerPrix(lignesPanier(), remise, promo);
+  const portee = libellePortee(promo);
+
+  let texte;
+  if (calcul.source === "promo") {
+    texte = promo.id + " applied — " + libelleCode(promo);
+  } else if (portee && calcul.eligible === 0) {
+    // Le code est bon, le panier ne contient simplement rien du rayon visé.
+    texte = promo.id + " applies to " + portee + " only — add " +
+            portee.toLowerCase() + " to use it";
+  } else {
+    texte = promo.id + " saved for later — your trade price is a better deal today";
+  }
+
+  etatPromo("", "ok");
+  const e = $("etatPromo");
+  e.textContent = texte;
+  const b = document.createElement("button");
+  b.className = "retirer";
+  b.type = "button";
+  b.textContent = "Remove";
+  b.onclick = retirerCode;
+  e.appendChild(b);
+}
+
+async function appliquerCode() {
+  const saisie = normaliserCode($("champCode").value);
+  if (!saisie) { etatPromo("Enter a code first.", "err"); return; }
+
+  $("btnCode").disabled = true;
+  etatPromo("Checking…");
   try {
     const fiche = await chargerCode(db, saisie);
-    const usages = await usagesClient(db, ncCompte.id, saisie, { collection, query, where, getDocs, limit });
-    const v = verifierCode(fiche, { connecte: true, usages });
+    const v = verifierCode(fiche, { connecte });
     if (!v.ok) {
-      $("nc-promo-msg").textContent = v.message;
-      ncDessiner();
+      promo = null;
+      oublierCode();
+      etatPromo(v.connexion
+        ? 'Please <a href="compte.html">sign in</a> to use a promo code.'
+        : v.message, "err", !!v.connexion);
+      afficher();
       return;
     }
-    ncPromo = fiche;
-    $("nc-promo-msg").textContent = "Code appliqué.";
+    promo = fiche;
+    memoriserCode(fiche.id);
+    $("champCode").value = "";
+    afficher();
   } catch (e) {
     console.error(e);
-    $("nc-promo-msg").textContent = "Vérification impossible.";
-  }
-  ncDessiner();
-}
-
-// Même calcul que recalculer() pour une commande existante, adapté à un
-// panier qui n'a pas encore de commande derrière lui.
-function ncCalculer() {
-  const remise = ncCompte ? (Number(ncCompte.remise) || 0) : 0;
-  const fiche = ncPromo
-    ? { valeur: ncPromo.valeur, type: ncPromo.type, rayons: ncPromo.rayons || [] }
-    : null;
-
-  const pourCalcul = ncPanier.map(l => ({ qte: l.qte, prixBase: l.prixBase, rayon: l.rayon }));
-  const calcul = calculerPrix(pourCalcul, remise, fiche);
-
-  const lignes = ncPanier.map(l => ({
-    code: l.code, nom: l.nom, qte: l.qte,
-    prix: prixUnitaire(l.prixBase, remise, calcul.source)
-  }));
-
-  const o = ncOptionCourante();
-  const fraisAConfirmer = !!(o && o.tarif_variable);
-  const frais = fraisAConfirmer ? 0 : (o ? (Number(o.tarif) || 0) : 0);
-
-  return {
-    lignes, calcul, remise,
-    sous_total: calcul.sousTotal,
-    frais_livraison: frais,
-    frais_a_confirmer: fraisAConfirmer,
-    total: calcul.sousTotal + frais
-  };
-}
-
-function ncDessiner() {
-  const zl = $("nc-lignes");
-  if (!ncPanier.length) {
-    zl.innerHTML = '<div class="edit-vide">Aucun article pour l\'instant.</div>';
-  } else {
-    zl.innerHTML = "";
-    ncPanier.forEach((l, i) => {
-      const ligne = document.createElement("div");
-      ligne.className = "edit-l";
-      ligne.innerHTML = `
-        <span class="n"></span>
-        <input type="number" class="q" min="1" step="1" value="${l.qte}">
-        <span class="p"></span>
-        <button type="button" class="retirer" title="Retirer">✕</button>`;
-      ligne.querySelector(".n").textContent = l.nom;
-      ligne.querySelector(".q").onchange = (e) => {
-        l.qte = Math.max(1, parseInt(e.target.value) || 1);
-        ncDessiner();
-      };
-      ligne.querySelector(".retirer").onclick = () => ncRetirerLigne(i);
-      zl.appendChild(ligne);
-    });
-  }
-  ncMajAdresseVisible();
-
-  const r = ncCalculer();
-  ncPanier.forEach((l, i) => {
-    const p = zl.children[i]?.querySelector(".p");
-    if (p) p.textContent = peso(r.lignes[i].prix * r.lignes[i].qte);
-  });
-
-  $("nc-bilan").innerHTML = `
-    <div class="l"><span>Sous-total</span><span>${peso(r.sous_total)}</span></div>
-    ${r.frais_a_confirmer ? "" : (r.frais_livraison > 0
-      ? `<div class="l"><span>${echapper(ncOptionCourante()?.nom || "Livraison")}</span>
-         <span>${peso(r.frais_livraison)}</span></div>` : "")}
-    <div class="l somme"><span>Total</span><span>${peso(r.total)}</span></div>`;
-
-  const avertit = $("nc-avertit");
-  avertit.textContent = jourFerme($("nc-date").value) ? "Jour habituellement fermé." : "";
-}
-
-async function ncCreer() {
-  const nom = $("nc-nom").value.trim();
-  const tel = $("nc-tel").value.replace(/\D/g, "");
-  const o = ncOptionCourante();
-  const date = $("nc-date").value;
-
-  if (nom.length < 2) return signaler("Le nom est trop court.", "err");
-  if (tel.length < 10) return signaler("Le numéro de téléphone est incomplet.", "err");
-  if (!ncPanier.length) return signaler("Ajoutez au moins un article.", "err");
-  if (!date) return signaler("Choisissez une date de retrait.", "err");
-  if (!o) return signaler("Choisissez un mode de retrait.", "err");
-
-  const adresseDetail = o.demander_adresse ? { rue: $("nc-adresse").value.trim() } : null;
-  const adresse = $("nc-adresse").value.trim();
-
-  const r = ncCalculer();
-  const numero = `${String(new Date().getDate()).padStart(2, "0")}${String(new Date().getMonth() + 1).padStart(2, "0")}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
-
-  const commande = {
-    numero,
-    statut: "confirmee",
-    client: { nom, telephone: tel, adresse, adresse_detail: adresseDetail },
-    panier: r.lignes,
-    remise: r.remise,
-    remise_source: ncPromo ? "promo" : (r.remise > 0 ? "groupe" : "aucune"),
-    code_promo: ncPromo
-      ? { code: ncPromo.id, type: ncPromo.type, valeur: Number(ncPromo.valeur) || 0,
-          rayons: Array.isArray(ncPromo.rayons) ? ncPromo.rayons : [] }
-      : null,
-    compte_uid: ncCompte ? ncCompte.id : "",
-    credit_utilise: 0,
-    sous_total_brut: ncPanier.reduce((t, l) => t + l.qte * l.prixBase, 0),
-    sous_total: r.sous_total,
-    frais_livraison: r.frais_livraison,
-    frais_a_confirmer: r.frais_a_confirmer,
-    total: r.total,
-    option: { nom: o.nom, type: o.type, lieu: o.lieu || "" },
-    date_retrait: date,
-    paiement: { methode: "manuel", statut: "en attente" },
-    notes: "Créée depuis l'admin.",
-    cree_le: new Date().toISOString()
-  };
-
-  try {
-    $("nc-creer").disabled = true;
-    await setDoc(doc(db, "commandes", numero), commande);
-    ncFermer();
-    await charger();
-    signaler("Commande créée.");
-  } catch (e) {
-    console.error(e);
-    signaler("La création a échoué.", "err");
+    etatPromo("We couldn't check that code. Please try again.", "err");
   } finally {
-    $("nc-creer").disabled = false;
+    $("btnCode").disabled = false;
   }
 }
 
-$("btnNouvelleCommande").onclick = ncOuvrir;
-$("nc-annuler").onclick = ncFermer;
-$("nc-ajouter").onclick = ncAjouterLigne;
-$("nc-tel").onchange = ncChercherTelephone;
-$("nc-livraison").onchange = ncDessiner;
-$("nc-date").onchange = ncDessiner;
-$("nc-promo-appliquer").onclick = ncAppliquerPromo;
-$("nc-creer").onclick = ncCreer;
+function retirerCode() {
+  promo = null;
+  oublierCode();
+  $("champCode").value = "";
+  etatPromo("");
+  afficher();
+}
+
+$("btnCode").onclick = appliquerCode;
+$("champCode").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") { e.preventDefault(); appliquerCode(); }
+});
+
+/* Le code saisi lors d'une visite précédente est revérifié sur le serveur :
+   il a pu être désactivé entre-temps. */
+async function reprendreCode() {
+  const memorise = lireCodeMemorise();
+  if (!memorise) { majPromo(); return; }
+  try {
+    const fiche = await chargerCode(db, memorise);
+    const v = verifierCode(fiche, { connecte });
+    promo = v.ok ? fiche : null;
+    if (!v.ok && !v.connexion) oublierCode();   // un code refusé faute de compte est gardé
+  } catch (e) {
+    console.error(e);
+    promo = null;
+  }
+  afficher();
+}
+
+$("btnCommander").onclick = () => {
+  window.location.href = "checkout.html";
+};
+
+onAuthStateChanged(auth, async (user) => {
+  remise = 0;
+  connecte = !!user;
+  if (user) {
+    try {
+      const s = await getDoc(doc(db, "comptes", user.uid));
+      remise = Number(s.data()?.remise) || 0;
+    } catch (e) { console.error(e); }
+  } else {
+    promo = null;   // sans compte, aucun code ne s'applique
+  }
+  // Le code est revérifié à chaque changement d'état : la connexion peut
+  // arriver après le premier affichage.
+  await reprendreCode();
+  if (produits.length) afficher();   // les prix changent si la remise arrive après
+  if (remise > 0) {
+    const b = $("avis");
+    b.textContent = "Your " + remise + "% trade price is applied.";
+    b.hidden = false;
+  }
+});
+
+demarrer();
 </script>
 </body>
 </html>
