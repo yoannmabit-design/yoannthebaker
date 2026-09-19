@@ -201,6 +201,18 @@
      d'où le liseré jaune et le pictogramme — mêmes couleurs que sur la page
      de confirmation, pour que ce soit reconnaissable. */
   .bloc.notices{border-left:5px solid #e6a817;background:#fffcf2}
+  /* Dans une commande : encadré jaune pâle, assez présent pour être vu en
+     parcourant les articles, sans concurrencer le total. */
+  .notices-cmd{
+    margin:12px 0 0;padding:11px 13px;border-radius:var(--r);
+    border:1px solid #e8d9a8;border-left:3px solid #e6a817;background:#fffcf2;
+  }
+  .notices-cmd .intitule-notices{
+    display:block;font-size:13px;letter-spacing:.08em;text-transform:uppercase;
+    color:var(--encre-doux);margin-bottom:8px;
+  }
+  .notices-cmd .canal.pdf{margin-bottom:7px}
+  .notices-cmd .canal.pdf:last-child{margin-bottom:0}
   .pdf-liste{display:flex;flex-direction:column;gap:9px;margin-top:12px}
   .canal.pdf{
     display:flex;align-items:flex-start;gap:13px;padding:13px 15px;
@@ -474,7 +486,7 @@ async function chargerNotices(commandes) {
     cat.forEach(d => {
       const v = d.data();
       if (codes.has(d.id) && v.notice) {
-        notices.push({ nom: v.nom || d.id, fichier: v.notice, taille: "" });
+        notices.push({ code: d.id, nom: v.nom || d.id, fichier: v.notice, taille: "" });
       }
     });
     notices.sort((a, b) => a.nom.localeCompare(b.nom));
@@ -498,6 +510,34 @@ async function chargerNotices(commandes) {
     console.error("Notices", e);
     notices = [];
   }
+}
+
+/* Notices d'une commande précise, sous ses articles.
+
+   Le bloc unique en bas de page ne suffisait pas : une cliente a cherché son
+   guide de cuisson dans la commande, ce qui est le réflexe naturel — le
+   document appartient à ce qu'elle a acheté. Il est donc rappelé ici, et
+   reste groupé en bas pour qui le cherche sans se souvenir de la commande.
+
+   Vide tant que les notices ne sont pas chargées : elles arrivent après
+   l'affichage, et la carte se redessine à ce moment-là. */
+function noticesDe(c) {
+  if (!notices.length) return "";
+  const codes = new Set((c.panier || []).map(l => l.code).filter(Boolean));
+  const siennes = notices.filter(n => codes.has(n.code));
+  if (!siennes.length) return "";
+  return `
+    <div class="notices-cmd">
+      <span class="intitule-notices">Baking guide${siennes.length > 1 ? "s" : ""}</span>
+      ${siennes.map(n => `<a class="canal pdf" href="${ech(n.fichier)}"
+        target="_blank" rel="noopener" download>
+        ${PICTO_PDF}
+        <span class="intitule">
+          <span class="titre">${ech(n.nom)}</span>
+          <span class="format">PDF${n.taille ? " &middot; " + n.taille : ""}</span>
+        </span>
+        <span class="fleche">&#8681;</span></a>`).join("")}
+    </div>`;
 }
 
 function blocNotices() {
@@ -599,6 +639,7 @@ function ligneCommande(c) {
     <div class="detail" hidden>
       ${blocOu}
       ${articles}
+      <div class="zone-notices" data-commande="${ech(c.id)}">${noticesDe(c)}</div>
       ${extras.join("")}
       <div class="l total"><span>${Number(c.credit_utilise) > 0 ? "Paid" : "Total"}</span>
         <span>${peso(Number(c.credit_utilise) > 0 ? restant : total)}</span></div>
@@ -1222,6 +1263,15 @@ async function ecranCompte(user) {
     // La page a pu être redessinée entre-temps : on ne peint que si la zone
     // est toujours celle qu'on a laissée.
     if (zone) zone.innerHTML = blocNotices();
+
+    /* Les commandes sont déjà dessinées quand les notices arrivent : on
+       remplit après coup l'emplacement réservé dans chacune, plutôt que de
+       redessiner la page — un client qui avait déplié une commande la verrait
+       se refermer sous ses yeux. */
+    document.querySelectorAll(".zone-notices").forEach(el => {
+      const c = toutesCommandes.find(x => x.id === el.dataset.commande);
+      if (c) el.innerHTML = noticesDe(c);
+    });
   });
 
   brancherCommandes();
