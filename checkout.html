@@ -1193,13 +1193,30 @@ function construirePaiements() {
   majPaiement();
 }
 
+function montantTotal() { return sousTotal + fraisOption(); }
+function totalCouvertParCredit() {
+  const t = montantTotal();
+  return t > 0 && creditUtilise >= t;
+}
+
 function majPaiement() {
-  const total = sousTotal + fraisOption();
-  const couvert = creditUtilise >= total && total > 0;
+  const total = montantTotal();
+  const couvert = totalCouvertParCredit();
   const zone = $("listePaiements");
-  if (zone) zone.style.opacity = couvert ? ".45" : "";
   const instr = $("instrPaiement");
-  if (couvert && instr) { instr.textContent = "Nothing more to pay — thank you!"; return; }
+
+  /* Couverte par le crédit : la liste est retirée, pas seulement estompée.
+     Laisser des moyens de paiement cliquables revient à demander de choisir
+     comment régler zéro peso — un client a coché GCash par réflexe, et sa
+     commande s'est retrouvée marquée « à encaisser ». */
+  if (zone) zone.hidden = couvert;
+  document.querySelectorAll('input[name="paiement"]')
+    .forEach(r => r.disabled = couvert);
+  if (couvert) {
+    if (instr) instr.textContent =
+      "Nothing more to pay — your store credit covers this order.";
+    return;
+  }
 
   const v = document.querySelector('input[name="paiement"]:checked').value;
   document.querySelectorAll(".choix[data-paiement]").forEach(c => {
@@ -1573,10 +1590,17 @@ $("btnEnvoyer").onclick = async () => {
     option: { nom: o.nom, type: o.type, lieu: o.lieu || "" },
     date_retrait: dateChoisie,
     creneau: $("creneau") ? $("creneau").value : "",
-    paiement: {
-      methode: document.querySelector('input[name="paiement"]:checked').value,
-      statut: "en attente"
-    },
+    /* Crédit couvrant la totalité : il n'y a rien à encaisser, et la commande
+       ne doit pas partir « en attente » — sinon elle s'affiche en rouge dans
+       l'administration, le client est relancé pour rien, et le risque est
+       d'encaisser une seconde fois le jour de la remise.
+
+       Le débit lui-même a lieu à la confirmation, comme pour un règlement
+       partiel : ce champ ne dit que ce qu'il reste à percevoir, soit rien. */
+    paiement: totalCouvertParCredit()
+      ? { methode: "credit", statut: "paye", montant_paye: montantTotal() }
+      : { methode: document.querySelector('input[name="paiement"]:checked').value,
+          statut: "en attente" },
     notes: $("notes").value.trim(),
     cree_le: new Date().toISOString()
   };
