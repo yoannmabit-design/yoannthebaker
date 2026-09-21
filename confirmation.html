@@ -5,6 +5,15 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Order received — Yoann's French Bakery</title>
 <meta name="theme-color" content="#201e1d">
+<!-- iOS n'affiche aucune invite d'installation : on passe toujours par
+     Partager → Sur l'écran d'accueil. Ces balises ne déclenchent rien, elles
+     décident de ce qu'on obtient une fois l'icône posée — une application en
+     plein écran plutôt qu'un onglet Safari avec sa barre d'adresse. -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Yoann's Bakery">
+<link rel="apple-touch-icon" sizes="180x180" href="icone-180.png">
 <link rel="icon" href="logo.jpg">
 <!-- Une seule police web, titres seulement : le corps de texte garde la
      police du système. Voir index.html, même choix, mêmes raisons. -->
@@ -364,7 +373,12 @@ function afficher() {
       Stay updated — join our WhatsApp group<span class="fleche">&#8250;</span>
     </a>
 
-    <a class="retour" href="./">Back to the menu</a>
+    <!-- Sur une seule ligne : .retour est en display:block avec 26px de marge,
+         deux liens empilés laisseraient un trou au bas de la page. -->
+    <p class="retour">
+      <a href="faq.html" style="color:var(--accent)">What's the FAQ?</a> &middot;
+      <a href="./" style="color:var(--accent)">Back to the menu</a>
+    </p>
   `;
 
   $("copier").onclick = async () => {
@@ -395,6 +409,19 @@ function messageCommande(c) {
     c.notes ? `Notes: ${c.notes}` : null
   ].filter(Boolean).join("\n");
 }
+</script>
+
+<!-- Service worker : sans cet enregistrement, sw.js n'est jamais activé.
+     Conséquences invisibles mais réelles — pas de consultation hors ligne, et
+     surtout Chrome refuse de proposer l'installation, il ne reste que le
+     raccourci. L'échec est silencieux : une boutique doit s'ouvrir même là où
+     le service worker est refusé. -->
+<script>
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+      navigator.serviceWorker.register("sw.js").catch(() => {});
+    });
+  }
 </script>
 </body>
 </html>
