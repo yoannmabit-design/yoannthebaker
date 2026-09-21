@@ -5,6 +5,15 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>What's the FAQ? — Yoann's French Bakery</title>
 <meta name="theme-color" content="#201e1d">
+<!-- iOS n'affiche aucune invite d'installation : on passe toujours par
+     Partager → Sur l'écran d'accueil. Ces balises ne déclenchent rien, elles
+     décident de ce qu'on obtient une fois l'icône posée — une application en
+     plein écran plutôt qu'un onglet Safari avec sa barre d'adresse. -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Yoann's Bakery">
+<link rel="apple-touch-icon" sizes="180x180" href="icone-180.png">
 <meta name="description" content="How to order, collect or receive your bread, how bread plans work, and how store credit works.">
 <link rel="icon" href="logo.jpg">
 <!-- Une seule police web, titres seulement : le corps de texte garde la
@@ -114,6 +123,7 @@
       <li><a href="#compte">Your account</a></li>
       <li><a href="#credit">Store credit</a></li>
       <li><a href="#abonnement">Bread plans</a></li>
+      <li><a href="#application">On your phone</a></li>
       <li><a href="#produits">About the bread</a></li>
     </ul>
   </nav>
@@ -469,6 +479,50 @@
     </details>
   </section>
 
+  <!-- ==================== APPLICATION ==================== -->
+  <section id="application">
+    <h2>Adding the bakery to your phone</h2>
+
+    <details>
+      <summary>Can I get this as an app?</summary>
+      <div class="corps">
+        <p>There's nothing to download and no app store involved — you add the
+        website to your home screen, and it opens like an app: full screen, its
+        own icon, no address bar.</p>
+        <p>It's also quicker on a bad signal, since the pages are kept on your
+        phone.</p>
+      </div>
+    </details>
+
+    <details>
+      <summary>On an iPhone or iPad</summary>
+      <div class="corps">
+        <p>It has to be done in <b>Safari</b> — Chrome on an iPhone can't do
+        it, which catches people out.</p>
+        <ul>
+          <li>Open the bakery in Safari.</li>
+          <li>Tap the <b>Share</b> button — the square with an arrow, at the
+          bottom of the screen.</li>
+          <li>Scroll down the list and tap <b>Add to Home Screen</b>.</li>
+          <li>Tap <b>Add</b>. The icon appears with your other apps.</li>
+        </ul>
+      </div>
+    </details>
+
+    <details>
+      <summary>On an Android phone</summary>
+      <div class="corps">
+        <ul>
+          <li>Open the bakery in Chrome.</li>
+          <li>Tap the <b>three dots</b> at the top right.</li>
+          <li>Tap <b>Install app</b>, or <b>Add to Home screen</b>.</li>
+        </ul>
+        <p>Chrome sometimes offers it by itself, with a banner at the bottom of
+        the screen. Either way works.</p>
+      </div>
+    </details>
+  </section>
+
   <!-- ==================== PRODUITS ==================== -->
   <section id="produits">
     <h2>About the bread</h2>
@@ -516,6 +570,11 @@
         </ul>
         <p>Pizza dough is the exception — it's dense enough to travel like
         anything else.</p>
+        <p>Frozen items come with instructions: once your order is placed, the
+        confirmation page has a short PDF to download for each item that needs
+        one — how to keep it, how to thaw it, and how to bake it off. Worth
+        saving to your phone.</p>
+        <p>Don't worry, it's easy. If I can manage it, so can you.</p>
       </div>
     </details>
 
@@ -541,5 +600,18 @@
 
 </main>
 
+
+<!-- Service worker : sans cet enregistrement, sw.js n'est jamais activé.
+     Conséquences invisibles mais réelles — pas de consultation hors ligne, et
+     surtout Chrome refuse de proposer l'installation, il ne reste que le
+     raccourci. L'échec est silencieux : une boutique doit s'ouvrir même là où
+     le service worker est refusé. -->
+<script>
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+      navigator.serviceWorker.register("sw.js").catch(() => {});
+    });
+  }
+</script>
 </body>
 </html>
