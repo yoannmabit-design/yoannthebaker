@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Bread plan set — Yoann's French Bakery</title>
+<title>What's the FAQ? — Yoann's French Bakery</title>
 <meta name="theme-color" content="#201e1d">
 <!-- iOS n'affiche aucune invite d'installation : on passe toujours par
      Partager → Sur l'écran d'accueil. Ces balises ne déclenchent rien, elles
@@ -14,6 +14,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Yoann's Bakery">
 <link rel="apple-touch-icon" sizes="180x180" href="icone-180.png">
+<meta name="description" content="How to order, collect or receive your bread, how bread plans work, and how store credit works.">
 <link rel="icon" href="logo.jpg">
 <!-- Une seule police web, titres seulement : le corps de texte garde la
      police du système. Voir index.html, même choix, mêmes raisons. -->
@@ -22,8 +23,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Caprasimo&display=swap">
 <style>
   /* Palette « Terracotta & Sage » — mêmes valeurs que la vitrine et les
-     autres écrans client. Les noms de variables sont inchangés : rien
-     d'autre dans la page n'a besoin d'être touché. */
+     autres écrans client. */
   :root{
     --creme:#f5ead8;--papier:#ffffff;--encre:#201e1d;
     --encre-doux:#5c5449;--trait:#e3d4b8;--accent:#c67139;
@@ -34,382 +34,570 @@
     margin:0;background:var(--creme);color:var(--encre);
     font:18px/1.55 ui-sans-serif,-apple-system,"Segoe UI",Roboto,sans-serif;
   }
-  header{background:var(--encre);color:var(--creme);padding:26px 18px;text-align:center}
-  header .coche{
-    width:46px;height:46px;border-radius:50%;border:1.5px solid var(--creme);
-    display:flex;align-items:center;justify-content:center;
-    margin:0 auto 13px;font-size:25px;
-  }
+  header{background:var(--encre);color:var(--creme);padding:30px 18px;text-align:center}
   header h1{
     font-family:Caprasimo,"Iowan Old Style",Georgia,serif;
-    font-size:27px;font-weight:400;margin:0;
+    font-size:28px;font-weight:400;margin:0;
   }
-  header .ref{margin:7px 0 0;font-size:16px;opacity:.78;letter-spacing:.05em}
+  header p{margin:8px 0 0;font-size:16.5px;opacity:.8}
 
-  main{max-width:620px;margin:0 auto;padding:22px 16px 50px}
-  .bloc{
+  main{max-width:660px;margin:0 auto;padding:22px 16px 60px}
+
+  /* Sommaire : la page est longue, et sur un téléphone on cherche une
+     question précise plutôt qu'on ne lit tout. */
+  nav.sommaire{
     background:var(--papier);border:1px solid var(--trait);
-    border-radius:var(--r);padding:18px;margin-bottom:16px;
+    border-radius:var(--r);padding:16px 18px;margin-bottom:22px;
   }
-  .bloc h2{font-size:17px;margin:0 0 13px}
+  nav.sommaire p{margin:0 0 9px;font-size:14px;letter-spacing:.09em;
+    text-transform:uppercase;color:var(--encre-doux)}
+  nav.sommaire ul{margin:0;padding:0;list-style:none;
+    display:flex;flex-wrap:wrap;gap:8px}
+  nav.sommaire a{
+    display:inline-block;padding:7px 13px;border:1px solid var(--trait);
+    border-radius:99px;text-decoration:none;color:var(--encre);font-size:16px;
+  }
+  nav.sommaire a:hover{border-color:var(--accent);color:var(--accent)}
 
-  /* Étapes numérotées : même convention que la confirmation de commande,
-     pour que le client reconnaisse le même guidage d'un flux à l'autre. */
-  .bloc h2.etape{display:flex;align-items:center;gap:10px}
-  .num{
-    flex-shrink:0;width:26px;height:26px;border-radius:50%;
-    background:var(--encre);color:var(--creme);
-    display:inline-flex;align-items:center;justify-content:center;
-    font-size:15px;font-weight:600;line-height:1;
+  section{margin-bottom:26px;scroll-margin-top:14px}
+  section > h2{
+    font-family:Caprasimo,"Iowan Old Style",Georgia,serif;
+    font-size:22px;font-weight:400;margin:0 0 12px;
   }
 
-  .l{display:flex;justify-content:space-between;gap:14px;padding:4px 0;font-size:17px}
-  .l .q{color:var(--encre-doux)}
-  .l.remise span:last-child{color:var(--sauge)}
-  .l.somme{
-    border-top:1px solid var(--trait);margin-top:9px;padding-top:11px;
-    font-weight:600;font-size:20px;
+  /* Chaque question est un <details> : replié par défaut, la page se
+     parcourt d'un coup d'œil et ne s'ouvre que sur ce qu'on cherche. */
+  details{
+    background:var(--papier);border:1px solid var(--trait);
+    border-radius:var(--r);margin-bottom:9px;overflow:hidden;
   }
-  .info{font-size:16.5px;color:var(--encre-doux);margin:3px 0}
-  .info b{color:var(--encre);font-weight:600}
-
-  .paiement img{
-    display:block;width:190px;max-width:100%;height:auto;margin-top:12px;
-    border:1px solid var(--trait);border-radius:var(--r);background:#fff;
+  summary{
+    padding:15px 17px;cursor:pointer;font-weight:600;font-size:17.5px;
+    list-style:none;display:flex;gap:12px;align-items:flex-start;
   }
-  .paiement a.sauver{display:inline-block;margin-top:8px;font-size:15px;color:var(--accent)}
-
-  .canaux{display:flex;flex-direction:column;gap:9px;margin-top:4px}
-  .canal{
-    display:flex;align-items:center;gap:11px;padding:13px 15px;
-    border:1px solid var(--trait);border-radius:var(--r);
-    background:#fff;text-decoration:none;color:var(--encre);font-size:17px;
+  summary::-webkit-details-marker{display:none}
+  summary::after{
+    content:"+";margin-left:auto;color:var(--accent);
+    font-size:21px;line-height:1;flex-shrink:0;
   }
-  .canal.principal{background:var(--encre);color:var(--creme);border-color:var(--encre)}
-  .canal .fleche{margin-left:auto;opacity:.5}
-  .copier{
-    width:100%;padding:13px;border:1px dashed var(--trait);background:transparent;
-    border-radius:var(--r);font:inherit;font-size:16.5px;color:var(--accent);
-    cursor:pointer;margin-top:9px;
+  details[open] summary::after{content:"–"}
+  details[open] summary{border-bottom:1px solid var(--trait)}
+  .corps{padding:14px 17px 17px;font-size:17px;color:var(--encre-doux)}
+  .corps p{margin:0 0 11px}
+  .corps p:last-child{margin-bottom:0}
+  .corps b{color:var(--encre)}
+  .corps ul{margin:0 0 11px;padding-left:20px}
+  .corps li{margin-bottom:6px}
+  .corps a{color:var(--accent)}
+
+  /* Encadré pour les points où une erreur coûte cher au client. */
+  .attention{
+    border-left:3px solid var(--accent);background:#fffdf8;
+    padding:11px 14px;border-radius:0 var(--r) var(--r) 0;margin:0 0 11px;
   }
-  .invite .sous{margin-top:12px;font-size:14.5px;color:var(--encre-doux);line-height:1.5}
-  .bandeau-whatsapp{
-    display:flex;align-items:center;gap:10px;
-    margin-top:22px;padding:12px 15px;
-    background:#e9f6ee;border:1px solid #cfe9d9;border-radius:var(--r);
-    color:#1f6e42;text-decoration:none;font-size:15.5px;
+
+  .pied{
+    background:var(--papier);border:1px solid var(--trait);
+    border-radius:var(--r);padding:20px;text-align:center;margin-top:30px;
   }
-  .bandeau-whatsapp .fleche{margin-left:auto;opacity:.6}
-  .retour{display:block;text-align:center;margin-top:26px;color:var(--accent);font-size:17px}
-  .message{padding:60px 20px;text-align:center;color:var(--encre-doux)}
-  .message a{color:var(--accent)}
-
-  /* ---------- Scènes d'attente ----------
-     Une scène par page, plutôt qu'un même dessin partout : le client passe
-     de l'une à l'autre et l'attente se remarque moins. Toutes partagent le
-     cadre — même viewBox, même anneau, mêmes couleurs — pour rester d'une
-     seule famille.
-
-     Cycle court à dessein : les pages se chargent en 3 à 7 secondes sur un
-     téléphone. Un cycle plus long ne montrerait que le début de la scène à
-     ceux qui arrivent sur les pages rapides.
-
-     Tout est préfixé et scopé sous .pousse : ces SVG vivent à l'intérieur
-     de la page, leurs classes ne doivent rien heurter. */
-  .pousse{--po-duree:3.4s;text-align:center;padding:34px 20px;color:var(--encre-doux)}
-  .pousse svg{width:190px;height:190px;display:block;margin:0 auto 4px}
-  .pousse p{margin:0;font-size:16.5px;letter-spacing:.03em}
-  /* Rotation continue, sans début ni fin : l'anneau dit « ça travaille », il
-     ne prétend pas mesurer une progression qu'on ne connaît pas. */
-  .pousse .po-anneau{transform-origin:160px 160px;animation:po-tourner 1.9s linear infinite}
-  @keyframes po-tourner{to{transform:rotate(360deg)}}
-
-  /* --- Abonnement : la feuille se détache et découvre le croissant. --- */
-  .pousse .sc-feuille{transform-origin:92px 122px;
-    animation:sc-feuille var(--po-duree) cubic-bezier(.5,0,.75,1) infinite}
-  .pousse .sc-croissant{transform-origin:160px 160px;
-    animation:sc-decouvrir var(--po-duree) cubic-bezier(.3,1.3,.5,1) infinite}
-  @keyframes sc-feuille{
-    0%,26%  {transform:rotate(0) translateY(0);opacity:1}
-    46%     {transform:rotate(-24deg) translateY(4px);opacity:1}
-    76%     {transform:rotate(-70deg) translateY(34px);opacity:0}
-    77%,100%{transform:rotate(0) translateY(0);opacity:0}
-    /* La feuille réapparaît d'un coup, hors champ du regard : le cycle
-       redémarre sans qu'on voie la feuille remonter à l'envers. */
-    99.5%   {opacity:0}}
-  @keyframes sc-decouvrir{
-    0%,40%  {opacity:0;transform:scale(.7)}
-    62%     {opacity:1;transform:scale(1)}
-    88%     {opacity:1;transform:scale(1)}
-    96%,100%{opacity:0;transform:scale(.7)}}
-  @media (prefers-reduced-motion: reduce){
-    .pousse .sc-feuille,.pousse .sc-croissant,.pousse .po-anneau{animation:none}
-    .pousse .sc-feuille{opacity:0}
-    .pousse .sc-croissant{opacity:1}}
+  .pied h2{font-size:18px;margin:0 0 8px}
+  .pied p{margin:0 0 14px;font-size:16.5px;color:var(--encre-doux)}
+  .retour{display:block;text-align:center;margin-top:24px;color:var(--accent);font-size:17px}
 </style>
 </head>
 <body>
 
 <header>
-  <div class="coche">&#10003;</div>
-  <h1>Bread plan set</h1>
-  <p class="ref" id="ref"></p>
+  <h1>Questions &amp; answers</h1>
+  <p>Ordering, collection, delivery, bread plans and store credit.</p>
 </header>
 
-<main id="page">
-  <div class="pousse" role="status" aria-live="polite"><svg viewBox="0 0 320 320" aria-hidden="true"><circle cx="160" cy="160" r="132" fill="none" stroke="#F4ECE1" stroke-width="2.5"/><circle class="po-anneau" cx="160" cy="160" r="132" fill="none" stroke="#D97706" stroke-width="3" stroke-linecap="round" opacity=".8" stroke-dasharray="70 760"/>
-<g class="sc-socle">
-<rect x="88" y="118" width="144" height="104" rx="8" fill="#FBF0DF" stroke="#D6C29E" stroke-width="3"/>
-<g transform="translate(0,85) scale(0.62) translate(98,10)"><g class="sc-croissant">
-<path d="M88 186 C81 168 88 148 102 139 C97 124 108 111 124 111
- C131 100 148 95 160 102 C172 95 189 100 196 111 C212 111 223 124 218 139
- C232 148 239 168 232 186 C216 190 208 175 197 162 C182 145 173 139 160 139
- C147 139 138 145 123 162 C112 175 104 190 88 186 Z"
- fill="#e0954f" stroke="#78350F" stroke-width="4" stroke-linejoin="round"/>
-<g fill="none" stroke="#a85a26" stroke-width="2.6" opacity=".65" stroke-linecap="round">
-<path d="M106 172 C110 158 114 148 121 141"/><path d="M133 152 C137 138 142 128 150 122"/>
-<path d="M187 152 C183 138 178 128 170 122"/><path d="M214 172 C210 158 206 148 199 141"/></g>
-<path d="M104 164 C110 140 128 116 152 110" fill="none" stroke="#FBF0DF"
- stroke-width="3.4" opacity=".42" stroke-linecap="round"/></g></g></g>
-<g class="sc-feuille">
-<rect x="88" y="118" width="144" height="104" rx="8" fill="#fff" stroke="#D6C29E" stroke-width="3"/>
-<g fill="#D6C29E">
-<rect x="104" y="140" width="18" height="10" rx="3"/><rect x="132" y="140" width="18" height="10" rx="3"/>
-<rect x="160" y="140" width="18" height="10" rx="3"/><rect x="188" y="140" width="18" height="10" rx="3"/>
-<rect x="104" y="160" width="18" height="10" rx="3"/><rect x="132" y="160" width="18" height="10" rx="3"/>
-<rect x="188" y="160" width="18" height="10" rx="3"/>
-<rect x="104" y="180" width="18" height="10" rx="3"/><rect x="132" y="180" width="18" height="10" rx="3"/>
-<rect x="160" y="180" width="18" height="10" rx="3"/><rect x="188" y="180" width="18" height="10" rx="3"/></g>
-<rect x="158" y="158" width="22" height="14" rx="4" fill="#c67139"/></g>
-<rect x="88" y="104" width="144" height="26" rx="8" fill="#c67139" stroke="#78350F" stroke-width="3"/>
-<g stroke="#78350F" stroke-width="4" fill="none" stroke-linecap="round">
-<path d="M124 100 v-14"/><path d="M196 100 v-14"/></g>
-</svg><p>Turning the page…</p></div>
+<main>
+
+  <nav class="sommaire">
+    <p>Jump to</p>
+    <ul>
+      <li><a href="#commander">Ordering</a></li>
+      <li><a href="#paiement">Paying</a></li>
+      <li><a href="#recevoir">Collection &amp; delivery</a></li>
+      <li><a href="#compte">Your account</a></li>
+      <li><a href="#credit">Store credit</a></li>
+      <li><a href="#abonnement">Bread plans</a></li>
+      <li><a href="#application">On your phone</a></li>
+      <li><a href="#produits">About the bread</a></li>
+    </ul>
+  </nav>
+
+  <!-- ==================== COMMANDER ==================== -->
+  <section id="commander">
+    <h2>Ordering</h2>
+
+    <details>
+      <summary>How do I place an order?</summary>
+      <div class="corps">
+        <p>Pick what you want on the menu, choose how you'd like to receive it,
+        pick a date, and send the order. You'll get a confirmation page with a
+        reference number and everything you need to pay.</p>
+        <p>I bake to order, so orders are placed ahead of time — you're
+        booking a date, not buying from a shelf.</p>
+      </div>
+    </details>
+
+    <details>
+      <summary>How far ahead should I order?</summary>
+      <div class="corps">
+        <p>The dates you can pick are shown when you check out. Only the days
+        I bake and deliver appear, and dates that are too close are not
+        offered — everything is made fresh, so I need time.</p>
+        <p>If the day you want isn't there, it's either not a baking day or
+        it's already too late for that date. Message me if you're stuck.</p>
+      </div>
+    </details>
+
+    <details>
+      <summary>Do I need an account to order?</summary>
+      <div class="corps">
+        <p>No. You can order as a guest with just your name and mobile number.</p>
+        <p>An account is needed for three things: <b>store credit</b>,
+        <b>promo codes</b> and <b>bread plans</b>. It also keeps your order
+        history and your receipts in one place.</p>
+      </div>
+    </details>
+
+    <details>
+      <summary>Can I change or cancel my order?</summary>
+      <div class="corps">
+        <p>Yes — message me. Orders can't be changed from the website once they're
+        sent, but I can still change things on my side as long as baking hasn't
+        started. Quoting your reference number helps me find you quickly.</p>
+        <p>Once your order shows as <b>Baking</b>, the dough is already
+        mixed and I can't undo it.</p>
+        <p>If you've already paid and the order is cancelled, the amount goes
+        back to you as <b>store credit</b> on your account, ready to spend on
+        your next order.</p>
+      </div>
+    </details>
+
+    <details>
+      <summary>What do the statuses on my order mean?</summary>
+      <div class="corps">
+        <ul>
+          <li><b>Received</b> — I have your order but haven't confirmed it yet.</li>
+          <li><b>Confirmed</b> — your date is booked and I'm planning for it.</li>
+          <li><b>Baking</b> — it's in production.</li>
+          <li><b>Ready</b> — waiting for you, or on its way.</li>
+          <li><b>Collected</b> — done.</li>
+        </ul>
+        <p>You can follow all of this in <a href="compte.html">My account</a>.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ==================== PAIEMENT ==================== -->
+  <section id="paiement">
+    <h2>Paying</h2>
+
+    <details>
+      <summary>How do I pay?</summary>
+      <div class="corps">
+        <p>The payment options are shown at checkout and again on your
+        confirmation page, with the QR codes where I have them. Depending on
+        what's available you'll see GCash, Maya, bank transfer, and cash.</p>
+        <p>Cash means you pay when you collect your order, or when I bring it
+        to you myself.</p>
+        <div class="attention">
+          <p>Cash isn't possible when your order travels by courier — riders
+          don't collect payment for me. If you're having your order delivered
+          that way, please settle it before the bake.</p>
+        </div>
+        <p>If nobody has the right change, the difference goes onto your
+        account as store credit and comes off your next order — I don't leave
+        it unsettled.</p>
+      </div>
+    </details>
+
+    <details>
+      <summary>Do I have to pay straight away?</summary>
+      <div class="corps">
+        <p>Sending your order doesn't take any money — I confirm it first.
+        But paying once it's confirmed, before I bake, really is better for
+        everyone. Nobody enjoys chasing a payment, and nobody enjoys being
+        chased.</p>
+        <p>And you're not taking a risk by paying early: if anything goes wrong
+        with your order, that's on me. Missing item, wrong price, an order I
+        can't fulfil — you get it put right, or the amount back as store credit
+        on your account.</p>
+        <p>Please send your proof of payment through the channel shown on your
+        confirmation page. It's how I match your payment to your order.</p>
+        <p>You don't have to type anything out: tapping WhatsApp, Viber or
+        Messenger on that page opens a message already filled in with your
+        order — items, total, date and reference. Just add your screenshot and
+        send. There's a copy button too, if you'd rather paste it somewhere
+        else.</p>
+      </div>
+    </details>
+
+    <details>
+      <summary>I have a promo code — where do I put it?</summary>
+      <div class="corps">
+        <p>There's a field for it at checkout, and you need to be signed in to
+        use one. Each code has its own rules — which items it covers, how long
+        it runs, and how many times one customer can use it.</p>
+        <p>A code and a group rate don't stack: you automatically get whichever
+        is better for you.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ==================== RECEVOIR ==================== -->
+  <section id="recevoir">
+    <h2>Collection &amp; delivery</h2>
+
+    <details>
+      <summary>Where and when do I collect?</summary>
+      <div class="corps">
+        <p>Each collection point has its own address and hours, shown when you
+        pick it at checkout. The same details appear on your confirmation page,
+        on your receipt, and in <a href="compte.html">My account</a> — so you
+        can always find them again on the day.</p>
+      </div>
+    </details>
+
+    <details>
+      <summary>How does delivery work?</summary>
+      <div class="corps">
+        <p>Deliveries go out by courier on the days shown for your area. The
+        fee, if there is one, appears before you confirm. Some deliveries I
+        bring myself — you'll know because it will have been agreed beforehand.</p>
+        <p>When a courier brings your order, it needs to be paid before the
+        bake: riders don't collect payment for me.</p>
+        <p>Please give the clearest address you can — building or house number,
+        unit, street, barangay, and any landmark that helps. Riders here go by
+        landmarks more than by street numbers, and a vague address is the main
+        reason an order arrives late.</p>
+      </div>
+    </details>
+
+    <details>
+      <summary>Why is the delivery fee so high?</summary>
+      <div class="corps">
+        <p>It can look steep, and I understand why. I should say plainly that I
+        make nothing on it — every peso of it goes to getting your order to
+        you.</p>
+        <p>The reason it costs what it costs is the tip. Riders here decide
+        which bookings to accept, and on a busy day a booking without a good
+        tip simply sits there unaccepted. Paying it properly is the only way to
+        have your bread arrive when it's supposed to, rather than three hours
+        later or not at all.</p>
+        <p>So if collecting suits you, please do — it's cheaper for you, and it
+        saves me a booking to chase. On the days I'm out driving deliveries
+        myself, that genuinely helps.</p>
+      </div>
+    </details>
+
+    <details>
+      <summary>Can you deliver somewhere else, just this once?</summary>
+      <div class="corps">
+        <p>Yes. There's a box at checkout to send this one order to a different
+        address, and it won't change the address saved on your account.</p>
+        <p>Do use that box rather than putting an address in the notes — notes
+        aren't part of the delivery instructions, and an address written there
+        may be missed entirely.</p>
+      </div>
+    </details>
+
+    <details>
+      <summary>Can I choose delivery but write my address in the notes to avoid the fee?</summary>
+      <div class="corps">
+        <div class="attention">
+          <p>Please don't. If you pick a collection option and then ask for
+          delivery, I'll simply charge the delivery fee for your area, or ask
+          you to come and collect.</p>
+        </div>
+        <p>The fee isn't a margin — I make nothing on it. It covers the rider
+        and the tip it takes to get a booking accepted at all. If it feels like
+        a lot, collecting is always the cheaper option, and you're welcome to
+        it.</p>
+      </div>
+    </details>
+
+    <details>
+      <summary>Nobody's home when it arrives. What happens?</summary>
+      <div class="corps">
+        <p>The rider will call the number on the order. Please keep your phone
+        on around the delivery window, and give me a number you actually answer.</p>
+        <p>If I can't reach you, the bread comes back to me, and I'll get in touch to sort it out — but nobody wins that one.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ==================== COMPTE ==================== -->
+  <section id="compte">
+    <h2>Your account</h2>
+
+    <details>
+      <summary>How do I create an account?</summary>
+      <div class="corps">
+        <p>Go to <a href="compte.html">My account</a> and sign in. It takes a
+        few seconds and there's no form to fill in.</p>
+        <div class="attention">
+          <p>Please add your <b>mobile number</b> when you're asked for it. It's
+          what links your account to the orders you've already placed, to your
+          store credit and to your prices. Without it, your account will look
+          empty even though your orders are there.</p>
+        </div>
+      </div>
+    </details>
+
+    <details>
+      <summary>I signed in but my orders aren't there.</summary>
+      <div class="corps">
+        <p>That usually means one of two things: your account doesn't have your
+        mobile number yet, or you signed in with a different email from the one
+        on your earlier orders.</p>
+        <p>Add your mobile number in <a href="compte.html">My account</a>, and
+        message me if it still looks empty — I can link them up by hand.</p>
+      </div>
+    </details>
+
+    <details>
+      <summary>Can I get a receipt?</summary>
+      <div class="corps">
+        <p>Yes. Open the order in <a href="compte.html">My account</a> and
+        download the receipt as a PDF.</p>
+        <p>The PDF is a snapshot taken at the moment you download it. If I change something on your order afterwards, download it again.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ==================== CREDIT ==================== -->
+  <section id="credit">
+    <h2>Store credit</h2>
+
+    <details>
+      <summary>What is store credit?</summary>
+      <div class="corps">
+        <p>It's a balance on your account that you can spend on any order. It
+        comes from refunds, goodwill, or a top-up you've arranged with me.</p>
+        <p>Your balance and every movement on it are visible in
+        <a href="compte.html">My account</a>.</p>
+      </div>
+    </details>
+
+    <details>
+      <summary>Where does store credit come from?</summary>
+      <div class="corps">
+        <p>From me putting things right. If an item was missing from your
+        order, if you were charged the wrong price, or if you paid for an order
+        that then got cancelled, I put the amount back on your account as
+        store credit rather than sending money back and forth.</p>
+        <p>It also covers the everyday one: paying cash and nobody having the
+        right change. Rather than hunting for coins on the doorstep, the
+        difference goes onto your account and comes off your next order.</p>
+        <p>You'll see it appear in <a href="compte.html">My account</a>, with
+        the reason next to it. Tell me if something doesn't look right.</p>
+      </div>
+    </details>
+
+    <details>
+      <summary>How do I use it?</summary>
+      <div class="corps">
+        <p>Tick the box at checkout. I apply as much of your balance as the
+        order allows, and you'll see exactly how much was applied and how much
+        is left to pay.</p>
+        <p>It isn't a payment method in itself — it's a discount on the total.
+        You pay whatever remains the usual way.</p>
+      </div>
+    </details>
+
+    <details>
+      <summary>Why can't I use all of my credit?</summary>
+      <div class="corps">
+        <p>Two reasons. If you have an order waiting to be paid that already
+        uses some of your credit, that part is held so it can't be spent twice
+        — the checkout tells you when this happens.</p>
+        <p>And a very small balance isn't offered, because it can't buy
+        anything on its own. It stays on your account for next time.</p>
+      </div>
+    </details>
+
+    <details>
+      <summary>Does store credit expire?</summary>
+      <div class="corps">
+        <p>No. It stays on your account until you spend it.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ==================== ABONNEMENT ==================== -->
+  <section id="abonnement">
+    <h2>Bread plans</h2>
+
+    <details>
+      <summary>What is a bread plan?</summary>
+      <div class="corps">
+        <p>You choose what you want in each delivery, how often you want it —
+        weekly or every two weeks — and how many deliveries. I then bake and
+        bring the same order on each date, without you having to think about it
+        again.</p>
+        <p>Delivery is charged at the subscriber rate, which is lower than a
+        one-off order.</p>
+      </div>
+    </details>
+
+    <details>
+      <summary>How do I pay for it?</summary>
+      <div class="corps">
+        <p>A plan is paid up front, in one go, for all its deliveries. If you
+        have store credit you can put it towards the plan, and pay the rest the
+        usual way.</p>
+        <p>You'll see the total, the credit applied, and what's left to pay
+        before you confirm anything.</p>
+      </div>
+    </details>
+
+    <details>
+      <summary>I'm away that week. Can I skip a delivery?</summary>
+      <div class="corps">
+        <p>Yes. Open your plan in <a href="compte.html">My account</a> and
+        postpone the delivery you'll miss — it's added back at the end, so you
+        still get everything you paid for.</p>
+        <p>Two things to know: you can postpone <b>twice</b> per plan, and you need to do it at least <b>24 hours</b> before the delivery. After that
+        the dough is already made.</p>
+        <p>If I'm the one who has to move a date — a holiday, a closure —
+        that doesn't use up your two.</p>
+      </div>
+    </details>
+
+    <details>
+      <summary>Can I change what's in my plan, or stop it?</summary>
+      <div class="corps">
+        <p>Message me. The items and prices in a plan are fixed once it starts,
+        but I'd rather adjust it with you than have you stuck with something
+        that no longer suits.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ==================== APPLICATION ==================== -->
+  <section id="application">
+    <h2>Adding the bakery to your phone</h2>
+
+    <details>
+      <summary>Can I get this as an app?</summary>
+      <div class="corps">
+        <p>There's nothing to download and no app store involved — you add the
+        website to your home screen, and it opens like an app: full screen, its
+        own icon, no address bar.</p>
+        <p>It's also quicker on a bad signal, since the pages are kept on your
+        phone.</p>
+      </div>
+    </details>
+
+    <details>
+      <summary>On an iPhone or iPad</summary>
+      <div class="corps">
+        <p>It has to be done in <b>Safari</b> — Chrome on an iPhone can't do
+        it, which catches people out.</p>
+        <ul>
+          <li>Open the bakery in Safari.</li>
+          <li>Tap the <b>Share</b> button — the square with an arrow, at the
+          bottom of the screen.</li>
+          <li>Scroll down the list and tap <b>Add to Home Screen</b>.</li>
+          <li>Tap <b>Add</b>. The icon appears with your other apps.</li>
+        </ul>
+      </div>
+    </details>
+
+    <details>
+      <summary>On an Android phone</summary>
+      <div class="corps">
+        <ul>
+          <li>Open the bakery in Chrome.</li>
+          <li>Tap the <b>three dots</b> at the top right.</li>
+          <li>Tap <b>Install app</b>, or <b>Add to Home screen</b>.</li>
+        </ul>
+        <p>Chrome sometimes offers it by itself, with a banner at the bottom of
+        the screen. Either way works.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ==================== PRODUITS ==================== -->
+  <section id="produits">
+    <h2>About the bread</h2>
+
+    <details>
+      <summary>Why isn't everything available every day?</summary>
+      <div class="corps">
+        <p>One baker, one oven — and baking bread is only part of the week.
+        There's the viennoiserie to shape and freeze, the shopping to do, the side jobs, and days off like anyone else.</p>
+        <p>So each product has its baking days, and what you can order depends
+        on the day you pick.</p>
+      </div>
+    </details>
+
+    <details>
+      <summary>When can I get gluten-free bread?</summary>
+      <div class="corps">
+        <p>Gluten-free is baked on Fridays and available over the weekend —
+        Saturday and Sunday.</p>
+        <div class="attention">
+          <p>It's baked in the same workshop as my wheat breads, on a separate
+          day and with separate equipment. That suits people who choose to eat
+          gluten-free, but it isn't a gluten-free facility, so I can't rule out
+          traces.</p>
+        </div>
+      </div>
+    </details>
+
+    <details>
+      <summary>Frozen items — how do those work?</summary>
+      <div class="corps">
+        <p>A few items are sold frozen, and they need to reach you still
+        frozen. That rules out an ordinary courier: a bag in traffic for an
+        hour is a lost product, and there's no way for me to check.</p>
+        <p>So frozen items travel in my own cooler, which means I bring them
+        myself. In practice:</p>
+        <ul>
+          <li><b>Collection</b> is always fine.</li>
+          <li><b>Delivery</b> works in the areas I cover myself —
+          <b>San Lorenzo, Pacific Plaza, Dasmariñas and Forbes</b>.</li>
+          <li>Anywhere else, message me and I'll find a date that works.</li>
+          <li><b>No frozen delivery on Wednesdays.</b></li>
+        </ul>
+        <p>Pizza dough is the exception — it's dense enough to travel like
+        anything else.</p>
+        <p>Frozen items come with instructions: once your order is placed, the
+        confirmation page has a short PDF to download for each item that needs
+        one — how to keep it, how to thaw it, and how to bake it off. Worth
+        saving to your phone.</p>
+        <p>Don't worry, it's easy. If I can manage it, so can you.</p>
+      </div>
+    </details>
+
+    <details>
+      <summary>How should I keep my bread?</summary>
+      <div class="corps">
+        <p>Real bread has no preservatives, so it doesn't behave like
+        supermarket bread. Keep it in a paper bag or a cloth, cut side down on
+        a board — not in plastic, which softens the crust, and not in the
+        fridge, which makes it stale faster than the counter does.</p>
+        <p>For anything beyond two or three days, slice it and freeze it. It
+        toasts straight from the freezer.</p>
+      </div>
+    </details>
+  </section>
+
+  <div class="pied">
+    <h2>Still stuck?</h2>
+    <p>Message me — I'd rather sort it out than have you guess.</p>
+    <p><a href="./" style="color:var(--accent)">Back to the menu</a> ·
+       <a href="compte.html" style="color:var(--accent)">My account</a></p>
+  </div>
+
 </main>
 
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getFirestore, doc, getDoc }
-  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-
-const firebaseConfig = {
-  apiKey: "AIzaSyDuq8KS8M_Z8U7BlSp6MvE-6Y9OYYaDujE",
-  authDomain: "bakertools-ae124.firebaseapp.com",
-  projectId: "bakertools-ae124",
-  storageBucket: "bakertools-ae124.firebasestorage.app",
-  messagingSenderId: "978584667113",
-  appId: "1:978584667113:web:868cc89788aff27717c178"
-};
-
-const db = getFirestore(initializeApp(firebaseConfig));
-const $ = (id) => document.getElementById(id);
-const peso = (n) => "₱" + Number(n).toLocaleString("en-PH");
-const echapper = (t) => String(t).replace(/[&<>"]/g, c =>
-  ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
-
-/* Ce que la page a besoin de connaître d'un abonnement, posé par
-   abonnement.html juste après l'écriture Firestore. Contrairement à la
-   confirmation de commande, tout est déjà dans ce seul objet — un
-   abonnement n'a pas de fiche produit annexe à relire pour des notices,
-   son panier est celui du plan et rien d'autre. */
-let plan = null, params = {};
-
-(async function () {
-  try { plan = JSON.parse(sessionStorage.getItem("abonnement") || "null"); } catch {}
-
-  if (!plan) {
-    $("page").innerHTML =
-      '<div class="message">We could not find your bread plan on this device.<br><br>' +
-      '<a href="./">Back to the menu</a></div>';
-    return;
-  }
-
-  $("ref").textContent = "Reference " + plan.id;
-
-  try {
-    const p = await getDoc(doc(db, "parametres", "boutique"));
-    params = p.exists() ? p.data() : {};
-  } catch (e) { console.error(e); }
-
-  afficher();
-})();
-
-function afficher() {
-  const p = plan;
-
-  /* --- Récapitulatif --- */
-  let recap = (p.panier || []).map(l =>
-    `<div class="l"><span><span class="q">${l.qte} ×</span> ${echapper(l.nom)}</span>
-     <span>${peso(l.qte * l.prix)}</span></div>`).join("");
-
-  recap += `<div class="l"><span>Delivery${p.frais_livraison > 0 ? " (subscriber rate)" : ""}</span>
-            <span>${p.frais_livraison > 0 ? peso(p.frais_livraison) : "free"}</span></div>`;
-  recap += `<div class="l"><span>Per delivery</span><span>${peso(p.par_livraison)}</span></div>`;
-
-  if (p.remise_code > 0) {
-    recap += `<div class="l remise"><span>${echapper(p.code || "Promo code")}${
-      p.livraisons_couvertes > 1 ? " × " + p.livraisons_couvertes + " deliveries" : " (first delivery)"}</span>
-      <span>−${peso(p.remise_code * p.livraisons_couvertes)}</span></div>`;
-  }
-
-  recap += `<div class="l somme"><span>${p.nombre} deliveries</span><span>${peso(p.total)}</span></div>`;
-
-  /* Crédit appliqué, puis ce qu'il reste réellement à régler. Sans ces deux
-     lignes, le client enverrait le total alors qu'une partie est déjà payée
-     par son solde. */
-  const credit = Number(p.credit_utilise) || 0;
-  const reste  = credit > 0
-    ? Math.max(0, Number(p.reste_a_payer ?? (p.total - credit)))
-    : Number(p.total) || 0;
-
-  if (credit > 0) {
-    recap += `<div class="l remise"><span>Store credit</span>
-              <span>−${peso(credit)}</span></div>`;
-    recap += `<div class="l somme"><span>Left to pay</span><span>${peso(reste)}</span></div>`;
-  }
-
-  /* --- Étapes --- */
-  let etape = 0;
-  const num = () => `<span class="num">${++etape}</span>`;
-
-  /* --- Paiement ---
-     Même bloc que la confirmation de commande : QR et instructions
-     réaffichés ici, plutôt que de renvoyer le client vers un écran
-     déjà fermé. En crédit, rien n'est débité avant la première
-     livraison — pas de moyen de paiement à montrer. */
-  let blocPaiement = "";
-  if (reste <= 0) {
-    blocPaiement = `<div class="bloc"><h2 class="etape">${num()}Payment</h2>
-      <p class="info">Your plan is fully covered by your store credit —
-      nothing left to pay. ${peso(credit)} will be taken from your balance
-      when we confirm your plan.</p></div>`;
-  } else {
-    const pay = params.paiement || {};
-    const g = pay.gcash  || { nom: pay.gcash_nom, numero: pay.gcash_numero };
-    const m = pay.maya   || {};
-    const b = pay.banque || { nom: pay.banque_nom, titulaire: pay.banque_titulaire,
-                              numero: pay.banque_numero };
-    const choix = [];
-    if (g.numero || g.qr) choix.push({ titre: "GCash", qr: g.qr,
-      detail: [g.numero, g.nom].filter(Boolean).join(" — ") });
-    if (m.numero || m.qr) choix.push({ titre: "Maya", qr: m.qr,
-      detail: [m.numero, m.nom].filter(Boolean).join(" — ") });
-    if (b.numero || b.qr) choix.push({ titre: "Bank transfer", qr: b.qr,
-      detail: [b.nom, b.titulaire, b.numero].filter(Boolean).join(" — ") });
-
-    if (choix.length) {
-      blocPaiement = `<div class="bloc paiement">
-        <h2 class="etape">${num()}Payment</h2>
-        <p class="info">Amount: <b>${peso(reste)}</b>${
-          credit > 0 ? ` <span class="q">(${peso(p.total)} − ${peso(credit)} credit)</span>` : ""}</p>
-        ${choix.map(c => `<p class="info" style="margin-top:10px"><b>${echapper(c.titre)}</b>
-          ${c.detail ? " — " + echapper(c.detail) : ""}</p>
-          ${c.qr ? `<img src="${echapper(c.qr)}" alt="${echapper(c.titre)} QR code">
-            <a class="sauver" href="${echapper(c.qr)}" download>Save QR code</a>` : ""}`).join("")}
-        ${pay.instructions ? `<p class="info" style="margin-top:12px">${echapper(pay.instructions)}</p>` : ""}
-      </div>`;
-    } else {
-      blocPaiement = `<div class="bloc"><h2 class="etape">${num()}Payment</h2>
-        <p class="info">Amount: <b>${peso(reste)}</b></p>
-        <p class="info">We'll contact you to arrange the payment.</p></div>`;
-    }
-  }
-
-  /* --- Canaux --- */
-  const texte = messagePlan(p);
-  const canaux = [];
-  if (params.whatsapp)
-    canaux.push({ cle: "WhatsApp", url: "https://wa.me/" + params.whatsapp +
-      "?text=" + encodeURIComponent(texte), principal: true });
-  if (params.viber)
-    canaux.push({ cle: "Viber", url: "viber://chat?number=%2B" + params.viber });
-  if (params.messenger)
-    canaux.push({ cle: "Messenger", url: "https://m.me/" + params.messenger });
-  if (params.email)
-    canaux.push({ cle: "Email", url: "mailto:" + params.email +
-      "?subject=" + encodeURIComponent("Bread plan " + p.id) +
-      "&body=" + encodeURIComponent(texte) });
-
-  $("page").innerHTML = `
-    <div class="bloc">
-      <h2>Your bread plan</h2>
-      ${recap}
-    </div>
-
-    <div class="bloc">
-      <h2>Delivery</h2>
-      <p class="info"><b>${echapper(p.option?.nom || "")}</b></p>
-      ${p.option?.lieu ? `<p class="info">${echapper(p.option.lieu)}</p>` : ""}
-      ${p.adresse ? `<p class="info">${echapper(p.adresse)}</p>` : ""}
-      <p class="info">First delivery: ${echapper(p.dates[0])}</p>
-      <p class="info">Then every ${p.cadence === "quinzaine" ? "two weeks" : "week"},
-        ${p.nombre} deliveries in total.</p>
-    </div>
-
-    ${blocPaiement}
-
-    <div class="bloc">
-      <h2 class="etape">${num()}Send us your plan details</h2>
-      <p class="info" style="margin-bottom:12px">We have your plan. Message us to confirm it${
-        reste > 0 ? " and settle payment" : ""}.</p>
-      ${canaux.length ? `
-      <div class="canaux">
-        ${canaux.map(x => `<a class="canal ${x.principal ? "principal" : ""}"
-          href="${x.url}">${x.cle}<span class="fleche">&#8250;</span></a>`).join("")}
-      </div>` : ""}
-      <button class="copier" id="copier">Copy plan details</button>
-    </div>
-
-    <div class="bloc" style="text-align:center">
-      <p>
-        <a href="compte.html" style="color:var(--accent)">See my account</a> ·
-        <a href="faq.html" style="color:var(--accent)">What's the FAQ?</a> ·
-        <a href="./" style="color:var(--accent)">Back to the menu</a>
-      </p>
-    </div>
-
-    <a class="bandeau-whatsapp"
-       href="https://chat.whatsapp.com/DjFlCWcoaZBIXZcXugACLy?mode=ems_copy_t"
-       target="_blank" rel="noopener">
-      Stay updated — join our WhatsApp group<span class="fleche">&#8250;</span>
-    </a>
-  `;
-
-  $("copier").onclick = async () => {
-    try {
-      await navigator.clipboard.writeText(texte);
-      $("copier").textContent = "Copied";
-    } catch {
-      $("copier").textContent = "Press and hold to copy: " + p.id;
-    }
-  };
-}
-
-function messagePlan(p) {
-  return [
-    `Bread plan ${p.id}`,
-    "",
-    ...(p.panier || []).map(l => `${l.qte} × ${l.nom} per delivery`),
-    "",
-    `${p.nombre} deliveries × ${peso(p.par_livraison)}`,
-    p.remise_code > 0 ? `${p.code}: −${peso(p.remise_code * p.livraisons_couvertes)}` : null,
-    `Total: ${peso(p.total)}`,
-    Number(p.credit_utilise) > 0 ? `Store credit: −${peso(p.credit_utilise)}` : null,
-    Number(p.credit_utilise) > 0
-      ? `Left to pay: ${peso(Math.max(0, Number(p.reste_a_payer ?? (p.total - p.credit_utilise))))}`
-      : null,
-    "",
-    `Name: ${p.nom}`,
-    `Phone: ${p.tel}`,
-    `Option: ${p.option?.nom || ""}`,
-    p.adresse ? `Address: ${p.adresse}` : null,
-    `First delivery: ${p.dates[0]}`,
-    `Payment: ${Number(p.credit_utilise) > 0
-      ? (Number(p.reste_a_payer) > 0 ? "Store credit + balance in advance" : "Store credit")
-      : "Paid in advance"}`
-  ].filter(Boolean).join("\n");
-}
-</script>
 
 <!-- Service worker : sans cet enregistrement, sw.js n'est jamais activé.
      Conséquences invisibles mais réelles — pas de consultation hors ligne, et
