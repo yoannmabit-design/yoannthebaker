@@ -478,8 +478,8 @@ import { getAuth, onAuthStateChanged }
 import { qrSvg } from "./qr.js";
 import { normaliserCode, lireCodeMemorise, memoriserCode, oublierCode,
          chargerCode, verifierCode, calculerPrix, prixUnitaire, libelleCode,
-         RAYONS, rayonDe, libellePortee }
-  from "./promo.js?v=2";
+         RAYONS, rayonDe, libellePortee, lignesEligiblesGroupe }
+  from "./promo.js?v=3";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDuq8KS8M_Z8U7BlSp6MvE-6Y9OYYaDujE",
@@ -505,6 +505,14 @@ let produits = [];
 let panier   = {};   // { idProduit: quantité }
 let ferme    = false;   // mode vacances
 let remise   = 0;       // tarif de groupe du client connecté, en pourcentage
+/* Portée de ce tarif : rayons, produits et quantité minimale réglés sur le
+   compte depuis l'écran Crédit. Vide des trois côtés = tout le panier.
+
+   Ces champs existaient et étaient réglables, mais n'étaient jamais lus ici :
+   une remise limitée au rayon Breads s'appliquait en réalité à la totalité de
+   la commande. */
+let remiseScope = null;
+let lignesEligiblesGroupeCourant = [];
 let connecte = false;   // un code promo suppose un compte
 let promo    = null;    // fiche du code promo appliqué
 let sourceRemise = "aucune";   // "groupe" | "promo" | "aucune"
@@ -530,7 +538,25 @@ const peso = (n) => "₱" + Number(n).toLocaleString("en-PH");
 // groupe la réduction est dans la ligne, avec un code promo elle porte
 // sur le total et les lignes gardent leur prix catalogue.
 function prixClient(p) {
-  return prixUnitaire(p.prix_vente, remise, sourceRemise);
+  return prixUnitaire(p.prix_vente, remise, sourceRemise, dansLaPortee(p));
+}
+
+/* Ce produit est-il couvert par la portée du tarif de groupe ?
+
+   Évalué avec le panier réel, plus ce produit compté pour au moins une unité :
+   le seuil de quantité minimale a besoin de savoir ce qu'il y a à côté, et un
+   produit encore absent du panier doit s'afficher au prix qu'il aura une fois
+   ajouté. */
+function dansLaPortee(p) {
+  if (!remiseScope) return true;      // aucune portée réglée : tout le panier
+  const lignes = lignesPanier();
+  const i = lignes.findIndex(l => l.code === p.id);
+  if (i < 0) {
+    lignes.push({ qte: 1, prixBase: Number(p.prix_vente) || 0,
+                  rayon: rayon(p), code: p.id });
+    return !!lignesEligiblesGroupe(lignes, remiseScope)[lignes.length - 1];
+  }
+  return !!lignesEligiblesGroupe(lignes, remiseScope)[i];
 }
 
 // Lignes du panier, dans la forme attendue par le module de calcul.
@@ -538,7 +564,8 @@ function lignesPanier() {
   const l = [];
   produits.forEach(p => {
     const q = panier[p.id];
-    if (q) l.push({ qte: q, prixBase: Number(p.prix_vente) || 0, rayon: rayon(p) });
+    if (q) l.push({ qte: q, prixBase: Number(p.prix_vente) || 0,
+                    rayon: rayon(p), code: p.id });
   });
   return l;
 }
@@ -705,7 +732,9 @@ function afficher() {
 
   // La remise retenue décide de l'affichage des prix : on tranche avant
   // de dessiner les lignes.
-  sourceRemise = calculerPrix(lignesPanier(), remise, promo).source;
+  const calculPortee = calculerPrix(lignesPanier(), remise, promo, remiseScope);
+  sourceRemise = calculPortee.source;
+  lignesEligiblesGroupeCourant = calculPortee.lignesGroupeEligibles || [];
 
   if (!produits.length) {
     zone.innerHTML =
@@ -1046,7 +1075,7 @@ function majPanier() {
   let articles = 0;
   produits.forEach(p => { articles += panier[p.id] || 0; });
 
-  const calcul = calculerPrix(lignesPanier(), remise, promo);
+  const calcul = calculerPrix(lignesPanier(), remise, promo, remiseScope);
   sourceRemise = calcul.source;
 
   $("panier").classList.toggle("visible", articles > 0 && !ferme);
@@ -1093,7 +1122,7 @@ function majPromo() {
   $("champCode").hidden = true;
   $("btnCode").hidden = true;
 
-  const calcul = calculerPrix(lignesPanier(), remise, promo);
+  const calcul = calculerPrix(lignesPanier(), remise, promo, remiseScope);
   const portee = libellePortee(promo);
 
   let texte;
@@ -1184,11 +1213,18 @@ $("btnCommander").onclick = () => {
 
 onAuthStateChanged(auth, async (user) => {
   remise = 0;
+  remiseScope = null;
   connecte = !!user;
   if (user) {
     try {
       const s = await getDoc(doc(db, "comptes", user.uid));
-      remise = Number(s.data()?.remise) || 0;
+      const d = s.data() || {};
+      remise = Number(d.remise) || 0;
+      remiseScope = {
+        rayons:   Array.isArray(d.remise_rayons)   ? d.remise_rayons   : [],
+        produits: Array.isArray(d.remise_produits) ? d.remise_produits : [],
+        qte_min:  Number(d.remise_qte_min) || 0
+      };
     } catch (e) { console.error(e); }
   } else {
     promo = null;   // sans compte, aucun code ne s'applique
