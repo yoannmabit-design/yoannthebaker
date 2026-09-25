@@ -342,7 +342,7 @@ import { getAuth, onAuthStateChanged }
 import { normaliserCode, lireCodeMemorise, memoriserCode, oublierCode,
          chargerCode, verifierCode, usagesClient, calculerPrix, prixUnitaire, libelleCode,
          rayonDe, libellePortee }
-  from "./promo.js?v=2";
+  from "./promo.js?v=3";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDuq8KS8M_Z8U7BlSp6MvE-6Y9OYYaDujE",
@@ -363,6 +363,10 @@ const JOURS_COURTS = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
 
 let params = {}, options = [], lignes = [], sousTotal = 0;
 let remise = 0, uidClient = "", solde = 0, creditUtilise = 0;
+/* Portée du tarif de groupe, réglée sur le compte depuis l'écran Crédit.
+   Vide des trois côtés = tout le panier. Sans cette lecture, une remise
+   limitée à un rayon s'appliquait à la commande entière. */
+let remiseScope = null;
 /* E-mail du compte connecté. Rien n'est demandé au client : Firebase Auth
    le connaît déjà (compte Google). Il est écrit dans la commande pour servir
    de lien avec la collection « comptes », qui ne porte pas de téléphone —
@@ -409,8 +413,14 @@ function attendreConnexion() {
         emailClient = user.email || "";
         try {
           const s = await getDoc(doc(db, "comptes", user.uid));
-          remise = Number(s.data()?.remise) || 0;
-          solde  = Number(s.data()?.solde) || 0;
+          const d = s.data() || {};
+          remise = Number(d.remise) || 0;
+          solde  = Number(d.solde) || 0;
+          remiseScope = {
+            rayons:   Array.isArray(d.remise_rayons)   ? d.remise_rayons   : [],
+            produits: Array.isArray(d.remise_produits) ? d.remise_produits : [],
+            qte_min:  Number(d.remise_qte_min) || 0
+          };
           // Adresse détaillée si le compte en a une, sinon l'ancienne ligne.
           adresseCompte = s.data()?.adresse_detail || s.data()?.adresse || null;
         } catch (e) { console.error(e); }
@@ -984,13 +994,17 @@ async function reprendreCode() {
    la vitrine et cette page appliquent donc la même règle. */
 function majPrix() {
   const calcul = calculerPrix(
-    lignes.map(l => ({ qte: l.qte, prixBase: l.prixBase, rayon: l.rayon })),
-    remise, promo);
+    // Le code produit est indispensable à une portée par produit : sans lui,
+    // seule la portée par rayon pourrait s'appliquer.
+    lignes.map(l => ({ qte: l.qte, prixBase: l.prixBase, rayon: l.rayon, code: l.code })),
+    remise, promo, remiseScope);
   sourceRemise = calcul.source;
   economie = calcul.economie;
   eligible = calcul.eligible;
-  lignes.forEach(l => {
-    l.prix = prixUnitaire(l.prixBase, remise, sourceRemise);
+  const eligibles = calcul.lignesGroupeEligibles || [];
+  lignes.forEach((l, i) => {
+    // Chaque ligne est facturée selon sa propre appartenance à la portée.
+    l.prix = prixUnitaire(l.prixBase, remise, sourceRemise, eligibles[i] !== false);
     l.montant = l.qte * l.prix;
   });
   sousTotal = calcul.sousTotal;
