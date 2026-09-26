@@ -1613,15 +1613,19 @@ $("btnEnvoyer").onclick = async () => {
     option: { nom: o.nom, type: o.type, lieu: o.lieu || "" },
     date_retrait: dateChoisie,
     creneau: $("creneau") ? $("creneau").value : "",
-    /* Crédit couvrant la totalité : il n'y a rien à encaisser, et la commande
-       ne doit pas partir « en attente » — sinon elle s'affiche en rouge dans
-       l'administration, le client est relancé pour rien, et le risque est
-       d'encaisser une seconde fois le jour de la remise.
+    /* Crédit couvrant la totalité : le moyen enregistré est « credit », mais
+       le statut reste « en attente ».
 
-       Le débit lui-même a lieu à la confirmation, comme pour un règlement
-       partiel : ce champ ne dit que ce qu'il reste à percevoir, soit rien. */
+       Les règles Firestore exigent ce statut à la création d'une commande.
+       Une commande qui naîtrait « payée » est refusée par la base, et le
+       client ne peut alors plus commander du tout — avec pour seul indice un
+       message d'échec générique.
+
+       C'est l'administration qui bascule le paiement en réglé au moment de
+       confirmer, là où le crédit est réellement prélevé : voir
+       appliquerCredit() dans commandes-admin.html. */
     paiement: totalCouvertParCredit()
-      ? { methode: "credit", statut: "paye", montant_paye: montantTotal() }
+      ? { methode: "credit", statut: "en attente" }
       : { methode: document.querySelector('input[name="paiement"]:checked').value,
           statut: "en attente" },
     notes: $("notes").value.trim(),
