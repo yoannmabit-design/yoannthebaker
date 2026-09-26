@@ -51,6 +51,15 @@
   }
   .bloc h2{font-size:17px;margin:0 0 14px;letter-spacing:.01em}
 
+  /* Avertissement de commande en double. Ambre et non rouge : rien n'est
+     cassé, rien n'est interdit — le client est simplement informé. */
+  .deja{
+    background:#FEF6E4;border:1px solid #E7C98B;border-left:4px solid #D97706;
+    border-radius:var(--r);padding:13px 15px;margin-bottom:16px;
+    font-size:14px;line-height:1.5;
+  }
+  .deja strong{display:block;margin-bottom:2px}
+
   label.champ{display:block;margin-bottom:13px}
   label.champ span{display:block;font-size:14.5px;color:var(--encre-doux);margin-bottom:5px}
   input,select,textarea{
@@ -530,6 +539,8 @@ async function construire() {
   const creneaux = params.creneaux || [];
 
   $("page").innerHTML = `
+    <div class="deja" id="deja" hidden></div>
+
     <div class="bloc">
       <h2>Your order</h2>
       <div class="recap" id="recap"></div>
@@ -736,7 +747,45 @@ async function construire() {
   construireAvantages();
 
   majOption();
+  annoncerDoublon();
   $("pied").hidden = false;
+}
+
+/* ---------- « Vous avez déjà commandé ceci » ----------
+
+   Le client valide, revient en arrière, retrouve son panier intact et
+   revalide — souvent par doute, parfois sans s'en rendre compte. Deux
+   commandes identiques arrivent au fournil, et c'est le boulanger qui
+   découvre le problème au moment de produire.
+
+   Le numéro figé (voir referenceStable) couvre le cas où la page n'a pas
+   été rechargée. Ici on couvre l'autre : page rechargée, donc nouveau
+   numéro, mais même panier passé il y a quelques minutes.
+
+   On informe, on ne bloque pas. Commander deux fois la même chose est
+   parfaitement légitime — encore faut-il le vouloir. */
+const FENETRE_DOUBLON = 30 * 60 * 1000;   // trente minutes
+
+function empreintePanier(l) {
+  return l.map(x => `${x.id}x${x.qte}`).sort().join("|");
+}
+
+function annoncerDoublon() {
+  const z = $("deja");
+  if (!z) return;
+  const d = derniereCommande();
+  if (!d || !d.numero || !Array.isArray(d.lignes)) return;
+
+  const ecart = Date.now() - Date.parse(d.quand || "");
+  if (!(ecart >= 0 && ecart < FENETRE_DOUBLON)) return;
+  if (empreintePanier(d.lignes) !== empreintePanier(lignes)) return;
+
+  const minutes = Math.max(1, Math.round(ecart / 60000));
+  z.innerHTML =
+    `<strong>You already ordered this.</strong> Order no. ${d.numero}, ` +
+    `${minutes} minute${minutes > 1 ? "s" : ""} ago. ` +
+    `Ordering again will create a second, separate order.`;
+  z.hidden = false;
 }
 
 
@@ -1579,7 +1628,7 @@ $("btnEnvoyer").onclick = async () => {
   }
 
   const frais  = o.tarif_variable ? 0 : (Number(o.tarif) || 0);
-  const numero = reference();
+  const numero = referenceStable();
 
   const commande = {
     numero,
@@ -1638,13 +1687,20 @@ $("btnEnvoyer").onclick = async () => {
     /* Capacité consommée. L'administration recalcule ces compteurs depuis les
        commandes réelles à chaque ouverture : un incrément perdu ici se répare
        tout seul, il ne justifie pas de faire échouer une commande enregistrée. */
-    try {
-      const pas = {};
-      lignes.forEach(l => { pas["produits." + l.code] = increment(l.qte); });
-      await setDoc(doc(db, "charge", dateChoisie),
-                   { date: dateChoisie, maj: new Date().toISOString() }, { merge: true });
-      await updateDoc(doc(db, "charge", dateChoisie), pas);
-    } catch (e) { console.error(e); }
+    /* Une seule fois par ouverture de page : si la première tentative avait
+       réussi côté serveur sans que le navigateur le sache, le compteur a
+       déjà été incrémenté, et une seconde tentative doublerait la charge du
+       jour — la journée se fermerait trop tôt. */
+    if (!capaciteComptee) {
+      capaciteComptee = true;
+      try {
+        const pas = {};
+        lignes.forEach(l => { pas["produits." + l.code] = increment(l.qte); });
+        await setDoc(doc(db, "charge", dateChoisie),
+                     { date: dateChoisie, maj: new Date().toISOString() }, { merge: true });
+        await updateDoc(doc(db, "charge", dateChoisie), pas);
+      } catch (e) { console.error(e); }
+    }
 
     // L'adresse est gardée sur le compte pour les prochaines commandes.
     // merge : le solde, la remise et le groupe ne sont pas touchés.
@@ -1662,6 +1718,9 @@ $("btnEnvoyer").onclick = async () => {
         : { nom, tel, tel_local: telLocal, adresse, adresse_detail: detail }));
       localStorage.setItem("derniere_commande", JSON.stringify({
         quand: new Date().toISOString(),
+        // Le numéro sert au bandeau « You already ordered this », pour que
+        // le client puisse reconnaître sa commande plutôt que deviner.
+        numero,
         lignes: lignes.map(l => ({ id: l.id, nom: l.nom, qte: l.qte }))
       }));
       localStorage.removeItem("panier");
@@ -1720,6 +1779,29 @@ function echec(texte) {
   $("erreur").textContent = texte;
   $("btnEnvoyer").disabled = false;
   $("erreur").scrollIntoView({ behavior: "smooth", block: "center" });
+}
+
+/* ---------- Numéro de commande : un seul par ouverture de page ----------
+
+   Le réseau mobile coupe, la réponse du serveur se perd, mais l'écriture est
+   bien arrivée. Le client lit « could not be sent », reclique, et une
+   deuxième commande identique se crée sous un autre numéro. Il n'a rien fait
+   de travers : l'application lui a menti.
+
+   Le numéro est donc figé à la première tentative et réutilisé ensuite. Une
+   deuxième tentative réécrit le même document — même contenu, même numéro,
+   aucune commande en trop. C'est ce qu'on appelle une écriture idempotente,
+   et c'est la seule protection qui tienne, parce qu'elle ne suppose ni un
+   réseau fiable ni un client patient.
+
+   Le numéro se renouvelle à l'ouverture suivante de la page : une vraie
+   deuxième commande, passée plus tard, en reçoit bien un nouveau. */
+let numeroEnCours = null;
+let capaciteComptee = false;
+
+function referenceStable() {
+  if (!numeroEnCours) numeroEnCours = reference();
+  return numeroEnCours;
 }
 
 function reference() {
