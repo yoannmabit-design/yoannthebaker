@@ -11,7 +11,7 @@
    hors-ligne.
    ============================================================ */
 
-const VERSION = 'yfb-boutique-v26';
+const VERSION = 'yfb-boutique-v27';
 
 const ESSENTIELS = [
   './',
@@ -25,8 +25,8 @@ const ESSENTIELS = [
   './confirmation.html',
   './confirmation-abonnement.html',
   './manifest.json',
-  './logo.jpg'
-   './faq.html'
+  './logo.jpg',
+  './faq.html'
 ];
 
 self.addEventListener('install', (e) => {
