@@ -195,6 +195,44 @@
     background:none;border:none;padding:0;margin-top:14px;
     color:var(--accent);font:inherit;font-size:15.5px;cursor:pointer;
   }
+  /* ---------- Messages ----------
+     Le fil est plafonné en hauteur et défile : une conversation de six mois
+     ne doit pas repousser le reste de la page hors de l'écran. Il s'ouvre
+     sur le dernier message, celui qu'on vient chercher. */
+  .bloc.messages .fil{
+    max-height:330px;overflow-y:auto;padding-right:4px;margin-bottom:14px;
+  }
+  .bloc.messages .msg{margin-bottom:11px;max-width:86%}
+  .bloc.messages .bulle{
+    padding:10px 13px;border-radius:12px;font-size:16.5px;
+    white-space:pre-wrap;word-break:break-word;
+  }
+  .bloc.messages .meta{font-size:13.5px;color:var(--encre-doux);margin-top:4px}
+  .bloc.messages .msg.sien .bulle{background:#efe6d8;border-bottom-left-radius:3px}
+  .bloc.messages .msg.mien{margin-left:auto}
+  .bloc.messages .msg.mien .bulle{
+    background:var(--accent);color:#fff;border-bottom-right-radius:3px;
+  }
+  .bloc.messages .msg.mien .meta{text-align:right}
+  .bloc.messages .surquoi{
+    display:block;font-size:14.5px;color:var(--encre-doux);margin-bottom:5px;
+  }
+  .bloc.messages select,
+  .bloc.messages textarea{
+    width:100%;padding:11px 13px;border:1px solid var(--trait);
+    border-radius:var(--r);font:inherit;font-size:16.5px;
+    background:#fff;color:var(--encre);
+  }
+  .bloc.messages textarea{margin-top:10px;resize:vertical;min-height:84px}
+  .bloc.messages .envoi{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:10px}
+  .bloc.messages .envoyer{
+    padding:11px 22px;border:none;border-radius:var(--r);
+    background:var(--accent);color:#fff;font:inherit;font-size:17px;cursor:pointer;
+  }
+  .bloc.messages .envoyer:disabled{opacity:.55;cursor:default}
+  .bloc.messages .vide{padding:14px 0;text-align:left}
+  .surcmd{font-weight:600}
+
   .demande-tel{border-left:3px solid var(--accent)}
   .ligne-tel{display:flex;gap:9px;flex-wrap:wrap;margin-top:12px}
   .ligne-tel input{
@@ -212,8 +250,10 @@
   .bloc.notices{border-left:5px solid #e6a817;background:#fffcf2}
   /* Dans une commande : encadré jaune pâle, assez présent pour être vu en
      parcourant les articles, sans concurrencer le total. */
+  /* Hors du détail : la marge du haut disparaît, le bloc suit la tête de
+     la commande, et l'intérieur reste en retrait des bords de la carte. */
   .notices-cmd{
-    margin:12px 0 0;padding:11px 13px;border-radius:var(--r);
+    margin:0 13px 13px;padding:11px 13px;border-radius:var(--r);
     border:1px solid #e8d9a8;border-left:3px solid #e6a817;background:#fffcf2;
   }
   .notices-cmd .intitule-notices{
@@ -333,7 +373,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged,
          sendSignInLinkToEmail, isSignInWithEmailLink, signInWithEmailLink }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import { getFirestore, collection, getDocs, doc, getDoc, setDoc,
+import { getFirestore, collection, getDocs, doc, getDoc, setDoc, addDoc,
          query, orderBy, limit, where }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
@@ -500,25 +540,196 @@ async function chargerNotices(commandes) {
     });
     notices.sort((a, b) => a.nom.localeCompare(b.nom));
 
-    /* Poids du fichier, quand le serveur veut bien le dire : sur données
-       mobiles, savoir ce qu'on télécharge avant de l'ouvrir compte. Une
-       requête qui échoue laisse simplement la mention « PDF » seule. */
-    await Promise.all(notices.map(async n => {
-      try {
-        const r = await fetch(n.fichier, { method: "HEAD" });
-        const octets = Number(r.headers.get("content-length")) || 0;
-        if (octets > 0) {
-          n.taille = octets >= 1048576
-            ? (octets / 1048576).toFixed(1).replace(".", ",") + " MB"
-            : Math.max(1, Math.round(octets / 1024)) + " KB";
-        }
-      } catch {}
-    }));
+    /* Le poids des fichiers est mesuré à part, sans être attendu.
+
+       Il l'était auparavant, et c'était une faute : la page demandait au
+       serveur la taille de chaque PDF avant d'afficher le moindre guide.
+       Une requête qui ne répond pas ne lève aucune erreur, elle pend — et
+       le bloc des guides n'apparaissait alors jamais, sans rien signaler.
+
+       Un ornement ne doit pas pouvoir retenir le contenu. Les guides
+       s'affichent tout de suite, la mention « 240 KB » se pose ensuite si
+       elle arrive. */
+    mesurerNotices();
   } catch (e) {
     // Catalogue illisible : la page vaut mieux sans les notices qu'en panne.
     console.error("Notices", e);
     notices = [];
   }
+}
+
+/* ---------- Messages avec la boulangerie ----------
+
+   Un seul fil par client, et non un par commande. Deux raisons.
+
+   La conversation est avec une personne : le client qui a demandé un report
+   mardi et pose une question sur le pain sans gluten jeudi parle au même
+   boulanger, et veut retrouver les deux au même endroit. Chaque message
+   garde cependant le numéro de la commande dont il parle, affiché au-dessus
+   — c'est ce rattachement qui évite d'avoir à demander « vous parlez de
+   quelle commande ? ».
+
+   Et un fil unique existe même sans commande : c'est tout l'intérêt pour le
+   client qui n'a pas WhatsApp et veut poser une question avant d'acheter.
+
+   Ce que ce canal ne fait pas, et qui est écrit noir sur blanc dans le bloc :
+   prévenir. Rien ne sonne chez le boulanger, rien ne sonne chez le client.
+   C'est une boîte aux lettres, pas une messagerie instantanée, et le dire
+   évite la seule déception possible. */
+function blocMessages() {
+  const fil = messages.length
+    ? messages.map(m => {
+        const mien = m.auteur !== "admin";
+        const surCmd = m.numero
+          ? `<span class="surcmd">Order ${ech(m.numero)}</span>` : "";
+        return `
+          <div class="msg ${mien ? "mien" : "sien"}">
+            <div class="bulle">${ech(m.texte)}</div>
+            <div class="meta">${surCmd}${surCmd ? " · " : ""}${ech(quandMessage(m.cree_le))}</div>
+          </div>`;
+      }).join("")
+    : `<p class="vide">No messages yet.</p>`;
+
+  /* Le choix du sujet, pré-réglé sur la commande la plus récente quand elle
+     est récente : neuf questions sur dix portent sur celle qu'on attend. */
+  const options = [`<option value="">Something else</option>`]
+    .concat(toutesCommandes.slice(0, 8).map(c =>
+      `<option value="${ech(c.id)}" data-num="${ech(c.numero || c.id)}"
+        >Order ${ech(c.numero || c.id)} — ${ech(joliJour(c.date_retrait))}</option>`));
+
+  return `
+    <div class="bloc messages">
+      <h2>Messages</h2>
+      <p class="aide">Write to us about an order, or anything else. We read
+        everything, and we reply here — but not instantly: we're a one-person
+        bakery, and the ovens come first. Expect an answer within the day.</p>
+      <div class="fil" id="filMessages">${fil}</div>
+      <label class="surquoi" for="msgSujet">About</label>
+      <select id="msgSujet">${options.join("")}</select>
+      <textarea id="msgTexte" rows="3" maxlength="2000"
+                placeholder="Your message…"></textarea>
+      <div class="envoi">
+        <button class="envoyer" id="btnMessage" type="button">Send</button>
+        <span class="aide" id="etatMessage"></span>
+      </div>
+    </div>`;
+}
+
+function quandMessage(iso) {
+  const d = new Date(iso || "");
+  if (isNaN(d)) return "";
+  const aujourdhui = new Date().toDateString() === d.toDateString();
+  return aujourdhui
+    ? d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })
+    : d.toLocaleDateString("en-GB", { day: "2-digit", month: "short" })
+      + ", " + d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+}
+
+function brancherMessages() {
+  const btn = document.getElementById("btnMessage");
+  if (!btn) return;
+  const zone = document.getElementById("msgTexte");
+  const sujet = document.getElementById("msgSujet");
+  const etat = document.getElementById("etatMessage");
+
+  // Ouvert sur le dernier message : c'est la réponse qu'on vient lire, pas
+  // la question posée il y a trois semaines.
+  const fil = document.getElementById("filMessages");
+  if (fil) fil.scrollTop = fil.scrollHeight;
+
+  // La commande la plus récente si elle date de moins de deux semaines :
+  // au-delà, elle est probablement livrée et oubliée, et la proposer
+  // ferait rattacher la question à la mauvaise.
+  const recente = toutesCommandes[0];
+  if (recente && recente.cree_le
+      && Date.now() - Date.parse(recente.cree_le) < 14 * 86400000) {
+    sujet.value = recente.id;
+  }
+
+  btn.onclick = async () => {
+    const texte = zone.value.trim();
+    if (!texte) { zone.focus(); return; }
+    btn.disabled = true;
+    etat.textContent = "Sending…";
+    const opt = sujet.selectedOptions[0];
+    try {
+      await addDoc(collection(db, "messages"), {
+        compte_uid: uidClient,
+        commande_id: sujet.value || null,
+        numero: (sujet.value && opt) ? (opt.dataset.num || null) : null,
+        auteur: "client",
+        texte,
+        /* Faux à la création, et les règles l'exigent : c'est ce champ qui
+           allume la pastille de l'administration. Un message qui naîtrait
+           lu ne serait jamais vu. */
+        lu_admin: false,
+        cree_le: new Date().toISOString()
+      });
+      // Ajouté au fil sans relire le serveur : le client doit voir son
+      // message parti, tout de suite.
+      messages.push({ auteur: "client", texte,
+                      numero: (sujet.value && opt) ? opt.dataset.num : null,
+                      cree_le: new Date().toISOString() });
+      zone.value = "";
+      etat.textContent = "Sent. We'll get back to you here.";
+      const fil = document.getElementById("filMessages");
+      if (fil) {
+        fil.innerHTML = messages.map(m => `
+          <div class="msg ${m.auteur !== "admin" ? "mien" : "sien"}">
+            <div class="bulle">${ech(m.texte)}</div>
+            <div class="meta">${m.numero ? "Order " + ech(m.numero) + " · " : ""}${
+              ech(quandMessage(m.cree_le))}</div>
+          </div>`).join("");
+        fil.scrollTop = fil.scrollHeight;
+      }
+    } catch (e) {
+      console.error(e);
+      etat.textContent = "We couldn't send that. Please check your connection.";
+    } finally {
+      btn.disabled = false;
+    }
+  };
+}
+
+/* Poids des PDF, en arrière-plan et sans conséquence.
+
+   Chaque requête a sa limite de temps : sans elle, une requête suspendue
+   resterait suspendue jusqu'à la fermeture de l'onglet. Huit secondes, au
+   terme desquelles on renonce à afficher un poids — ce qui ne coûte rien à
+   personne. */
+function mesurerNotices() {
+  Promise.all(notices.map(async n => {
+    const minuteur = new AbortController();
+    const arret = setTimeout(() => minuteur.abort(), 8000);
+    try {
+      const r = await fetch(n.fichier, { method: "HEAD", signal: minuteur.signal });
+      const octets = Number(r.headers.get("content-length")) || 0;
+      if (octets > 0) {
+        n.taille = octets >= 1048576
+          ? (octets / 1048576).toFixed(1).replace(".", ",") + " MB"
+          : Math.max(1, Math.round(octets / 1024)) + " KB";
+      }
+    } catch {} finally { clearTimeout(arret); }
+  })).then(() => {
+    // Rien de nouveau à montrer si aucun poids n'a été obtenu.
+    if (notices.some(n => n.taille)) peindreNotices();
+  });
+}
+
+/* Peinture des guides, aux deux endroits où ils vivent : le bloc du bas et
+   le rappel dans chaque commande. Appelée dès que la liste est connue, puis
+   une seconde fois si les poids finissent par arriver. */
+function peindreNotices() {
+  const zone = document.getElementById("zoneNotices");
+  if (zone) zone.innerHTML = blocNotices();
+
+  /* Les commandes sont déjà dessinées : on remplit l'emplacement réservé
+     dans chacune plutôt que de redessiner la page — un client qui avait
+     déplié une commande la verrait se refermer sous ses yeux. */
+  document.querySelectorAll(".zone-notices").forEach(el => {
+    const c = toutesCommandes.find(x => x.id === el.dataset.commande);
+    if (c) el.innerHTML = noticesDe(c);
+  });
 }
 
 /* Notices d'une commande précise, sous ses articles.
@@ -645,10 +856,16 @@ function ligneCommande(c) {
       <span class="somme">${peso(total)}</span>
       <span class="fleche">▾</span>
     </button>
+    <!-- Le guide de cuisson est hors du détail, donc visible sans déplier.
+
+         Il y était, et une cliente ne l'a pas trouvé : personne n'ouvre une
+         commande passée pour chercher un mode d'emploi. Elle cherchait le
+         document, pas la commande. Ce rappel ne s'affiche que pour les
+         commandes qui en ont un, il n'encombre donc rien. -->
+    <div class="zone-notices" data-commande="${ech(c.id)}">${noticesDe(c)}</div>
     <div class="detail" hidden>
       ${blocOu}
       ${articles}
-      <div class="zone-notices" data-commande="${ech(c.id)}">${noticesDe(c)}</div>
       ${extras.join("")}
       <div class="l total"><span>${Number(c.credit_utilise) > 0 ? "Paid" : "Total"}</span>
         <span>${peso(Number(c.credit_utilise) > 0 ? restant : total)}</span></div>
@@ -965,6 +1182,8 @@ let abonnements = [];
    peut avoir besoin du reçu d'une commande ancienne : la couper à trois
    rendrait le bouton inutile là où il sert le plus. */
 let toutesCommandes = [];
+let messages = [];
+let uidClient = "";   // retenu pour l'envoi d'un message, après l'affichage
 
 function brancherAbonnements() {
   document.querySelectorAll(".abo .replier").forEach(b => {
@@ -1076,14 +1295,22 @@ async function ecranCompte(user) {
 
      Les erreurs sont récupérées individuellement : un échec sur les
      abonnements ne doit pas priver le client de son solde. */
-  const [rFiche, rMouvements, rCommandes, rAbonnements] = await Promise.allSettled([
+  uidClient = user.uid;   // retenu pour l'envoi d'un message
+
+  const [rFiche, rMouvements, rCommandes, rAbonnements, rMessages] =
+  await Promise.allSettled([
     getDoc(ref),
     getDocs(query(collection(db, "comptes", user.uid, "mouvements"),
                   orderBy("quand", "desc"), limit(20))),
     getDocs(query(collection(db, "commandes"),
                   where("compte_uid", "==", user.uid), limit(50))),
     getDocs(query(collection(db, "abonnements"),
-                  where("client.uid", "==", user.uid), limit(20)))
+                  where("client.uid", "==", user.uid), limit(20))),
+    /* Messages : dans la même volée que le reste. Lus séparément, ils
+       ajouteraient un aller-retour à une page déjà lente sur données
+       mobiles — et un client qui attend son solde n'attend pas deux fois. */
+    getDocs(query(collection(db, "messages"),
+                  where("compte_uid", "==", user.uid), limit(100)))
   ]);
 
   try {
@@ -1183,6 +1410,24 @@ async function ecranCompte(user) {
     abonnementsLus = false;
   }
 
+  /* Messages échangés avec la boulangerie. Triés du plus ancien au plus
+     récent : une conversation se lit dans le sens où elle s'est tenue, à
+     l'inverse des commandes et des mouvements, qu'on consulte du plus
+     récent. */
+  try {
+    if (rMessages.status === "rejected") throw rMessages.reason;
+    messages = [];
+    rMessages.value.forEach(d => messages.push({ id: d.id, ...d.data() }));
+    messages.sort((a, b) =>
+      String(a.cree_le || "").localeCompare(String(b.cree_le || "")));
+  } catch (e) {
+    // Le bloc s'affichera vide, prêt à recevoir un premier message : c'est
+    // préférable à le faire disparaître, ce qui priverait d'un canal le
+    // client qui n'a justement pas d'autre moyen d'écrire.
+    console.error(e);
+    messages = [];
+  }
+
   const histo = mouvements.length
     ? mouvements.map(m => {
         const plus = m.montant >= 0;
@@ -1249,6 +1494,8 @@ async function ecranCompte(user) {
             toutesCommandes.length - DERNIERES})</button>` : ""}
     </div>
 
+    ${blocMessages()}
+
     <div class="bloc ${classeMouvements}">
       <h2>Store credit activity</h2>
       ${histo}
@@ -1267,24 +1514,11 @@ async function ecranCompte(user) {
      tard. La faire attendre au client avant de voir son solde et ses
      commandes était une erreur de ma part. Le bloc apparaît quand il est
      prêt, sans rien retarder. */
-  chargerNotices(toutesCommandes).then(() => {
-    const zone = $("zoneNotices");
-    // La page a pu être redessinée entre-temps : on ne peint que si la zone
-    // est toujours celle qu'on a laissée.
-    if (zone) zone.innerHTML = blocNotices();
-
-    /* Les commandes sont déjà dessinées quand les notices arrivent : on
-       remplit après coup l'emplacement réservé dans chacune, plutôt que de
-       redessiner la page — un client qui avait déplié une commande la verrait
-       se refermer sous ses yeux. */
-    document.querySelectorAll(".zone-notices").forEach(el => {
-      const c = toutesCommandes.find(x => x.id === el.dataset.commande);
-      if (c) el.innerHTML = noticesDe(c);
-    });
-  });
+  chargerNotices(toutesCommandes).then(peindreNotices);
 
   brancherCommandes();
   brancherAbonnements();
+  brancherMessages();
 
   const btnPlus = $("btnPlusCommandes");
   if (btnPlus) {
@@ -1292,6 +1526,10 @@ async function ecranCompte(user) {
       $("listeCommandes").innerHTML = toutesCommandes.map(ligneCommande).join("");
       btnPlus.remove();
       brancherCommandes();   // les nouvelles cartes n'ont pas encore leurs écouteurs
+      /* Si les guides ne sont pas encore chargés au moment du clic, les
+         cartes anciennes naîtraient sans leur rappel et personne ne
+         reviendrait le poser. */
+      peindreNotices();
     };
   }
   const btnTel = $("btnTelCompte");
