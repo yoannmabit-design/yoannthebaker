@@ -616,7 +616,7 @@ function blocMessages() {
                  : (nonVue ? " liserE-recent" : "");
 
   return `
-    <div class="bloc messages${liseré}">
+    <div class="bloc messages${liseré}" id="messages">
       <h2>Messages${nonVue ? ' <span class="neuf">New reply</span>' : ""}</h2>
       <p class="aide">Write to us about an order, or anything else. We read
         everything, and we reply here — but not instantly: we're a one-person
@@ -693,6 +693,15 @@ function brancherMessages() {
   const fil = document.getElementById("filMessages");
   if (fil) fil.scrollTop = fil.scrollHeight;
   surveillerLecture();
+
+  /* Arrivée depuis la page de confirmation, lien « Message us here ». Le
+     navigateur ne peut pas suivre l'ancre tout seul : la page est écrite
+     en JavaScript, et au moment où il lit l'adresse, le bloc n'existe pas
+     encore. On descend donc à la main, une fois qu'il est là. */
+  if (location.hash === "#messages") {
+    const bloc = document.getElementById("messages");
+    if (bloc) bloc.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
 
   // La commande la plus récente si elle date de moins de deux semaines :
   // au-delà, elle est probablement livrée et oubliée, et la proposer
