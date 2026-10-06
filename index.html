@@ -24,7 +24,42 @@
      secours, la page ne reste jamais muette en attendant Google. -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Caprasimo&display=swap">
+<!-- La feuille de style Google ne bloque plus l'affichage.
+
+     Chargée normalement, elle retarde le premier pixel du temps d'un aller
+     à Mountain View — sur une 4G philippine, une demi-seconde pendant
+     laquelle l'écran reste blanc. Or elle ne sert qu'aux titres, et
+     display=swap prévoit déjà qu'ils s'affichent en police système en
+     attendant.
+
+     media="print" fait charger le fichier sans qu'il bloque le rendu ;
+     onload le rebascule sur "all" dès qu'il est là. Le <noscript> couvre
+     le cas, rare, où JavaScript est coupé. -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Caprasimo&display=swap"
+      media="print" onload="this.media='all'">
+<noscript>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Caprasimo&display=swap">
+</noscript>
+
+<!-- Les trois modules Firebase sont le vrai chemin critique : rien ne
+     s'affiche tant qu'ils ne sont pas là, puisque le catalogue vient de
+     Firestore.
+
+     Sans ces lignes, le navigateur ne les découvre qu'après avoir lu et
+     analysé le script tout en bas de la page — soit un aller-retour complet
+     perdu avant même de commencer à les télécharger. Avec preconnect, la
+     connexion à gstatic est ouverte pendant que le HTML arrive ; avec
+     modulepreload, les trois fichiers partent en parallèle, tout de suite.
+
+     crossorigin est obligatoire : un module se récupère toujours en mode
+     CORS, et sans cet attribut le navigateur téléchargerait deux fois. -->
+<link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://firestore.googleapis.com" crossorigin>
+<link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js" crossorigin>
+<link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js" crossorigin>
+<link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js" crossorigin>
+<link rel="modulepreload" href="./promo.js?v=3">
+<link rel="modulepreload" href="./qr.js">
 <style>
   /* Palette « Terracotta & Sage ».
      Le terracotta porte tout ce qui se tape, la sauge tout ce qui rassure
