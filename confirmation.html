@@ -308,6 +308,17 @@ function afficher() {
       "?subject=" + encodeURIComponent("Order " + c.numero) +
       "&body=" + encodeURIComponent(texte) });
 
+  /* Le canal du site lui-même, pour le client qui n'a ni WhatsApp, ni Viber,
+     ni Messenger — et qui, sans cette ligne, repartirait d'ici sans aucun
+     moyen de nous joindre. Il arrive en dernier : les trois premiers
+     préviennent tout de suite, celui-ci attend qu'on ouvre l'administration.
+
+     Réservé aux commandes passées depuis un compte : c'est le compte qui
+     porte le fil. Sans lui, c'est le bloc « Want to follow this order ? »
+     plus bas qui propose d'en créer un. */
+  if (c.compte_uid)
+    canaux.push({ cle: "Message us here", url: "compte.html#messages" });
+
   $("page").innerHTML = `
     <div class="bloc">
       <h2>Your order</h2>
