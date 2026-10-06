@@ -232,6 +232,15 @@
   .bloc.messages .envoyer:disabled{opacity:.55;cursor:default}
   .bloc.messages .vide{padding:14px 0;text-align:left}
   .surcmd{font-weight:600}
+  /* Pastille « New reply » : la seule chose qui signale au client qu'on lui
+     a répondu, puisque rien ne le prévient par ailleurs. Assez vive pour se
+     voir en descendant la page, assez petite pour ne pas concurrencer le
+     solde en haut. */
+  .bloc.messages h2 .neuf{
+    font-size:13px;font-weight:600;vertical-align:middle;margin-left:8px;
+    padding:3px 9px;border-radius:10px;
+    background:var(--recent);color:#fff;letter-spacing:.02em;
+  }
 
   .demande-tel{border-left:3px solid var(--accent)}
   .ligne-tel{display:flex;gap:9px;flex-wrap:wrap;margin-top:12px}
@@ -597,9 +606,18 @@ function blocMessages() {
       `<option value="${ech(c.id)}" data-num="${ech(c.numero || c.id)}"
         >Order ${ech(c.numero || c.id)} — ${ech(joliJour(c.date_retrait))}</option>`));
 
+  /* Liseré, dans la même langue que les autres blocs de la page : violet
+     quand il n'y a rien, orange quand il y a du neuf. Et une pastille
+     « New reply » tant que la réponse n'a pas été vue — c'est elle qui
+     compte, parce que rien ne prévient le client ailleurs. */
+  const dernierSien = [...messages].reverse().find(m => m.auteur === "admin");
+  const nonVue = dernierSien && String(dernierSien.cree_le || "") > vuJusqua();
+  const liseré = !messages.length ? " liserE-vide"
+                 : (nonVue ? " liserE-recent" : "");
+
   return `
-    <div class="bloc messages">
-      <h2>Messages</h2>
+    <div class="bloc messages${liseré}">
+      <h2>Messages${nonVue ? ' <span class="neuf">New reply</span>' : ""}</h2>
       <p class="aide">Write to us about an order, or anything else. We read
         everything, and we reply here — but not instantly: we're a one-person
         bakery, and the ovens come first. Expect an answer within the day.</p>
@@ -613,6 +631,44 @@ function blocMessages() {
         <span class="aide" id="etatMessage"></span>
       </div>
     </div>`;
+}
+
+/* Jusqu'où le client a déjà lu. Gardé dans le navigateur, et non sur son
+   compte : les règles Firestore ne lui laissent écrire que son nom, son
+   e-mail, son téléphone et son adresse — poser un champ « lu » exigerait
+   de les élargir, pour un repère visuel. Le prix de ce choix est qu'un
+   client qui change de téléphone revoit la pastille une fois. C'est sans
+   conséquence, et la pastille ment alors dans le sens le moins grave :
+   elle montre quelque chose qu'il a déjà lu, plutôt que de cacher une
+   réponse qu'il attend. */
+const CLE_VU = "messages_vus";
+
+function vuJusqua() {
+  try { return localStorage.getItem(CLE_VU) || ""; } catch { return ""; }
+}
+
+/* Marqué vu quand le bloc arrive réellement sous les yeux, et non au
+   chargement de la page : le bloc est en bas, et le marquer à l'affichage
+   ferait disparaître la pastille d'un client qui n'a jamais descendu
+   jusque-là. */
+function surveillerLecture() {
+  const bloc = document.querySelector(".bloc.messages");
+  const dernierSien = [...messages].reverse().find(m => m.auteur === "admin");
+  if (!bloc || !dernierSien) return;
+
+  const marquer = () => {
+    try { localStorage.setItem(CLE_VU, String(dernierSien.cree_le || "")); } catch {}
+  };
+
+  // Sans IntersectionObserver — navigateur ancien — on marque tout de
+  // suite : mieux vaut une pastille qui s'éteint trop tôt qu'un bloc qui
+  // reste orange à vie.
+  if (!("IntersectionObserver" in window)) return marquer();
+
+  const oeil = new IntersectionObserver((entrees) => {
+    if (entrees.some(e => e.isIntersecting)) { marquer(); oeil.disconnect(); }
+  }, { threshold: 0.3 });
+  oeil.observe(bloc);
 }
 
 function quandMessage(iso) {
@@ -636,6 +692,7 @@ function brancherMessages() {
   // la question posée il y a trois semaines.
   const fil = document.getElementById("filMessages");
   if (fil) fil.scrollTop = fil.scrollHeight;
+  surveillerLecture();
 
   // La commande la plus récente si elle date de moins de deux semaines :
   // au-delà, elle est probablement livrée et oubliée, et la proposer
