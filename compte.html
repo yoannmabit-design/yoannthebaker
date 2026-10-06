@@ -618,9 +618,9 @@ function blocMessages() {
   return `
     <div class="bloc messages${liseré}" id="messages">
       <h2>Messages${nonVue ? ' <span class="neuf">New reply</span>' : ""}</h2>
-      <p class="aide">Write to us about an order, or anything else. We read
-        everything, and we reply here — but not instantly: we're a one-person
-        bakery, and the ovens come first. Expect an answer within the day.</p>
+      <p class="aide">Write to me about an order, or anything else. I read
+        everything and I answer here, usually in under four hours. Messages
+        sent overnight get their answer in the morning.</p>
       <div class="fil" id="filMessages">${fil}</div>
       <label class="surquoi" for="msgSujet">About</label>
       <select id="msgSujet">${options.join("")}</select>
@@ -737,7 +737,7 @@ function brancherMessages() {
                       numero: (sujet.value && opt) ? opt.dataset.num : null,
                       cree_le: new Date().toISOString() });
       zone.value = "";
-      etat.textContent = "Sent. We'll get back to you here.";
+      etat.textContent = "Sent. I'll answer you here.";
       const fil = document.getElementById("filMessages");
       if (fil) {
         fil.innerHTML = messages.map(m => `
@@ -750,7 +750,7 @@ function brancherMessages() {
       }
     } catch (e) {
       console.error(e);
-      etat.textContent = "We couldn't send that. Please check your connection.";
+      etat.textContent = "That didn't go through. Please check your connection.";
     } finally {
       btn.disabled = false;
     }
