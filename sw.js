@@ -17,7 +17,7 @@
      ferait croire à une commande partie alors qu'elle dort sur l'appareil.
    ============================================================ */
 
-const VERSION = 'yfb-boutique-v30';
+const VERSION = 'yfb-boutique-v31';
 
 /* Modules Firebase servis par gstatic.com : cache d'abord.
 

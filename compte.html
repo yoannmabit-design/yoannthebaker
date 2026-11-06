@@ -844,6 +844,34 @@ async function peindrePieces(racine) {
   }
 }
 
+/* Ce qu'on dit au client quand l'envoi échoue.
+
+   Chaque cas appelle un geste différent de sa part : se reconnecter,
+   réessayer, ou prévenir. Le code technique est ajouté entre parenthèses
+   — il ne lui parle pas, mais c'est la première chose à me lire quand il
+   écrit « ça ne marche pas », et sans lui on cherche à l'aveugle. */
+function messageEnvoi(e, avecImage) {
+  const code = (e && e.code) || "";
+  const suffixe = code ? " (" + code + ")" : "";
+
+  if (code === "storage/unauthenticated" || code === "permission-denied"
+      || code === "storage/unauthorized") {
+    return "Your session seems to have expired. Please reload the page and "
+         + "sign in again." + suffixe;
+  }
+  if (code === "storage/retry-limit-exceeded" || code === "storage/canceled") {
+    return "The connection dropped while the image was going up. Your message "
+         + "is still here — please try again." + suffixe;
+  }
+  if (code === "storage/unknown" || code === "unavailable") {
+    return "I couldn't reach the server. Please check your connection and try "
+         + "again." + suffixe;
+  }
+  return (avecImage
+    ? "The image didn't go through. Your message is still here — please try again."
+    : "That didn't go through. Please check your connection.") + suffixe;
+}
+
 function brancherMessages() {
   const btn = document.getElementById("btnMessage");
   if (!btn) return;
@@ -1011,9 +1039,16 @@ function brancherMessages() {
       }
     } catch (e) {
       console.error(e);
-      etat.textContent = piecePrete
-        ? "The image didn't go through. Your message is still here — please try again."
-        : "That didn't go through. Please check your connection.";
+      /* Le code d'erreur est affiché, pas avalé.
+
+         Firebase distingue storage/unauthorized (les règles refusent),
+         storage/unauthenticated (session expirée), storage/retry-limit-
+         exceeded (la liaison n'a pas tenu) et quelques autres. Les trois
+         appellent des gestes différents, et un message unique les rend
+         indiscernables — on cherche alors au mauvais endroit pendant des
+         heures. Le code tient en vingt caractères et il est le seul
+         élément qui permette de répondre vite à « ça ne marche pas ». */
+      etat.textContent = messageEnvoi(e, !!piecePrete);
     } finally {
       btn.disabled = false;
     }
