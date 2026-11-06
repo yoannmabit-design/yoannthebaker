@@ -854,10 +854,18 @@ function messageEnvoi(e, avecImage) {
   const code = (e && e.code) || "";
   const suffixe = code ? " (" + code + ")" : "";
 
-  if (code === "storage/unauthenticated" || code === "permission-denied"
-      || code === "storage/unauthorized") {
-    return "Your session seems to have expired. Please reload the page and "
-         + "sign in again." + suffixe;
+  /* unauthorized et unauthenticated sont les deux causes les plus
+     différentes qui existent ici — les règles refusent, ou il n'y a pas
+     de session — et les confondre envoie chercher au mauvais endroit.
+     Elles ont donc chacune leur phrase, et jamais la même. */
+  if (code === "storage/unauthenticated") {
+    return "Your session has expired. Please reload the page and sign in "
+         + "again." + suffixe;
+  }
+  if (code === "storage/unauthorized" || code === "permission-denied") {
+    return "I'm not allowed to store that image yet — this is on my side, "
+         + "not yours. Send your message without it and tell me, or use "
+         + "WhatsApp for now." + suffixe;
   }
   if (code === "storage/retry-limit-exceeded" || code === "storage/canceled") {
     return "The connection dropped while the image was going up. Your message "
