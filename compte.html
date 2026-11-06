@@ -435,7 +435,7 @@ import { getFirestore, collection, getDocs, doc, getDoc, setDoc, addDoc,
 /* Storage, pour les preuves de paiement jointes aux messages. Première
    utilisation du bucket dans le projet — il était déclaré dans la
    configuration depuis le début sans jamais servir. */
-import { getStorage, ref as refStorage, uploadBytes, getDownloadURL }
+import { getStorage, ref as refStorage, uploadBytesResumable, getDownloadURL }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js";
 
 /* La règle des reports vit dans abo.js, partagée avec l'administration :
@@ -785,10 +785,13 @@ function quandMessage(iso) {
    mobile philippine, c'est la différence entre un envoi qui aboutit et un
    client qui abandonne.
 
-   1400 pixels de côté maximum : un reçu GCash est d'abord du texte, et
-   en dessous les montants deviennent discutables. */
-const COTE_MAX = 1400;
-const QUALITE = 0.72;
+   1100 pixels de côté maximum. Un reçu GCash est d'abord du texte : en
+   dessous les montants deviennent discutables, au-dessus on paie des
+   pixels pour rien. À cette taille une capture tombe autour de quatre-
+   vingt-dix kilooctets, et le bucket est en Europe tandis que le client
+   est à Manille — chaque kilooctet économisé compte deux fois. */
+const COTE_MAX = 1100;
+const QUALITE = 0.68;
 
 async function reduireImage(fichier) {
   /* createImageBitmap plutôt qu'un objet Image : il échoue franchement sur
@@ -953,8 +956,23 @@ function brancherMessages() {
       if (piecePrete) {
         const chemin = "preuves/" + uidClient + "/"
                      + Date.now() + "-" + Math.random().toString(36).slice(2, 8) + ".jpg";
-        await uploadBytes(refStorage(sto, chemin), piecePrete,
-                          { contentType: "image/jpeg" });
+
+        /* Envoi avec compte-rendu d'avancement.
+
+           uploadBytes ne dit rien jusqu'à la fin : sur une liaison mobile
+           vers un serveur européen, le client voit « Sending… » pendant
+           dix ou quinze secondes et croit que c'est bloqué. Il reclique,
+           ou il part. Le pourcentage coûte un aller-retour de plus pour
+           ouvrir la session, et il vaut largement son prix. */
+        const envoi = uploadBytesResumable(refStorage(sto, chemin), piecePrete,
+                                           { contentType: "image/jpeg" });
+        envoi.on("state_changed", (s) => {
+          const pct = s.totalBytes
+            ? Math.round(100 * s.bytesTransferred / s.totalBytes) : 0;
+          etat.textContent = "Sending the image… " + pct + "%";
+        });
+        await envoi;
+
         piece = { chemin, taille: piecePrete.size };
         etat.textContent = "Sending…";
       }
