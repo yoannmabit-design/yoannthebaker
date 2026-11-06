@@ -20,7 +20,10 @@
   — dans l'ordre et sous les noms de rayon de la vitrine (promo.js) ;
   — ceux que l'admin a marqués absents du stand, grisés en bas de leur rayon
     avec « Not today » plutôt que cachés : le client sait que le produit
-    existe et peut le commander en ligne.
+    existe et peut le commander en ligne ;
+  — en dernier, la rubrique « Also on the stall » : produits d'un jour ou
+    vendus pour le compte de quelqu'un d'autre, saisis à la main dans l'admin
+    (marche.extras), absents de la boutique en ligne.
 
   La disponibilité vient de parametres/boutique → marche.indisponibles,
   réglée depuis la carte « Menu du marché » de boutique-admin.html.
@@ -187,6 +190,10 @@ const peso = (n) => "₱" + Number(n).toLocaleString("en-PH");
 let produits = null;           // null = catalogue pas encore lu
 let indispo  = new Set();      // codes marqués absents du stand
 let notes    = {};             // conseils par rayon (rayons_notes)
+let extras   = [];             // produits hors boutique, au stand seulement
+
+// Rubrique des produits hors boutique, toujours en dernier.
+const HORS_BOUTIQUE = "Also on the stall";
 
 /* ---------- Catalogue : lu une fois ---------- */
 getDocs(collection(db, "boutique_produits"))
@@ -215,6 +222,12 @@ onSnapshot(doc(db, "parametres", "boutique"), s => {
   const d = s.exists() ? s.data() : {};
   const m = d.marche || {};
   indispo = new Set(Array.isArray(m.indisponibles) ? m.indisponibles : []);
+  /* Mis dans la même forme qu'un produit de la boutique, pour passer par le
+     même affichage. sansPhoto : pas de fichier à chercher dans photos/. */
+  extras = (Array.isArray(m.extras) ? m.extras : [])
+    .filter(e => e && e.id && e.nom)
+    .map(e => ({ id: e.id, nom: String(e.nom), prix_vente: Number(e.prix) || 0,
+                 description_client: e.description || "", sansPhoto: true }));
   notes = (d.rayons_notes && typeof d.rayons_notes === "object") ? d.rayons_notes : {};
   afficher();
 }, e => console.error(e));
@@ -224,7 +237,7 @@ function afficher() {
   if (produits === null) return;   // on attend le catalogue
   const zone = $("menu");
 
-  if (!produits.length) {
+  if (!produits.length && !extras.length) {
     zone.innerHTML = '<div class="message">The menu is being prepared. Please ask at the stall!</div>';
     $("rayons").hidden = true;
     return;
@@ -234,6 +247,10 @@ function afficher() {
   produits.forEach(p => { const r = rayonDe(p); (groupes[r] = groupes[r] || []).push(p); });
   const rang = (r) => { const i = RAYONS.indexOf(r); return i === -1 ? 99 : i; };
   const cles = Object.keys(groupes).sort((a, b) => rang(a) - rang(b) || a.localeCompare(b));
+  if (extras.length) {
+    groupes[HORS_BOUTIQUE] = extras;
+    cles.push(HORS_BOUTIQUE);
+  }
 
   const barre = $("rayons");
   if (cles.length > 1) {
@@ -312,6 +329,7 @@ function ligne(p) {
 function photo(p) {
   const cadre = document.createElement("div");
   cadre.className = "photo";
+  if (p.sansPhoto) return cadre;   // plaque vide, aucune requête
   const img = document.createElement("img");
   img.alt = "";
   img.loading = "lazy";
