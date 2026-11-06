@@ -232,6 +232,53 @@
   .bloc.messages .envoyer:disabled{opacity:.55;cursor:default}
   .bloc.messages .vide{padding:14px 0;text-align:left}
   .surcmd{font-weight:600}
+
+  /* Pièce jointe — preuve de paiement.
+
+     Sous la bulle et non dedans. Une capture d'écran de téléphone est
+     bien plus étroite que la bulle, qui est dimensionnée par son texte :
+     à l'intérieur, elle laissait un grand aplat de couleur vide à sa
+     droite. Dehors, elle se cale du côté de son auteur comme la bulle,
+     et la pile se lit sans trou.
+
+     Hauteur plafonnée : une capture verticale mangerait tout le fil. */
+  .bloc.messages .piece{
+    display:block;margin-top:6px;max-width:100%;max-height:240px;
+    border-radius:10px;border:1px solid var(--trait);
+    background:#fff;cursor:zoom-in;
+  }
+  .bloc.messages .msg.mien .piece{margin-left:auto}
+  .bloc.messages .piece-partie{
+    margin-top:6px;font-size:14.5px;font-style:italic;
+    color:var(--encre-doux);
+  }
+  .bloc.messages .msg.mien .piece-partie{text-align:right}
+  /* Le choix du fichier. Un bouton d'apparence sobre : il ne doit pas
+     concurrencer « Send », qui reste l'action principale. */
+  .bloc.messages .jointe{
+    display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:10px;
+  }
+  .bloc.messages .jointe input[type=file]{display:none}
+  .bloc.messages .jointe label{
+    padding:9px 15px;border:1px solid var(--trait);border-radius:var(--r);
+    font-size:15.5px;cursor:pointer;background:#fff;color:var(--accent);
+  }
+  /* Pas de flex:1 ici : la taille du fichier pousserait « Remove » à
+     l'autre bout de la ligne, et les deux cesseraient de se lire comme
+     appartenant au même fichier. */
+  .bloc.messages .jointe .nomFichier{
+    font-size:14.5px;color:var(--encre-doux);word-break:break-word;
+  }
+  .bloc.messages .jointe .retirer{
+    border:none;background:none;color:var(--alerte);font:inherit;
+    font-size:14.5px;cursor:pointer;padding:4px 2px;text-decoration:underline;
+  }
+  /* Vignette de contrôle, pas d'affichage : elle sert à vérifier qu'on a
+     choisi la bonne capture, pas à la lire. Assez petite pour tenir sur
+     la ligne des boutons. */
+  .bloc.messages .apercu{
+    max-height:58px;border-radius:5px;border:1px solid var(--trait);
+  }
   /* Pastille « New reply » : la seule chose qui signale au client qu'on lui
      a répondu, puisque rien ne le prévient par ailleurs. Assez vive pour se
      voir en descendant la page, assez petite pour ne pas concurrencer le
@@ -385,6 +432,11 @@ import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChang
 import { getFirestore, collection, getDocs, doc, getDoc, setDoc, addDoc,
          query, orderBy, limit, where }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+/* Storage, pour les preuves de paiement jointes aux messages. Première
+   utilisation du bucket dans le projet — il était déclaré dans la
+   configuration depuis le début sans jamais servir. */
+import { getStorage, ref as refStorage, uploadBytes, getDownloadURL }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js";
 
 /* La règle des reports vit dans abo.js, partagée avec l'administration :
    elle n'est pas réécrite ici, sans quoi les deux faces divergeraient. */
@@ -403,6 +455,7 @@ const firebaseConfig = {
 const app  = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db   = getFirestore(app);
+const sto  = getStorage(app);
 const $    = (id) => document.getElementById(id);
 const peso = (n) => "₱" + Number(n || 0).toLocaleString("en-PH");
 const ech  = (t) => String(t ?? "").replace(/[&<>"]/g, x =>
@@ -585,18 +638,54 @@ async function chargerNotices(commandes) {
    prévenir. Rien ne sonne chez le boulanger, rien ne sonne chez le client.
    C'est une boîte aux lettres, pas une messagerie instantanée, et le dire
    évite la seule déception possible. */
+/* Une ligne du fil.
+
+   Écrite une seule fois, et utilisée aussi bien au premier affichage
+   qu'après l'envoi d'un message. Les deux endroits avaient leur propre
+   copie de ce gabarit, et celui de l'envoi avait déjà cessé d'afficher le
+   liseré de commande comme l'autre. Deux copies d'un même affichage
+   divergent toujours ; celle-ci n'existe qu'une fois. */
+function ligneMessage(m) {
+  const mien = m.auteur !== "admin";
+  const surCmd = m.numero
+    ? `<span class="surcmd">Order ${ech(m.numero)}</span>` : "";
+  return `
+    <div class="msg ${mien ? "mien" : "sien"}">
+      <div class="bulle">${ech(m.texte)}</div>
+      ${piecePour(m)}
+      <div class="meta">${surCmd}${surCmd ? " · " : ""}${ech(quandMessage(m.cree_le))}</div>
+    </div>`;
+}
+
+/* La pièce jointe, si le message en porte une.
+
+   Trois états, et le troisième compte autant que les deux autres :
+
+   — supprimée : la commande a été marquée payée, la preuve a servi et
+     elle a été effacée. On le dit, plutôt que d'afficher une image
+     cassée. La mention est une information en soi — elle atteste qu'une
+     preuve a existé.
+   — en attente d'adresse : l'URL est demandée à Storage après coup, de
+     façon asynchrone. On réserve la place.
+   — affichée.
+
+   L'adresse n'est pas enregistrée sur le message : une URL de
+   téléchargement porte un jeton qui resterait valable indéfiniment dans
+   la base. Seul le chemin est stocké, et l'adresse est redemandée à
+   chaque affichage par quelqu'un qui a le droit de la voir. */
+function piecePour(m) {
+  if (m.piece_supprimee) {
+    return `<div class="piece-partie">Payment proof deleted once your
+            payment was confirmed.</div>`;
+  }
+  if (!m.piece || !m.piece.chemin) return "";
+  return `<img class="piece" alt="Payment proof"
+               data-chemin="${ech(m.piece.chemin)}" loading="lazy">`;
+}
+
 function blocMessages() {
   const fil = messages.length
-    ? messages.map(m => {
-        const mien = m.auteur !== "admin";
-        const surCmd = m.numero
-          ? `<span class="surcmd">Order ${ech(m.numero)}</span>` : "";
-        return `
-          <div class="msg ${mien ? "mien" : "sien"}">
-            <div class="bulle">${ech(m.texte)}</div>
-            <div class="meta">${surCmd}${surCmd ? " · " : ""}${ech(quandMessage(m.cree_le))}</div>
-          </div>`;
-      }).join("")
+    ? messages.map(ligneMessage).join("")
     : `<p class="vide">No messages yet.</p>`;
 
   /* Le choix du sujet, pré-réglé sur la commande la plus récente quand elle
@@ -626,6 +715,13 @@ function blocMessages() {
       <select id="msgSujet">${options.join("")}</select>
       <textarea id="msgTexte" rows="3" maxlength="2000"
                 placeholder="Your message…"></textarea>
+      <div class="jointe">
+        <input type="file" id="msgFichier" accept="image/*">
+        <label for="msgFichier">Attach payment proof</label>
+        <img class="apercu" id="msgApercu" alt="" hidden>
+        <span class="nomFichier" id="msgNomFichier"></span>
+        <button type="button" class="retirer" id="msgRetirer" hidden>Remove</button>
+      </div>
       <div class="envoi">
         <button class="envoyer" id="btnMessage" type="button">Send</button>
         <span class="aide" id="etatMessage"></span>
@@ -681,12 +777,133 @@ function quandMessage(iso) {
       + ", " + d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
 }
 
+/* ---------- Pièces jointes ----------
+
+   Réduction avant envoi, toujours, sans exception. Une capture d'écran de
+   téléphone fait deux à six mégaoctets ; réduite, cent à deux cents
+   kilooctets, et le reçu reste parfaitement lisible. Sur une connexion
+   mobile philippine, c'est la différence entre un envoi qui aboutit et un
+   client qui abandonne.
+
+   1400 pixels de côté maximum : un reçu GCash est d'abord du texte, et
+   en dessous les montants deviennent discutables. */
+const COTE_MAX = 1400;
+const QUALITE = 0.72;
+
+async function reduireImage(fichier) {
+  /* createImageBitmap plutôt qu'un objet Image : il échoue franchement sur
+     un format que le navigateur ne sait pas décoder, au lieu de rester
+     silencieux. Un HEIC d'iPhone passé tel quel tomberait ici, et on
+     préfère le dire au client que lui envoyer un fichier illisible. */
+  const image = await createImageBitmap(fichier);
+
+  const facteur = Math.min(1, COTE_MAX / Math.max(image.width, image.height));
+  const l = Math.round(image.width * facteur);
+  const h = Math.round(image.height * facteur);
+
+  const toile = document.createElement("canvas");
+  toile.width = l; toile.height = h;
+  const ctx = toile.getContext("2d");
+  /* Fond blanc : un PNG transparent deviendrait noir en JPEG, et un reçu
+     sur fond noir est illisible. */
+  ctx.fillStyle = "#fff";
+  ctx.fillRect(0, 0, l, h);
+  ctx.drawImage(image, 0, 0, l, h);
+  image.close?.();
+
+  const blob = await new Promise(r => toile.toBlob(r, "image/jpeg", QUALITE));
+  if (!blob) throw new Error("toBlob a rendu null");
+  return blob;
+}
+
+/* L'adresse de téléchargement, demandée après l'affichage.
+
+   Les vignettes naissent sans src : l'adresse exige un aller-retour avec
+   Storage, et attendre toutes les adresses avant de peindre le fil le
+   ferait apparaître avec deux secondes de retard. Chaque image se remplit
+   quand son adresse arrive.
+
+   Un échec laisse l'image vide plutôt que cassée : la pièce a pu être
+   supprimée entre-temps par la fonction de paiement, et une icône de
+   fichier manquant ferait croire à une panne. */
+async function peindrePieces(racine) {
+  const images = (racine || document).querySelectorAll("img.piece[data-chemin]");
+  for (const img of images) {
+    const chemin = img.dataset.chemin;
+    delete img.dataset.chemin;        // une seule tentative par vignette
+    try {
+      img.src = await getDownloadURL(refStorage(sto, chemin));
+      img.onclick = () => window.open(img.src, "_blank", "noopener");
+    } catch (e) {
+      console.warn("Pièce jointe indisponible :", chemin, e.code || e.message);
+      img.remove();
+    }
+  }
+}
+
 function brancherMessages() {
   const btn = document.getElementById("btnMessage");
   if (!btn) return;
   const zone = document.getElementById("msgTexte");
   const sujet = document.getElementById("msgSujet");
   const etat = document.getElementById("etatMessage");
+
+  peindrePieces(document.getElementById("filMessages"));
+
+  /* Le fichier choisi, réduit tout de suite plutôt qu'au moment de
+     l'envoi : le client voit son aperçu, et si son format n'est pas
+     décodable il l'apprend avant d'avoir écrit son message. */
+  const champFichier = document.getElementById("msgFichier");
+  const apercu = document.getElementById("msgApercu");
+  const nomFichier = document.getElementById("msgNomFichier");
+  const btnRetirer = document.getElementById("msgRetirer");
+  let piecePrete = null;
+
+  function oublierPiece() {
+    piecePrete = null;
+    champFichier.value = "";
+    apercu.hidden = true;
+    if (apercu.src.startsWith("blob:")) URL.revokeObjectURL(apercu.src);
+    apercu.removeAttribute("src");
+    nomFichier.textContent = "";
+    btnRetirer.hidden = true;
+  }
+
+  btnRetirer.onclick = oublierPiece;
+
+  champFichier.onchange = async () => {
+    const f = champFichier.files && champFichier.files[0];
+    if (!f) return oublierPiece();
+
+    nomFichier.textContent = "Preparing…";
+    btnRetirer.hidden = false;
+    try {
+      const blob = await reduireImage(f);
+      piecePrete = blob;
+      if (apercu.src.startsWith("blob:")) URL.revokeObjectURL(apercu.src);
+      apercu.src = URL.createObjectURL(blob);
+      apercu.hidden = false;
+      nomFichier.textContent = Math.round(blob.size / 1024) + " KB";
+
+      /* Un message sans texte n'existe pas : les règles Firestore exigent
+         un texte non vide, et un fil fait de vignettes muettes serait
+         illisible dans six mois. Plutôt que de refuser l'envoi, on écrit
+         la phrase à la place du client — qu'il peut corriger, puisqu'elle
+         est dans la zone de saisie et pas cachée dans le code. */
+      if (!zone.value.trim()) {
+        const o = sujet.selectedOptions[0];
+        zone.value = (sujet.value && o && o.dataset.num)
+          ? "Payment proof for order " + o.dataset.num + "."
+          : "Payment proof attached.";
+      }
+    } catch (e) {
+      console.error(e);
+      oublierPiece();
+      nomFichier.textContent =
+        "I can't read that image. A screenshot or a photo in JPEG or PNG works.";
+      btnRetirer.hidden = false;
+    }
+  };
 
   // Ouvert sur le dernier message : c'est la réponse qu'on vient lire, pas
   // la question posée il y a trois semaines.
@@ -716,10 +933,33 @@ function brancherMessages() {
     const texte = zone.value.trim();
     if (!texte) { zone.focus(); return; }
     btn.disabled = true;
-    etat.textContent = "Sending…";
+    etat.textContent = piecePrete ? "Sending the image…" : "Sending…";
     const opt = sujet.selectedOptions[0];
     try {
-      await addDoc(collection(db, "messages"), {
+      /* L'image part avant le message, jamais l'inverse.
+
+         Si l'envoi du fichier échoue après l'écriture du message, le
+         message désigne un fichier qui n'existe pas, et la vignette est
+         morte pour toujours. Dans l'autre sens, un fichier arrivé sans
+         message n'est qu'un objet orphelin — que la règle de cycle de vie
+         du bucket efface au bout de trente jours, sans que personne s'en
+         occupe.
+
+         Un échec ici arrête donc tout, et le texte reste dans la zone de
+         saisie : rien n'est perdu, le client renvoie. Une preuve annoncée
+         mais absente serait pire que pas de preuve du tout — elle vous
+         ferait réclamer deux fois. */
+      let piece = null;
+      if (piecePrete) {
+        const chemin = "preuves/" + uidClient + "/"
+                     + Date.now() + "-" + Math.random().toString(36).slice(2, 8) + ".jpg";
+        await uploadBytes(refStorage(sto, chemin), piecePrete,
+                          { contentType: "image/jpeg" });
+        piece = { chemin, taille: piecePrete.size };
+        etat.textContent = "Sending…";
+      }
+
+      const message = {
         compte_uid: uidClient,
         commande_id: sujet.value || null,
         numero: (sujet.value && opt) ? (opt.dataset.num || null) : null,
@@ -730,27 +970,32 @@ function brancherMessages() {
            lu ne serait jamais vu. */
         lu_admin: false,
         cree_le: new Date().toISOString()
-      });
+      };
+      // Le champ n'est posé que s'il y a une pièce : un piece: null sur
+      // chaque message serait un champ de plus à écrire pour rien.
+      if (piece) message.piece = piece;
+
+      await addDoc(collection(db, "messages"), message);
+
       // Ajouté au fil sans relire le serveur : le client doit voir son
       // message parti, tout de suite.
-      messages.push({ auteur: "client", texte,
+      messages.push({ auteur: "client", texte, piece,
                       numero: (sujet.value && opt) ? opt.dataset.num : null,
                       cree_le: new Date().toISOString() });
       zone.value = "";
+      oublierPiece();
       etat.textContent = "Sent. I'll answer you here.";
       const fil = document.getElementById("filMessages");
       if (fil) {
-        fil.innerHTML = messages.map(m => `
-          <div class="msg ${m.auteur !== "admin" ? "mien" : "sien"}">
-            <div class="bulle">${ech(m.texte)}</div>
-            <div class="meta">${m.numero ? "Order " + ech(m.numero) + " · " : ""}${
-              ech(quandMessage(m.cree_le))}</div>
-          </div>`).join("");
+        fil.innerHTML = messages.map(ligneMessage).join("");
+        peindrePieces(fil);
         fil.scrollTop = fil.scrollHeight;
       }
     } catch (e) {
       console.error(e);
-      etat.textContent = "That didn't go through. Please check your connection.";
+      etat.textContent = piecePrete
+        ? "The image didn't go through. Your message is still here — please try again."
+        : "That didn't go through. Please check your connection.";
     } finally {
       btn.disabled = false;
     }
