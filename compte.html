@@ -850,6 +850,12 @@ async function peindrePieces(racine) {
    réessayer, ou prévenir. Le code technique est ajouté entre parenthèses
    — il ne lui parle pas, mais c'est la première chose à me lire quand il
    écrit « ça ne marche pas », et sans lui on cherche à l'aveugle. */
+/* Le chemin de la dernière tentative, pour pouvoir le montrer en cas de
+   refus. Un « accès refusé » sans le chemin refusé n'apprend rien : on ne
+   peut pas comparer ce que la page envoie à ce que les règles attendent,
+   et c'est exactement la comparaison qu'il faut faire. */
+let dernierChemin = "";
+
 function messageEnvoi(e, avecImage) {
   const code = (e && e.code) || "";
   const suffixe = code ? " (" + code + ")" : "";
@@ -865,7 +871,8 @@ function messageEnvoi(e, avecImage) {
   if (code === "storage/unauthorized" || code === "permission-denied") {
     return "I'm not allowed to store that image yet — this is on my side, "
          + "not yours. Send your message without it and tell me, or use "
-         + "WhatsApp for now." + suffixe;
+         + "WhatsApp for now." + suffixe
+         + (dernierChemin ? " [" + dernierChemin + "]" : "");
   }
   if (code === "storage/retry-limit-exceeded" || code === "storage/canceled") {
     return "The connection dropped while the image was going up. Your message "
@@ -990,8 +997,26 @@ function brancherMessages() {
          ferait réclamer deux fois. */
       let piece = null;
       if (piecePrete) {
-        const chemin = "preuves/" + uidClient + "/"
+        /* L'uid est relu sur la session en cours, et non sur la variable
+           posée au chargement de la page.
+
+           Les deux devraient être identiques. Mais si la session a été
+           renouvelée entre-temps — reconnexion dans un autre onglet,
+           jeton rafraîchi — la variable peut être vide ou périmée, et le
+           chemin devient « preuves//1762... », qui ne correspond à aucune
+           règle. Le refus est alors incompréhensible : les règles sont
+           bonnes, c'est le chemin qui ne l'est pas.
+
+           On lit donc la source d'autorité au moment de s'en servir. */
+        const moi = auth.currentUser;
+        if (!moi || !moi.uid) {
+          throw Object.assign(new Error("Session absente"),
+                              { code: "storage/unauthenticated" });
+        }
+
+        const chemin = "preuves/" + moi.uid + "/"
                      + Date.now() + "-" + Math.random().toString(36).slice(2, 8) + ".jpg";
+        dernierChemin = chemin;
 
         /* Envoi avec compte-rendu d'avancement.
 
