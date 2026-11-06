@@ -126,7 +126,19 @@
   }
   .produit .photo img{width:100%;height:100%;object-fit:cover;display:block}
   .produit .nom{font-weight:600;line-height:1.3}
-  .produit .desc{font-size:15px;color:var(--encre-doux);margin-top:3px;line-height:1.4}
+  /* min-width:0 : sans lui, une colonne de grille refuse de rétrécir sous
+     la largeur de son texte, et la description ne serait jamais coupée. */
+  .produit .texte{min-width:0}
+  /* Description sur une seule ligne, coupée par « … » : le menu se balaie
+     du pouce sans que trois lignes de texte doublent la hauteur d'un
+     produit. Un toucher sur la ligne la déplie en entier. */
+  .produit .desc{
+    font-size:15px;color:var(--encre-doux);margin-top:3px;line-height:1.4;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  }
+  .produit.ouvert .desc{white-space:normal}
+  .produit.depliable{cursor:pointer;-webkit-tap-highlight-color:transparent}
+  .produit.depliable:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px}
   .produit .prix{font-weight:700;color:var(--accent);white-space:nowrap;padding-top:1px}
 
   .produit.absent .photo,
@@ -191,6 +203,10 @@ let produits = null;           // null = catalogue pas encore lu
 let indispo  = new Set();      // codes marqués absents du stand
 let notes    = {};             // conseils par rayon (rayons_notes)
 let extras   = [];             // produits hors boutique, au stand seulement
+/* Descriptions dépliées, par code produit. Gardé hors de l'affichage : la
+   page se redessine à chaque changement de disponibilité, et un client en
+   train de lire ne doit pas voir son texte se replier sous ses yeux. */
+const ouverts = new Set();
 
 // Rubrique des produits hors boutique, toujours en dernier.
 const HORS_BOUTIQUE = "Also on the stall";
@@ -288,16 +304,58 @@ function afficher() {
 
     zone.appendChild(bloc);
   });
+  marquerDepliables();
 }
+
+/* Seules les lignes dont la description dépasse vraiment deviennent
+   touchables : une description courte, entière sur sa ligne, n'a rien à
+   déplier. Mesuré une fois la page dessinée, puisque ça dépend de la largeur
+   de l'écran — et donc refait si le téléphone pivote. */
+function marquerDepliables() {
+  document.querySelectorAll(".produit").forEach(el => {
+    const d = el.querySelector(".desc");
+    if (!d) return;
+    const id = el.dataset.id;
+    const coupee = d.scrollWidth > d.clientWidth + 1;
+    const depliable = coupee || ouverts.has(id);
+    el.classList.toggle("depliable", depliable);
+    el.classList.toggle("ouvert", ouverts.has(id));
+    if (!depliable) {
+      el.removeAttribute("role"); el.removeAttribute("tabindex");
+      el.removeAttribute("aria-expanded");
+      el.onclick = el.onkeydown = null;
+      return;
+    }
+    el.setAttribute("role", "button");
+    el.tabIndex = 0;
+    el.setAttribute("aria-expanded", String(ouverts.has(id)));
+    el.onclick = () => {
+      if (ouverts.has(id)) ouverts.delete(id); else ouverts.add(id);
+      el.classList.toggle("ouvert", ouverts.has(id));
+      el.setAttribute("aria-expanded", String(ouverts.has(id)));
+    };
+    el.onkeydown = (e) => {
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); el.onclick(); }
+    };
+  });
+}
+
+let attenteLargeur;
+window.addEventListener("resize", () => {
+  clearTimeout(attenteLargeur);
+  attenteLargeur = setTimeout(marquerDepliables, 150);
+});
 
 function ligne(p) {
   const absent = indispo.has(p.id);
   const el = document.createElement("div");
   el.className = "produit" + (absent ? " absent" : "");
+  el.dataset.id = p.id;
 
   el.appendChild(photo(p));
 
   const texte = document.createElement("div");
+  texte.className = "texte";
   const nom = document.createElement("div");
   nom.className = "nom";
   nom.textContent = p.nom;
