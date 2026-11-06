@@ -17,7 +17,7 @@
      ferait croire à une commande partie alors qu'elle dort sur l'appareil.
    ============================================================ */
 
-const VERSION = 'yfb-boutique-v33';
+const VERSION = 'yfb-boutique-v34';
 
 /* Modules Firebase servis par gstatic.com : cache d'abord.
 
@@ -54,7 +54,9 @@ const ESSENTIELS = [
   './confirmation-abonnement.html',
   './manifest.json',
   './logo.jpg',
-  './faq.html'
+  './faq.html',
+  // Menu du stand : doit s'ouvrir même si le réseau du marché flanche.
+  './marche.html'
 ];
 
 self.addEventListener('install', (e) => {

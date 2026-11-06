@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Yoann's French Bakery — Market menu</title>
+<meta name="description" content="What's on the stall today: French bread and pastries, baked overnight.">
+<meta name="theme-color" content="#201e1d">
+<link rel="icon" href="logo.jpg">
+<link rel="apple-touch-icon" href="icone-180.png">
+<!--
+  Menu du stand de marché — page ouverte par le QR code et la puce NFC.
+
+  Lecture seule : pas de panier, pas de compte, pas de commande. On regarde,
+  on choisit, on paie au stand.
+
+  Ce qu'elle affiche :
+  — les produits en vente dans la boutique (boutique_produits, visible ≠ false),
+    sauf le rayon Frozen, qui ne va pas au marché ;
+  — dans l'ordre et sous les noms de rayon de la vitrine (promo.js) ;
+  — ceux que l'admin a marqués absents du stand, grisés en bas de leur rayon
+    avec « Not today » plutôt que cachés : le client sait que le produit
+    existe et peut le commander en ligne.
+
+  La disponibilité vient de parametres/boutique → marche.indisponibles,
+  réglée depuis la carte « Menu du marché » de boutique-admin.html.
+  La page écoute ce document en direct : un produit marqué épuisé depuis
+  le stand se grise chez le client sans qu'il ait à recharger.
+
+  La disponibilité de la boutique en ligne (champ « disponible » de la fiche)
+  n'est volontairement pas lue ici : le stand a son propre stock, réglé à part.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<!-- Même chargement non bloquant que index.html : la police ne sert qu'aux
+     titres, la page s'affiche en police système en attendant. -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Caprasimo&display=swap"
+      media="print" onload="this.media='all'">
+<noscript>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Caprasimo&display=swap">
+</noscript>
+<link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://firestore.googleapis.com" crossorigin>
+<link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js" crossorigin>
+<link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js" crossorigin>
+<link rel="modulepreload" href="./promo.js?v=3">
+<style>
+  /* Palette « Terracotta & Sage », reprise de index.html. */
+  :root{
+    --creme:#f5ead8;
+    --papier:#ffffff;
+    --encre:#201e1d;
+    --encre-doux:#5c5449;
+    --trait:#e3d4b8;
+    --accent:#c67139;
+    --sauge:#7a8a5e;
+    --epuise:#9a9188;
+    --r:10px;
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0;background:var(--creme);color:var(--encre);
+    font:18px/1.5 ui-sans-serif,-apple-system,"Segoe UI",Roboto,sans-serif;
+  }
+
+  .banniere{
+    background:var(--encre);color:var(--creme);
+    padding:24px 16px 22px;text-align:center;
+  }
+  .banniere .logo{
+    width:84px;height:84px;border-radius:50%;
+    object-fit:contain;background:var(--creme);
+    display:block;margin:0 auto 12px;
+  }
+  .banniere h1{
+    font-family:Caprasimo,"Iowan Old Style",Georgia,"Times New Roman",serif;
+    font-size:clamp(26px,7vw,36px);font-weight:400;margin:0;letter-spacing:.015em;
+  }
+  .banniere .sous{
+    margin:6px 0 0;font-size:13.5px;letter-spacing:.19em;
+    text-transform:uppercase;opacity:.72;
+  }
+
+  /* Barre des rayons, collée en haut : sur un long menu, on saute
+     directement aux viennoiseries sans faire défiler tout le pain. */
+  .rayons{
+    position:sticky;top:0;z-index:5;background:var(--creme);
+    border-bottom:1px solid var(--trait);
+    display:flex;gap:8px;overflow-x:auto;padding:10px 16px;
+    scrollbar-width:none;
+  }
+  .rayons::-webkit-scrollbar{display:none}
+  .rayons a{
+    flex:0 0 auto;text-decoration:none;color:var(--encre);
+    border:1px solid var(--trait);background:var(--papier);
+    padding:6px 14px;border-radius:999px;font-size:15px;
+  }
+  .rayons a:active{background:var(--sauge);border-color:var(--sauge);color:var(--creme)}
+
+  main{max-width:640px;margin:0 auto;padding:18px 16px 28px}
+
+  .categorie{margin-bottom:28px;scroll-margin-top:60px}
+  .categorie h2{
+    font-family:Caprasimo,"Iowan Old Style",Georgia,serif;
+    font-size:22px;font-weight:400;margin:0 0 2px;
+  }
+  .categorie .note{
+    font-style:italic;font-size:14.5px;line-height:1.45;
+    color:var(--sauge);margin:0 0 8px;max-width:60ch;
+  }
+  .categorie .filet{height:1px;background:var(--trait);margin-bottom:6px}
+
+  /* Une ligne par produit : photo, nom et description, prix à droite. */
+  .produit{
+    display:grid;grid-template-columns:68px 1fr auto;gap:12px;
+    align-items:start;padding:12px 0;border-bottom:1px solid var(--trait);
+  }
+  .produit:last-child{border-bottom:none}
+  .produit .photo{
+    width:68px;height:68px;border-radius:8px;overflow:hidden;
+    background:#eadcc1;
+  }
+  .produit .photo img{width:100%;height:100%;object-fit:cover;display:block}
+  .produit .nom{font-weight:600;line-height:1.3}
+  .produit .desc{font-size:15px;color:var(--encre-doux);margin-top:3px;line-height:1.4}
+  .produit .prix{font-weight:700;color:var(--accent);white-space:nowrap;padding-top:1px}
+
+  .produit.absent .photo,
+  .produit.absent .nom,
+  .produit.absent .desc{opacity:.45}
+  .produit.absent .prix{color:var(--epuise);font-weight:600}
+  .produit .absent-etiquette{
+    display:inline-block;margin-top:5px;font-size:12px;font-weight:700;
+    letter-spacing:.07em;text-transform:uppercase;color:var(--epuise);
+  }
+
+  .message{padding:40px 10px;text-align:center;color:var(--encre-doux)}
+
+  .pied{
+    text-align:center;padding:22px 16px 34px;font-size:15.5px;
+    color:var(--encre-doux);border-top:1px solid var(--trait);
+    max-width:640px;margin:0 auto;
+  }
+  .pied a{color:var(--accent);font-weight:600}
+</style>
+</head>
+<body>
+
+<header class="banniere">
+  <img class="logo" src="logo.jpg" alt="Yoann's French Bakery">
+  <h1>On the stall today</h1>
+  <p class="sous">Yoann's French Bakery</p>
+</header>
+
+<nav class="rayons" id="rayons" hidden></nav>
+
+<main id="menu">
+  <div class="message">Loading the menu…</div>
+</main>
+
+<p class="pied">
+  Prefer delivery? <a href="./">Order online</a> — baked to order, delivered Wednesday, Saturday and Sunday.
+</p>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, collection, getDocs, doc, onSnapshot }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+/* Rayons et repli de classement : même module que la vitrine, pour que le
+   marché et la boutique rangent les produits de la même façon. */
+import { RAYONS, rayonDe } from "./promo.js?v=3";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDuq8KS8M_Z8U7BlSp6MvE-6Y9OYYaDujE",
+  authDomain: "bakertools-ae124.firebaseapp.com",
+  projectId: "bakertools-ae124",
+  storageBucket: "bakertools-ae124.firebasestorage.app",
+  messagingSenderId: "978584667113",
+  appId: "1:978584667113:web:868cc89788aff27717c178"
+};
+
+const db = getFirestore(initializeApp(firebaseConfig));
+const $  = (id) => document.getElementById(id);
+const peso = (n) => "₱" + Number(n).toLocaleString("en-PH");
+
+let produits = null;           // null = catalogue pas encore lu
+let indispo  = new Set();      // codes marqués absents du stand
+let notes    = {};             // conseils par rayon (rayons_notes)
+
+/* ---------- Catalogue : lu une fois ---------- */
+getDocs(collection(db, "boutique_produits"))
+  .then(snap => {
+    produits = [];
+    snap.forEach(s => {
+      const d = s.data();
+      if (d.visible === false) return;
+      const p = { id: s.id, ...d };
+      if (rayonDe(p) === "Frozen") return;   // les surgelés ne vont pas au marché
+      produits.push(p);
+    });
+    afficher();
+  })
+  .catch(e => {
+    console.error(e);
+    $("menu").innerHTML =
+      '<div class="message">The menu could not be loaded. Please refresh the page.</div>';
+  });
+
+/* ---------- Disponibilité au stand : écoutée en direct ----------
+   Un produit marqué épuisé depuis l'admin se grise ici dans la seconde.
+   En cas d'échec, on garde le dernier état connu — au pire tout le menu
+   s'affiche comme disponible, ce qui vaut mieux qu'une page vide. */
+onSnapshot(doc(db, "parametres", "boutique"), s => {
+  const d = s.exists() ? s.data() : {};
+  const m = d.marche || {};
+  indispo = new Set(Array.isArray(m.indisponibles) ? m.indisponibles : []);
+  notes = (d.rayons_notes && typeof d.rayons_notes === "object") ? d.rayons_notes : {};
+  afficher();
+}, e => console.error(e));
+
+/* ---------- Affichage ---------- */
+function afficher() {
+  if (produits === null) return;   // on attend le catalogue
+  const zone = $("menu");
+
+  if (!produits.length) {
+    zone.innerHTML = '<div class="message">The menu is being prepared. Please ask at the stall!</div>';
+    $("rayons").hidden = true;
+    return;
+  }
+
+  const groupes = {};
+  produits.forEach(p => { const r = rayonDe(p); (groupes[r] = groupes[r] || []).push(p); });
+  const rang = (r) => { const i = RAYONS.indexOf(r); return i === -1 ? 99 : i; };
+  const cles = Object.keys(groupes).sort((a, b) => rang(a) - rang(b) || a.localeCompare(b));
+
+  const barre = $("rayons");
+  if (cles.length > 1) {
+    barre.innerHTML = cles.map(c =>
+      `<a href="#rayon-${c.replace(/\s+/g, "-")}">${c}</a>`).join("");
+    barre.hidden = false;
+  } else {
+    barre.hidden = true;
+  }
+
+  zone.innerHTML = "";
+  cles.forEach(cle => {
+    const bloc = document.createElement("section");
+    bloc.className = "categorie";
+    bloc.id = "rayon-" + cle.replace(/\s+/g, "-");
+
+    const h = document.createElement("h2");
+    h.textContent = cle;
+    bloc.appendChild(h);
+
+    // textContent : le texte vient de l'admin, aucune balise ne passe.
+    const note = notes[cle];
+    if (note && String(note).trim()) {
+      const p = document.createElement("p");
+      p.className = "note";
+      p.textContent = String(note).trim();
+      bloc.appendChild(p);
+    }
+    bloc.insertAdjacentHTML("beforeend", '<div class="filet"></div>');
+
+    // Présents d'abord, par nom ; absents ensuite, par nom.
+    groupes[cle]
+      .sort((a, b) => (indispo.has(a.id) - indispo.has(b.id)) || a.nom.localeCompare(b.nom))
+      .forEach(p => bloc.appendChild(ligne(p)));
+
+    zone.appendChild(bloc);
+  });
+}
+
+function ligne(p) {
+  const absent = indispo.has(p.id);
+  const el = document.createElement("div");
+  el.className = "produit" + (absent ? " absent" : "");
+
+  el.appendChild(photo(p));
+
+  const texte = document.createElement("div");
+  const nom = document.createElement("div");
+  nom.className = "nom";
+  nom.textContent = p.nom;
+  texte.appendChild(nom);
+  if (p.description_client) {
+    const d = document.createElement("div");
+    d.className = "desc";
+    d.textContent = p.description_client;
+    texte.appendChild(d);
+  }
+  if (absent) {
+    const e = document.createElement("span");
+    e.className = "absent-etiquette";
+    e.textContent = "Not today";
+    texte.appendChild(e);
+  }
+  el.appendChild(texte);
+
+  const prix = document.createElement("div");
+  prix.className = "prix";
+  prix.textContent = peso(p.prix_vente || 0);
+  el.appendChild(prix);
+
+  return el;
+}
+
+/* Même recherche de photo que la vitrine : l'adresse saisie dans l'admin,
+   sinon photos/<code>.webp, .jpg, .jpeg, .png, sinon une plaque vide. */
+function photo(p) {
+  const cadre = document.createElement("div");
+  cadre.className = "photo";
+  const img = document.createElement("img");
+  img.alt = "";
+  img.loading = "lazy";
+  if (p.photo_url) {
+    img.onerror = () => img.remove();
+    img.src = p.photo_url;
+  } else {
+    const base = "photos/" + String(p.id).toLowerCase();
+    const essais = [".webp", ".jpg", ".jpeg", ".png"].map(e => base + e);
+    let n = 0;
+    img.onerror = () => { n += 1; if (n < essais.length) img.src = essais[n]; else img.remove(); };
+    img.src = essais[0];
+  }
+  cadre.appendChild(img);
+  return cadre;
+}
+
+// Même service worker que la boutique : la page reste consultable si le
+// réseau du marché flanche après une première visite.
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("sw.js").catch(() => {});
+}
+</script>
+</body>
+</html>
