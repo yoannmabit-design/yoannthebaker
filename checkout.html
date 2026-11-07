@@ -60,6 +60,16 @@
   }
   .deja strong{display:block;margin-bottom:2px}
 
+  /* Même ambre, en plus discret, pour le numéro qui a l'air incomplet.
+     Sous le champ et non en haut de page : l'avertissement doit être à
+     portée du doigt qui va corriger. */
+  .douteux{
+    background:#FEF6E4;border:1px solid #E7C98B;border-left:3px solid #D97706;
+    border-radius:8px;padding:10px 12px;margin:-7px 0 13px;
+    font-size:13.5px;line-height:1.45;
+  }
+  .douteux[hidden]{display:none}
+
   label.champ{display:block;margin-bottom:13px}
   label.champ span{display:block;font-size:14.5px;color:var(--encre-doux);margin-bottom:5px}
   input,select,textarea{
@@ -562,6 +572,7 @@ async function construire() {
       <label class="champ"><span>WhatsApp number</span>
         <input type="tel" id="tel" inputmode="tel" placeholder="0917 123 4567"
                autocomplete="tel"></label>
+      <p class="douteux" id="telDouteux" hidden></p>
 
       <div id="blocTelLocal" hidden>
         <label class="champ"><span>Local number for the rider (optional)</span>
@@ -696,8 +707,13 @@ async function construire() {
   if (memo.nom) $("nom").value = memo.nom;
   if (memo.tel) $("tel").value = memo.tel;
   if (memo.tel_local) $("telLocal").value = memo.tel_local;
-  $("tel").addEventListener("input", majTelLocal);
+  $("tel").addEventListener("input", () => { majTelLocal(); majTelDouteux(); });
   majTelLocal();
+  /* Aussi au chargement : le numéro est souvent prérempli depuis la
+     commande précédente. Un numéro faux une fois le resterait à chaque
+     commande, et c'est précisément comme ça qu'une erreur de saisie
+     devient permanente. */
+  majTelDouteux();
 
   // Le numéro est connu à ce stade (mémo local ou compte) : on va chercher
   // l'adresse nettoyée avant de remplir les champs.
@@ -1319,6 +1335,56 @@ function estNumeroPhilippin(brut) {
   if (c.length === 11 && c.startsWith("09")) return true;   // 09xx xxx xxxx
   if (c.length === 10 && c.startsWith("9"))  return true;   // 9xx xxx xxxx
   return false;
+}
+
+/* Un numéro qui a l'air d'avoir perdu un chiffre.
+
+   Le cas vécu : une cliente philippine tape son mobile en oubliant le 9.
+   Dix chiffres au lieu de onze, commençant toujours par 0. Le serveur
+   applique alors sa règle — un 0 suivi de dix ou onze chiffres est
+   philippin — et produit un +63 amputé. La commande part avec un numéro
+   qui n'existe pas, et surtout elle ne se rattache plus à son compte :
+   la clé de rapprochement est faite des dix derniers chiffres, et il en
+   manque un.
+
+   Le même avertissement attrape un second cas, très différent en
+   apparence et identique au fond : un étranger qui tape son numéro
+   national sans indicatif pays. « 0612345678 » deviendrait
+   +63612345678, un numéro philippin inventé. Dans les deux cas il
+   manque une information au début du numéro, et dans les deux cas c'est
+   le client, lui seul, qui peut la fournir.
+
+   On avertit, on ne refuse pas. Un blocage côté page a déjà été essayé
+   en octobre : il écartait des numéros légitimes que le serveur sait
+   traiter, et il a fallu le retirer. Un numéro douteux qui part reste
+   une commande ; un numéro valide refusé est une vente perdue. */
+function telDouteux(brut) {
+  const c = String(brut || "").replace(/\D/g, "");
+  if (c.length < 6) return "";          // en cours de frappe : on se tait
+
+  const manqueUnChiffre =
+    // 09xx xxx xxxx fait onze chiffres, jamais dix ni douze.
+    (c.startsWith("09") && c.length !== 11) ||
+    // 9xx xxx xxxx sans le zéro : dix chiffres.
+    (c.startsWith("9") && c.length === 9) ||
+    // +63 9xx xxx xxxx fait douze chiffres.
+    (c.startsWith("63") && c.length !== 12 && c.length >= 11) ||
+    /* Dix chiffres derrière un 0, hors 02 : les fixes de Manille
+       (02 8xxx xxxx) font légitimement dix chiffres, un mobile non. */
+    (c.startsWith("0") && c.length === 10 && c[1] !== "2");
+
+  if (!manqueUnChiffre) return "";
+  return "This looks like it's missing a digit. Philippine mobiles have "
+       + "11 digits — 0917 123 4567. If your number is from another "
+       + "country, start it with the country code, like +33 or +1.";
+}
+
+function majTelDouteux() {
+  const bloc = document.getElementById("telDouteux");
+  if (!bloc) return;
+  const message = telDouteux($("tel").value);
+  bloc.textContent = message;
+  bloc.hidden = !message;
 }
 
 function majTelLocal() {
