@@ -32,6 +32,13 @@
 
   La disponibilité de la boutique en ligne (champ « disponible » de la fiche)
   n'est volontairement pas lue ici : le stand a son propre stock, réglé à part.
+
+  Paiement : rubrique « How to pay » sous le menu. Mêmes coordonnées et mêmes
+  images que le checkout (parametres/boutique → paiement, réglées dans
+  « Coordonnées de paiement » de boutique-admin) : rien à saisir en double.
+  Le client ne peut pas scanner un QR affiché sur son propre téléphone :
+  d'où le bouton qui enregistre l'image, à importer ensuite depuis la
+  galerie dans GCash, Maya ou l'appli de sa banque.
 -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -152,6 +159,47 @@
 
   .message{padding:40px 10px;text-align:center;color:var(--encre-doux)}
 
+  /* Raccourci vers le paiement, distinct des rayons. */
+  .rayons a.payer{background:var(--accent);border-color:var(--accent);color:var(--papier);font-weight:600}
+
+  /* ---------- Paiement ---------- */
+  .paiement{max-width:640px;margin:0 auto;padding:4px 16px 30px;scroll-margin-top:60px}
+  .paiement h2{
+    font-family:Caprasimo,"Iowan Old Style",Georgia,serif;
+    font-size:22px;font-weight:400;margin:0 0 4px;
+  }
+  .paiement .intro{font-size:15.5px;color:var(--encre-doux);margin:0 0 14px;line-height:1.45}
+  .onglets{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}
+  .onglets button{
+    flex:1 1 0;min-width:84px;font:inherit;font-size:16px;font-weight:600;
+    padding:9px 10px;border-radius:999px;cursor:pointer;
+    border:1px solid var(--trait);background:var(--papier);color:var(--encre);
+  }
+  .onglets button[aria-selected="true"]{background:var(--encre);border-color:var(--encre);color:var(--creme)}
+  .moyen{
+    background:var(--papier);border:1px solid var(--trait);border-radius:var(--r);
+    padding:16px;text-align:center;
+  }
+  /* Hauteur bornée : la capture GCash est très allongée, et le QR, le numéro
+     et le bouton doivent tenir ensemble sur un écran de téléphone. Le fichier
+     enregistré, lui, reste l'image d'origine en pleine taille. */
+  .moyen img{
+    display:block;margin:0 auto 12px;max-width:100%;max-height:min(52vh,420px);
+    width:auto;height:auto;border-radius:8px;
+  }
+  .moyen .detail{font-size:15.5px;margin:0 0 12px;overflow-wrap:anywhere}
+  .moyen .actions{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+  .moyen .actions button,
+  .moyen .actions a{
+    font:inherit;font-size:16px;font-weight:600;text-decoration:none;
+    padding:11px 18px;border-radius:999px;cursor:pointer;
+    display:inline-flex;align-items:center;justify-content:center;
+  }
+  .moyen .sauver{background:var(--accent);color:var(--papier);border:1px solid var(--accent)}
+  .moyen .copier{background:none;color:var(--encre);border:1px solid var(--trait)}
+  .moyen .retour{font-size:14px;color:var(--sauge);min-height:1.4em;margin:8px 0 0}
+  .paiement .astuce{font-size:14.5px;color:var(--encre-doux);margin:12px 2px 0;line-height:1.45}
+
   .pied{
     text-align:center;padding:22px 16px 34px;font-size:15.5px;
     color:var(--encre-doux);border-top:1px solid var(--trait);
@@ -173,6 +221,18 @@
 <main id="menu">
   <div class="message">Loading the menu…</div>
 </main>
+
+<!-- Hors de <main> : le menu est redessiné à chaque changement de
+     disponibilité, le paiement ne doit pas l'être (onglet choisi gardé). -->
+<section class="paiement" id="payer" hidden>
+  <h2>How to pay</h2>
+  <p class="intro">Cash is welcome. To pay by phone, save the QR code below,
+    then open the QR scanner in your GCash, Maya or bank app and pick the
+    saved image from your gallery. Any of these codes works with any app.</p>
+  <div class="onglets" id="onglets" role="tablist"></div>
+  <div class="moyen" id="moyen"></div>
+  <p class="astuce">Please show your payment confirmation at the stall.</p>
+</section>
 
 <p class="pied">
   Prefer delivery? <a href="./">Order online</a> — baked to order, delivered Wednesday, Saturday and Sunday.
@@ -203,6 +263,9 @@ let produits = null;           // null = catalogue pas encore lu
 let indispo  = new Set();      // codes marqués absents du stand
 let notes    = {};             // conseils par rayon (rayons_notes)
 let extras   = [];             // produits hors boutique, au stand seulement
+let moyens   = [];             // moyens de paiement affichables
+let signaturePaiement = "";    // pour ne redessiner le paiement que s'il change
+let moyenChoisi = "";          // onglet ouvert
 /* Descriptions dépliées, par code produit. Gardé hors de l'affichage : la
    page se redessine à chaque changement de disponibilité, et un client en
    train de lire ne doit pas voir son texte se replier sous ses yeux. */
@@ -245,6 +308,7 @@ onSnapshot(doc(db, "parametres", "boutique"), s => {
     .map(e => ({ id: e.id, nom: String(e.nom), prix_vente: Number(e.prix) || 0,
                  description_client: e.description || "", sansPhoto: true }));
   notes = (d.rayons_notes && typeof d.rayons_notes === "object") ? d.rayons_notes : {};
+  lirePaiement(d.paiement || {});
   afficher();
 }, e => console.error(e));
 
@@ -269,13 +333,11 @@ function afficher() {
   }
 
   const barre = $("rayons");
-  if (cles.length > 1) {
-    barre.innerHTML = cles.map(c =>
-      `<a href="#rayon-${c.replace(/\s+/g, "-")}">${c}</a>`).join("");
-    barre.hidden = false;
-  } else {
-    barre.hidden = true;
-  }
+  const raccourcis = cles.length > 1
+    ? cles.map(c => `<a href="#rayon-${c.replace(/\s+/g, "-")}">${c}</a>`) : [];
+  if (moyens.length) raccourcis.push('<a class="payer" href="#payer">Pay</a>');
+  barre.innerHTML = raccourcis.join("");
+  barre.hidden = raccourcis.length === 0;
 
   zone.innerHTML = "";
   cles.forEach(cle => {
@@ -403,6 +465,139 @@ function photo(p) {
   }
   cadre.appendChild(img);
   return cadre;
+}
+
+/* ============================================================
+   Paiement
+   ============================================================ */
+
+/* Même lecture que construirePaiements() du checkout, anciens noms de champs
+   compris. Un moyen sans numéro ni QR n'est pas proposé. Les espèces ne
+   sont pas un onglet : au stand, elles vont de soi (dit dans l'intro). */
+function lirePaiement(pay) {
+  const g = pay.gcash  || { nom: pay.gcash_nom, numero: pay.gcash_numero };
+  const m = pay.maya   || {};
+  const b = pay.banque || { nom: pay.banque_nom, titulaire: pay.banque_titulaire,
+                            numero: pay.banque_numero };
+  const liste = [];
+  if (g.numero || g.qr) liste.push({ code: "gcash", titre: "GCash", qr: g.qr || "",
+    numero: g.numero || "", detail: [g.numero, g.nom].filter(Boolean).join(" — ") });
+  if (m.numero || m.qr) liste.push({ code: "maya", titre: "Maya", qr: m.qr || "",
+    numero: m.numero || "", detail: [m.numero, m.nom].filter(Boolean).join(" — ") });
+  if (b.numero || b.qr) liste.push({ code: "banque", titre: b.nom || "Bank", qr: b.qr || "",
+    numero: b.numero || "", detail: [b.nom, b.titulaire, b.numero].filter(Boolean).join(" — ") });
+
+  const signature = JSON.stringify(liste);
+  if (signature === signaturePaiement) return;   // rien de neuf : on ne touche à rien
+  signaturePaiement = signature;
+  moyens = liste;
+  afficherPaiement();
+}
+
+function afficherPaiement() {
+  $("payer").hidden = moyens.length === 0;
+  if (!moyens.length) return;
+  if (!moyens.some(x => x.code === moyenChoisi)) moyenChoisi = moyens[0].code;
+
+  const onglets = $("onglets");
+  onglets.innerHTML = "";
+  onglets.hidden = moyens.length < 2;   // un seul moyen : pas besoin de choisir
+  moyens.forEach(x => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.setAttribute("role", "tab");
+    b.setAttribute("aria-selected", String(x.code === moyenChoisi));
+    b.textContent = x.titre;
+    b.onclick = () => { moyenChoisi = x.code; afficherPaiement(); };
+    onglets.appendChild(b);
+  });
+
+  const x = moyens.find(y => y.code === moyenChoisi);
+  const zone = $("moyen");
+  zone.innerHTML = "";
+
+  if (x.qr) {
+    const img = document.createElement("img");
+    img.src = x.qr;
+    img.alt = x.titre + " QR code";
+    zone.appendChild(img);
+  }
+  if (x.detail) {
+    const d = document.createElement("p");
+    d.className = "detail";
+    d.textContent = x.detail;
+    zone.appendChild(d);
+  }
+
+  const actions = document.createElement("div");
+  actions.className = "actions";
+  const retour = document.createElement("p");
+  retour.className = "retour";
+  retour.setAttribute("aria-live", "polite");
+
+  if (x.qr) actions.appendChild(boutonSauver(x, retour));
+
+  if (x.numero) {
+    const c = document.createElement("button");
+    c.type = "button";
+    c.className = "copier";
+    c.textContent = "Copy number";
+    c.onclick = async () => {
+      try {
+        // Les espaces gênent le collage dans le champ numéro des applis.
+        await navigator.clipboard.writeText(x.numero.replace(/\s+/g, ""));
+        retour.textContent = "Number copied.";
+      } catch (e) {
+        retour.textContent = "Copy not available — please type the number.";
+      }
+    };
+    actions.appendChild(c);
+  }
+  zone.append(actions, retour);
+}
+
+/* iPhone et iPad : un fichier « téléchargé » part dans l'app Fichiers, que
+   les applis de paiement ne savent pas ouvrir. On passe donc par la feuille
+   de partage, dont « Enregistrer l'image » range le QR dans Photos.
+   Ailleurs (Android, ordinateur) : téléchargement classique, qui atterrit
+   dans la galerie. */
+const surIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
+  || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+
+function nomFichier(x) {
+  const ext = (x.qr.split("?")[0].match(/\.(jpe?g|png|webp)$/i) || [, "jpg"])[1].toLowerCase();
+  return `yoanns-bakery-${x.code}-qr.${ext}`;
+}
+
+function boutonSauver(x, retour) {
+  const a = document.createElement("a");
+  a.className = "sauver";
+  a.href = x.qr;
+  a.download = nomFichier(x);
+  a.textContent = "Save QR code";
+  if (!surIOS || !navigator.canShare) return a;
+
+  /* L'image est lue dès l'affichage : Safari n'ouvre la feuille de partage
+     que tout de suite après le toucher, pas après un téléchargement. */
+  let fichier = null;
+  fetch(x.qr).then(r => r.ok ? r.blob() : null).then(blob => {
+    if (!blob) return;
+    const f = new File([blob], nomFichier(x), { type: blob.type || "image/jpeg" });
+    if (navigator.canShare({ files: [f] })) fichier = f;
+  }).catch(() => {});
+
+  a.onclick = async (e) => {
+    if (!fichier) return;   // pas prêt ou refusé : le lien ouvre l'image
+    e.preventDefault();
+    try {
+      await navigator.share({ files: [fichier] });
+      retour.textContent = "Saved? You'll find it in Photos.";
+    } catch (err) {
+      if (err.name !== "AbortError")
+        retour.textContent = "Press and hold the QR code, then choose Save to Photos.";
+    }
+  };
+  return a;
 }
 
 // Même service worker que la boutique : la page reste consultable si le
