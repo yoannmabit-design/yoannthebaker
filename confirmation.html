@@ -179,6 +179,17 @@ const firebaseConfig = {
 const db = getFirestore(initializeApp(firebaseConfig));
 const $ = (id) => document.getElementById(id);
 const peso = (n) => "₱" + Number(n).toLocaleString("en-PH");
+
+/* 639171234567 -> 0917 123 4567. Un numéro philippin affiché au format
+   local est reconnu et recopié sans effort ; la forme internationale, non.
+   Tout autre format est rendu tel quel plutôt que mal découpé. */
+function numeroLocal(n) {
+  const d = String(n || "").replace(/\D/g, "");
+  const dix = d.length === 12 && d.startsWith("63") ? d.slice(2)
+            : d.length === 11 && d.startsWith("0")  ? d.slice(1)
+            : d.length === 10 ? d : "";
+  return dix ? "0" + dix.slice(0, 3) + " " + dix.slice(3, 6) + " " + dix.slice(6) : d;
+}
 const echapper = (t) => String(t).replace(/[&<>"]/g, c =>
   ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
@@ -299,8 +310,13 @@ function afficher() {
   if (params.whatsapp)
     canaux.push({ cle: "WhatsApp", url: "https://wa.me/" + params.whatsapp +
       "?text=" + encodeURIComponent(texte), principal: true });
+  /* Viber n'a pas d'équivalent fiable de wa.me : un lien vers un numéro
+     personnel n'ouvre la conversation que si le numéro est déjà dans les
+     contacts, sinon l'application s'ouvre sur son écran d'accueil. « add »
+     propose au moins d'ajouter le contact ; le numéro rappelé sous les
+     boutons reste le seul moyen qui marche à tous les coups. */
   if (params.viber)
-    canaux.push({ cle: "Viber", url: "viber://chat?number=%2B" + params.viber });
+    canaux.push({ cle: "Viber", url: "viber://add?number=" + params.viber });
   if (params.messenger)
     canaux.push({ cle: "Messenger", url: "https://m.me/" + params.messenger });
   if (params.email)
@@ -343,6 +359,11 @@ function afficher() {
           href="${x.url}">${x.cle}<span class="fleche">&#8250;</span></a>`).join("")}
       </div>
       <button class="copier" id="copier">Copy order details</button>
+      ${params.viber ? `
+      <p class="info sous" style="margin-top:10px">
+        Viber opening on its home screen instead of our chat? Add
+        <b>${echapper(numeroLocal(params.viber))}</b> to your contacts first.
+      </p>` : ""}
     </div>
 
     ${notices.length ? `

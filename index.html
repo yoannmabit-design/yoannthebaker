@@ -569,6 +569,17 @@ function sauverPanier() {
 
 const peso = (n) => "₱" + Number(n).toLocaleString("en-PH");
 
+/* 639171234567 -> 0917 123 4567. Un numéro philippin affiché au format
+   local est reconnu et recopié sans effort ; la forme internationale, non.
+   Tout autre format est rendu tel quel plutôt que mal découpé. */
+function numeroLocal(n) {
+  const d = String(n || "").replace(/\D/g, "");
+  const dix = d.length === 12 && d.startsWith("63") ? d.slice(2)
+            : d.length === 11 && d.startsWith("0")  ? d.slice(1)
+            : d.length === 10 ? d : "";
+  return dix ? "0" + dix.slice(0, 3) + " " + dix.slice(3, 6) + " " + dix.slice(6) : d;
+}
+
 // Le prix affiché par produit dépend de la remise retenue : au tarif de
 // groupe la réduction est dans la ligne, avec un code promo elle porte
 // sur le total et les lignes gardent leur prix catalogue.
@@ -681,8 +692,14 @@ async function demarrer() {
       const style = ' style="color:var(--accent)"';
       if (p.whatsapp)
         liens.push('<a href="https://wa.me/' + p.whatsapp + '"' + style + '>WhatsApp</a>');
+      /* Viber n'a pas d'équivalent fiable de wa.me : un lien vers un numéro
+         personnel n'ouvre la conversation que si le numéro est déjà dans les
+         contacts, sinon l'application s'ouvre sur son écran d'accueil.
+         « add » propose au moins d'ajouter le contact, et le numéro affiché
+         à côté reste le seul moyen qui marche à tous les coups. */
       if (p.viber)
-        liens.push('<a href="viber://chat?number=%2B' + p.viber + '"' + style + '>Viber</a>');
+        liens.push('<a href="viber://add?number=' + p.viber + '"' + style + '>Viber ' +
+          numeroLocal(p.viber) + '</a>');
       if (p.messenger)
         liens.push('<a href="https://m.me/' + p.messenger + '" target="_blank" rel="noopener"' +
           style + '>Messenger</a>');
