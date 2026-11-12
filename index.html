@@ -670,12 +670,24 @@ async function demarrer() {
       }
       /* Le pied garde le contact direct, et pointe la FAQ à côté : c'est là
          qu'on cherche les réponses avant de commander, et une question lue
-         est un message de moins à écrire. */
+         est un message de moins à écrire.
+
+         Tous les canaux renseignés sont proposés, pas seulement WhatsApp :
+         une partie des clients ne l'utilise pas, et un visiteur arrivé
+         depuis Messenger ou Viber doit pouvoir écrire sans changer
+         d'application. Un canal laissé vide dans l'administration
+         n'apparaît pas. */
       const liens = ['<a href="faq.html" style="color:var(--accent)">What\'s the FAQ?</a>'];
-      if (p.whatsapp) {
-        liens.push('<a href="https://wa.me/' + p.whatsapp +
-          '" style="color:var(--accent)">Message me on WhatsApp</a>');
-      }
+      const style = ' style="color:var(--accent)"';
+      if (p.whatsapp)
+        liens.push('<a href="https://wa.me/' + p.whatsapp + '"' + style + '>WhatsApp</a>');
+      if (p.viber)
+        liens.push('<a href="viber://chat?number=%2B' + p.viber + '"' + style + '>Viber</a>');
+      if (p.messenger)
+        liens.push('<a href="https://m.me/' + p.messenger + '" target="_blank" rel="noopener"' +
+          style + '>Messenger</a>');
+      if (p.email)
+        liens.push('<a href="mailto:' + p.email + '"' + style + '>Email</a>');
       $("pied").innerHTML = 'Questions? ' + liens.join(' &middot; ');
     }
 
