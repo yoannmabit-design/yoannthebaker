@@ -13,6 +13,7 @@
      echeance.statut     planifiee · livree · sautee
      echeance.livree_le  horodatage, posé à la livraison
      echeance.decalee    true si déplacée par une absence du boulanger
+     echeance.date_initiale  date prévue avant ce déplacement
      echeance.par        "client" ou "boulangerie" : qui a demandé le report
      abonnement.reports  compteur des seuls reports demandés par le client
 */
@@ -151,6 +152,68 @@ export function calculerReport(abo, date, origine) {
   if (!suite.some(e => e.statut === "planifiee")) maj.statut = "termine";
 
   return { maj, jusquA, perdue: !jusquA };
+}
+
+/* ---------- Absence du boulanger ----------
+   Fonction pure, comme calculerReport : elle rend le tableau d'échéances
+   tel qu'il devrait devenir, sans rien lire ni écrire.
+
+   Règle : seules les livraisons qui tombent PENDANT l'absence bougent.
+   Chacune est replacée à la fin du plan, un pas après la dernière
+   livraison prévue ; tout ce qui était prévu après l'absence reste à sa
+   date. Décaler la suite entière, comme on le faisait avant, déplaçait
+   des livraisons que l'absence ne touchait pas, et changeait de semaine
+   les abonnés à la quinzaine.
+
+   L'échéance est déplacée sur place — même ligne du tableau, donc même
+   rang — au lieu d'être sautée puis recréée. C'est le rang qui nomme la
+   commande générée (ABO-<abonnement>-<rang>) : en le conservant, la
+   commande déjà créée suit simplement sa livraison à la nouvelle date,
+   sans annulation ni doublon.
+
+   Le pas est celui de la cadence, compté depuis la dernière livraison
+   prévue : le jour de la semaine du client est donc conservé.
+
+   Relancer le calcul sur la même période ne fait rien : plus aucune
+   livraison prévue n'y tombe. Le quota de reports du client n'est pas
+   touché, ce n'est pas lui qui s'absente. */
+export function calculerAbsence(abo, debut, fin) {
+  const liste = echeances(abo);
+  const dedans = (e) => e.statut === "planifiee" && e.date >= debut && e.date <= fin;
+
+  const touchees = liste
+    .map((e, index) => ({ e, index }))
+    .filter(x => dedans(x.e))
+    .sort((a, b) => a.e.date.localeCompare(b.e.date));
+  if (!touchees.length) return null;
+
+  // Dernière livraison prévue hors absence. S'il n'y en a pas — l'absence
+  // couvre toute la fin du plan — on repart de la dernière touchée.
+  const dehors = liste.filter(e => e.statut === "planifiee" && !dedans(e)).map(e => e.date);
+  let derniere = dehors.length
+    ? dehors.sort().pop()
+    : touchees[touchees.length - 1].e.date;
+
+  const pas = pasJours(abo.cadence);
+  const suite = liste.slice();
+  const mouvements = [];
+
+  touchees.forEach(({ e, index }) => {
+    const d = new Date(derniere + "T12:00:00");
+    // Au moins un pas, puis autant qu'il faut pour sortir de l'absence.
+    do { d.setDate(d.getDate() + pas); } while (iso(d) <= fin);
+    const vers = iso(d);
+    suite[index] = {
+      ...e, date: vers, decalee: true, par: "boulangerie",
+      // La toute première date prévue, gardée pour l'historique même si
+      // l'échéance est déplacée plusieurs fois.
+      date_initiale: e.date_initiale || e.date
+    };
+    mouvements.push({ rang: index + 1, de: e.date, vers });
+    derniere = vers;
+  });
+
+  return { maj: { echeances: suite }, mouvements };
 }
 
 /* ---------- Écriture ----------
