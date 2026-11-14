@@ -632,9 +632,6 @@ async function construire() {
           <label class="champ"><span>House number and street</span>
             <input type="text" id="adrRue" autocomplete="address-line1"
                    placeholder="128 Rada Street"></label>
-          <label class="champ"><span>Barangay</span>
-            <input type="text" id="adrBarangay" autocomplete="address-level3"
-                   placeholder="San Lorenzo"></label>
           <div id="blocVille"></div>
         </div>
       </div>
@@ -906,14 +903,25 @@ function construireVille() {
     <div class="note">We deliver to these cities only. Ask us if yours isn't listed.</div>`;
 }
 
+/* Le barangay n'est plus demandé : un champ de plus à remplir pour une
+   précision que la livraison n'utilise pas — le motard part sur les
+   coordonnées GPS de la fiche, pas sur l'adresse écrite.
+
+   Celui déjà enregistré pour un client connu est conservé et réécrit tel
+   quel : son adresse ne doit pas perdre en précision du jour au lendemain.
+   La valeur est posée par ecrireAdresse(), seul point d'entrée, ce qui la
+   remet aussi à zéro quand le client demande une livraison ailleurs. */
+let barangayConserve = "";
+
 function lireAdresse() {
   const v = (id) => { const e = $(id); return e ? e.value.trim() : ""; };
-  return {
-    unite:    v("adrUnite"),
-    rue:      v("adrRue"),
-    barangay: v("adrBarangay"),
-    ville:    v("adrVille")
+  const a = {
+    unite: v("adrUnite"),
+    rue:   v("adrRue"),
+    ville: v("adrVille")
   };
+  if (barangayConserve) a.barangay = barangayConserve;
+  return a;
 }
 
 // Une seule ligne, pour l'administration et les messages.
@@ -929,9 +937,9 @@ function ecrireAdresse(source) {
   const a = (source && typeof source === "object") ? source : null;
   const poser = (id, val) => { const e = $(id); if (e) e.value = val || ""; };
 
-  poser("adrUnite",    a ? a.unite : "");
-  poser("adrRue",      a ? a.rue : (typeof source === "string" ? source : ""));
-  poser("adrBarangay", a ? a.barangay : "");
+  poser("adrUnite", a ? a.unite : "");
+  poser("adrRue",   a ? a.rue : (typeof source === "string" ? source : ""));
+  barangayConserve = (a && a.barangay) ? a.barangay : "";
 
   const champVille = $("adrVille");
   if (!champVille) return;
@@ -1423,7 +1431,7 @@ function majOption() {
   majTelLocal();
   // Adresse déjà connue (ex: point de livraison fixe dans un immeuble) :
   // seul le numéro d'unité identifie le destinataire, le reste ne sert à
-  // rien puisque la rue/barangay/ville ne varient pas d'un client à l'autre.
+  // rien puisque la rue et la ville ne varient pas d'un client à l'autre.
   $("blocAdresseComplete").hidden = !!o.adresse_connue;
   $("labelUnite").innerHTML = o.adresse_connue
     ? "Unit / floor number"
@@ -1643,18 +1651,17 @@ $("btnEnvoyer").onclick = async () => {
      que le point de livraison enregistré ne correspond pas. */
   const adressePonctuelle = !$("blocPonctuelle").hidden && $("adressePonctuelle").checked;
 
-  if (nom.length < 2)  return echec("Please enter your name.");
-  if (tel.length < 10) return echec("Please enter a valid mobile number.");
+  if (nom.length < 2)  return echec("Please enter your name.", "nom");
+  if (tel.length < 10) return echec("Please enter a valid mobile number.", "tel");
   if (o.demander_adresse) {
     if (o.adresse_connue) {
-      if (!detail.unite) return echec("Please enter your unit / floor number.");
+      if (!detail.unite) return echec("Please enter your unit / floor number.", "adrUnite");
     } else {
-      if (!detail.rue)      return echec("Please enter your house number and street.");
-      if (!detail.barangay) return echec("Please enter your barangay.");
-      if (!detail.ville)    return echec("Please choose your city.");
+      if (!detail.rue)   return echec("Please enter your house number and street.", "adrRue");
+      if (!detail.ville) return echec("Please choose your city.", "adrVille");
     }
   }
-  if (!dateChoisie) return echec("Please choose a date.");
+  if (!dateChoisie) return echec("Please choose a date.", "calendrier");
 
   $("btnEnvoyer").disabled = true;
   $("erreur").textContent = "";
@@ -1847,11 +1854,28 @@ function voileFerme() {
   $("voile").classList.remove("ouvert");
 }
 
-function echec(texte) {
+/* Le second argument est le champ à corriger, quand la cause est un champ
+   précis. Sans lui on affichait le message en bas de page et le client
+   devait chercher lequel des dix champs était en cause ; le formulaire est
+   trop long pour que « Please choose your city » suffise à s'y retrouver.
+   On va donc au champ, et le curseur y est posé.
+
+   Sans champ nommé — refus du serveur, jour complet, code refusé — c'est
+   la bannière qui reçoit le regard, comme avant. */
+function echec(texte, champ) {
   voileFerme();
   $("erreur").textContent = texte;
   $("btnEnvoyer").disabled = false;
-  $("erreur").scrollIntoView({ behavior: "smooth", block: "center" });
+
+  const cible = champ ? $(champ) : null;
+  if (cible && cible.offsetParent !== null) {
+    cible.scrollIntoView({ behavior: "smooth", block: "center" });
+    // Le défilement doux et le focus se gênent : le focus ramène la vue
+    // d'un coup. On le pose une fois le mouvement terminé.
+    setTimeout(() => { try { cible.focus({ preventScroll: true }); } catch { cible.focus(); } }, 350);
+  } else {
+    $("erreur").scrollIntoView({ behavior: "smooth", block: "center" });
+  }
 }
 
 /* ---------- Numéro de commande : un seul par ouverture de page ----------
