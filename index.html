@@ -83,7 +83,7 @@
   body{
     margin:0;background:var(--creme);color:var(--encre);
     font:18px/1.55 ui-sans-serif,-apple-system,"Segoe UI",Roboto,sans-serif;
-    padding-bottom:96px;
+    padding-bottom:calc(96px + env(safe-area-inset-bottom, 0px));
   }
 
   /* ---------- En-tête ---------- */
@@ -283,10 +283,17 @@
   .ajouter:active{background:var(--accent);color:#fff}
 
   /* ---------- Panier ---------- */
+  /* Le rembourrage du bas ajoute la zone sûre : sur un iPhone, et plus
+     encore dans le navigateur intégré de Messenger ou Viber, les derniers
+     pixels de l'écran sont pris par l'indicateur d'accueil ou la barre
+     d'outils. Sans cela le bouton se retrouve à moitié dessous. La valeur
+     vaut 0 partout ailleurs, l'affichage habituel ne bouge pas. */
   .panier{
     position:fixed;left:0;right:0;bottom:0;
     background:var(--encre);color:var(--creme);
-    padding:14px 18px;display:flex;align-items:center;gap:14px;
+    padding:14px 18px;
+    padding-bottom:calc(14px + env(safe-area-inset-bottom, 0px));
+    display:flex;align-items:center;gap:14px;
     transform:translateY(110%);transition:transform .22s ease;
   }
   .panier.visible{transform:translateY(0)}

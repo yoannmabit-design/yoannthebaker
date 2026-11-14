@@ -34,7 +34,7 @@
   body{
     margin:0;background:var(--creme);color:var(--encre);
     font:18px/1.55 ui-sans-serif,-apple-system,"Segoe UI",Roboto,sans-serif;
-    padding-bottom:110px;
+    padding-bottom:calc(110px + env(safe-area-inset-bottom, 0px));
   }
   header{
     background:var(--encre);color:var(--creme);
@@ -202,9 +202,16 @@
     background:none;border:none;padding:0;cursor:pointer;
   }
 
+  /* Le rembourrage du bas ajoute la zone sûre : sur un iPhone, et plus
+     encore dans le navigateur intégré de Messenger ou Viber, les derniers
+     pixels de l'écran sont pris par l'indicateur d'accueil ou la barre
+     d'outils. Sans cela le bouton de commande se retrouve à moitié dessous.
+     La valeur vaut 0 partout ailleurs, l'affichage habituel ne bouge pas. */
   .pied{
     position:fixed;left:0;right:0;bottom:0;background:var(--encre);
-    color:var(--creme);padding:13px 18px;display:flex;align-items:center;gap:14px;
+    color:var(--creme);padding:13px 18px;
+    padding-bottom:calc(13px + env(safe-area-inset-bottom, 0px));
+    display:flex;align-items:center;gap:14px;
   }
   .pied .total{flex:1;font-size:21.5px;font-weight:600}
   .pied button{
