@@ -266,6 +266,9 @@
   /* Raccourci vers le paiement, distinct des rayons. */
   .rayons a.payer{background:var(--accent);border-color:var(--accent);color:var(--papier);font-weight:600}
 
+  /* Le bloc de paiement passe sous le ticket quand celui-ci est ouvert. */
+  .ticket-fond .paiement{max-width:460px;margin:18px auto 0;padding:0}
+
   /* ---------- Paiement ---------- */
   .paiement{max-width:640px;margin:0 auto;padding:4px 16px 30px;scroll-margin-top:60px}
   .paiement h2{
@@ -496,7 +499,6 @@ function afficher() {
   const barre = $("rayons");
   const raccourcis = cles.length > 1
     ? cles.map(c => `<a href="#rayon-${c.replace(/\s+/g, "-")}">${c}</a>`) : [];
-  if (moyens.length) raccourcis.push('<a class="payer" href="#payer">Pay</a>');
   barre.innerHTML = raccourcis.join("");
   barre.hidden = raccourcis.length === 0;
 
@@ -799,10 +801,13 @@ function ouvrirTicket() {
   $("ticketFond").scrollTop = 0;
   document.body.classList.add("ticket-ouvert");
   $("barre").hidden = true;
+  // Le paiement suit le ticket : le client règle sans quitter l'écran du ticket.
+  $("ticket").after($("payer"));
   garderEcranAllume();
   $("tkRetour").focus({ preventScroll: true });
 }
 function fermerTicket() {
+  $("barre").before($("payer"));   // retour à sa place, en bas de la page
   $("ticketFond").hidden = true;
   document.body.classList.remove("ticket-ouvert");
   lacherEcran();
