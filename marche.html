@@ -302,8 +302,21 @@
     padding:11px 18px;border-radius:999px;cursor:pointer;
     display:inline-flex;align-items:center;justify-content:center;
   }
-  .moyen .sauver{background:var(--accent);color:var(--papier);border:1px solid var(--accent)}
-  .moyen .copier{background:none;color:var(--encre);border:1px solid var(--trait)}
+  /* Le numéro est le geste principal : un toucher, puis on colle dans l'appli.
+     Le QR est une option discrète, repliée par défaut. */
+  .moyen .detail{font-size:18px;font-weight:600}
+  .moyen .copier{
+    background:var(--accent);color:var(--papier);border:1px solid var(--accent);
+    font-size:18px;padding:13px 28px;
+  }
+  .moyen .sauver{background:none;color:var(--encre);border:1px solid var(--trait)}
+  .moyen .lien-qr{
+    display:block;margin:14px auto 0;background:none;border:none;font:inherit;
+    font-size:15px;color:var(--sauge);text-decoration:underline;cursor:pointer;
+    padding:6px 10px;
+  }
+  .moyen .bloc-qr{margin-top:14px;padding-top:14px;border-top:1px dashed var(--trait)}
+  .moyen .bloc-qr .conseil{font-size:14px;color:var(--encre-doux);margin:0 0 10px}
   .moyen .retour{font-size:14px;color:var(--sauge);min-height:1.4em;margin:8px 0 0}
   .paiement .astuce{font-size:14.5px;color:var(--encre-doux);margin:12px 2px 0;line-height:1.45}
 
@@ -337,9 +350,8 @@
      disponibilité, le paiement ne doit pas l'être (onglet choisi gardé). -->
 <section class="paiement" id="payer" hidden>
   <h2>How to pay</h2>
-  <p class="intro">Cash is welcome. To pay by phone, save the QR code below,
-    then open the QR scanner in your GCash, Maya or bank app and pick the
-    saved image from your gallery. Any of these codes works with any app.</p>
+  <p class="intro">Cash is welcome. To pay by phone, copy the number below and
+    send the total from your GCash, Maya or bank app.</p>
   <div class="onglets" id="onglets" role="tablist"></div>
   <div class="moyen" id="moyen"></div>
   <p class="astuce">Please show your payment confirmation at the stall.</p>
@@ -394,6 +406,7 @@ let extras   = [];             // produits hors boutique, au stand seulement
 let moyens   = [];             // moyens de paiement affichables
 let signaturePaiement = "";    // pour ne redessiner le paiement que s'il change
 let moyenChoisi = "";          // onglet ouvert
+const qrOuverts = new Set();   // moyens dont le QR a été déplié
 /* Descriptions dépliées, par code produit. Gardé hors de l'affichage : la
    page se redessine à chaque changement de disponibilité, et un client en
    train de lire ne doit pas voir son texte se replier sous ses yeux. */
@@ -894,12 +907,6 @@ function afficherPaiement() {
   const zone = $("moyen");
   zone.innerHTML = "";
 
-  if (x.qr) {
-    const img = document.createElement("img");
-    img.src = x.qr;
-    img.alt = x.titre + " QR code";
-    zone.appendChild(img);
-  }
   if (x.detail) {
     const d = document.createElement("p");
     d.className = "detail";
@@ -913,8 +920,6 @@ function afficherPaiement() {
   retour.className = "retour";
   retour.setAttribute("aria-live", "polite");
 
-  if (x.qr) actions.appendChild(boutonSauver(x, retour));
-
   if (x.numero) {
     const c = document.createElement("button");
     c.type = "button";
@@ -924,7 +929,10 @@ function afficherPaiement() {
       try {
         // Les espaces gênent le collage dans le champ numéro des applis.
         await navigator.clipboard.writeText(x.numero.replace(/\s+/g, ""));
-        retour.textContent = "Number copied.";
+        const total = $("ticketFond").hidden ? 0 : etatSelection().total;
+        retour.textContent = total > 0
+          ? "Number copied — now send " + peso(total) + " in your app."
+          : "Number copied.";
       } catch (e) {
         retour.textContent = "Copy not available — please type the number.";
       }
@@ -932,6 +940,37 @@ function afficherPaiement() {
     actions.appendChild(c);
   }
   zone.append(actions, retour);
+
+  /* Le QR : replié derrière un lien quand un numéro existe (il demande de
+     l'enregistrer puis de l'importer depuis la galerie, bien plus long que
+     copier un numéro). Sans numéro, il reste le seul moyen : affiché d'emblée. */
+  if (x.qr) {
+    if (x.numero && !qrOuverts.has(x.code)) {
+      const l = document.createElement("button");
+      l.type = "button";
+      l.className = "lien-qr";
+      l.textContent = "Prefer a QR code?";
+      l.onclick = () => { qrOuverts.add(x.code); afficherPaiement(); };
+      zone.appendChild(l);
+    } else {
+      const bloc = document.createElement("div");
+      bloc.className = x.numero ? "bloc-qr" : "";
+      const img = document.createElement("img");
+      img.src = x.qr;
+      img.alt = x.titre + " QR code";
+      const conseil = document.createElement("p");
+      conseil.className = "conseil";
+      conseil.textContent = "Save the image, then pick it from your gallery in your app's QR scanner.";
+      const act2 = document.createElement("div");
+      act2.className = "actions";
+      const retour2 = document.createElement("p");
+      retour2.className = "retour";
+      retour2.setAttribute("aria-live", "polite");
+      act2.appendChild(boutonSauver(x, retour2));
+      bloc.append(img, conseil, act2, retour2);
+      zone.appendChild(bloc);
+    }
+  }
 }
 
 /* iPhone et iPad : un fichier « téléchargé » part dans l'app Fichiers, que
