@@ -11,8 +11,13 @@
 <!--
   Menu du stand de marché — page ouverte par le QR code et la puce NFC.
 
-  Lecture seule : pas de panier, pas de compte, pas de commande. On regarde,
-  on choisit, on paie au stand.
+  Pas de compte et rien d'envoyé : on regarde, on choisit ses quantités, et
+  la page en tire un « ticket de caisse » plein écran à montrer au vendeur,
+  qui prépare la commande sans erreur de lecture ni de mémoire. Le total
+  s'affiche en permanence sur le téléphone du client. On paie au stand.
+  La sélection est gardée sur l'appareil pour la journée seulement
+  (localStorage, sans conséquence si indisponible) : un rechargement ou un
+  retour depuis l'appli de paiement ne la fait pas perdre.
 
   Ce qu'elle affiche :
   — les produits en vente dans la boutique (boutique_produits, visible ≠ false),
@@ -92,6 +97,13 @@
     text-transform:uppercase;opacity:.72;
   }
 
+  .banniere .invite{
+    max-width:30em;margin:16px auto 0;padding-top:14px;
+    border-top:1px solid rgba(245,234,216,.22);
+    font-size:16px;line-height:1.45;color:var(--creme);
+  }
+  .banniere .invite span{display:block;margin-top:3px;font-size:14px;opacity:.7}
+
   /* Barre des rayons, collée en haut : sur un long menu, on saute
      directement aux viennoiseries sans faire défiler tout le pain. */
   .rayons{
@@ -159,6 +171,98 @@
 
   .message{padding:40px 10px;text-align:center;color:var(--encre-doux)}
 
+  /* ---------- Sélection ---------- */
+  .produit .cote{display:flex;flex-direction:column;align-items:flex-end;gap:8px}
+  .ajout{
+    font:inherit;font-size:15px;font-weight:700;height:44px;padding:0 18px;
+    border-radius:999px;border:1px solid var(--accent);background:var(--papier);
+    color:var(--accent);cursor:pointer;touch-action:manipulation;
+  }
+  .ajout:active{background:var(--accent);color:var(--papier)}
+  .qte{
+    display:inline-flex;align-items:center;border-radius:999px;
+    border:1px solid var(--accent);background:var(--papier);overflow:hidden;
+  }
+  .qte button{
+    font:inherit;font-size:24px;line-height:1;width:44px;height:44px;
+    border:none;background:none;color:var(--encre);cursor:pointer;
+    touch-action:manipulation;
+  }
+  .qte button:active{background:var(--creme)}
+  .qte output{min-width:28px;text-align:center;font-weight:700;font-size:18px}
+  .produit.choisi{background:linear-gradient(90deg,rgba(198,113,57,.08),transparent)}
+
+  /* Barre du total, collée en bas : le client voit toujours où il en est. */
+  body.avec-barre{padding-bottom:calc(88px + env(safe-area-inset-bottom))}
+  .barre-commande{
+    position:fixed;left:0;right:0;bottom:0;z-index:20;
+    padding:10px 16px calc(10px + env(safe-area-inset-bottom));
+    background:linear-gradient(to top,var(--creme) 70%,rgba(245,234,216,0));
+  }
+  .barre-commande button{
+    display:flex;align-items:center;justify-content:space-between;gap:12px;
+    width:100%;max-width:608px;margin:0 auto;min-height:56px;padding:0 20px;
+    font:inherit;font-size:17px;font-weight:700;cursor:pointer;
+    border:none;border-radius:999px;background:var(--encre);color:var(--creme);
+    box-shadow:0 4px 16px rgba(32,30,29,.28);touch-action:manipulation;
+  }
+  .barre-commande .n{font-weight:600;opacity:.85;font-size:15px}
+  .barre-commande .t{font-size:19px}
+
+  /* ---------- Ticket ---------- */
+  body.ticket-ouvert{overflow:hidden}
+  .ticket-fond{
+    position:fixed;inset:0;z-index:50;background:var(--creme);
+    overflow-y:auto;-webkit-overflow-scrolling:touch;
+    padding:16px 14px calc(24px + env(safe-area-inset-bottom));
+  }
+  .ticket{
+    max-width:460px;margin:0 auto;background:#fff;color:#111;
+    border-radius:6px;padding:22px 20px 20px;
+    box-shadow:0 2px 14px rgba(32,30,29,.18);
+  }
+  .tk-tete{text-align:center;border-bottom:2px dashed #999;padding-bottom:14px}
+  .tk-tete .enseigne{
+    font-family:Caprasimo,"Iowan Old Style",Georgia,serif;font-size:22px;margin:0;
+  }
+  .tk-tete .genre{margin:2px 0 0;font-size:13px;letter-spacing:.16em;
+    text-transform:uppercase;color:#555}
+  .tk-tete .num{font-size:30px;font-weight:800;margin:10px 0 0;letter-spacing:.04em}
+  .tk-tete .quand{font-size:14.5px;color:#444;margin:2px 0 0}
+  .tk-rayon{
+    font-size:13px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;
+    color:#555;margin:16px 0 4px;padding-bottom:3px;border-bottom:1px solid #ccc;
+  }
+  .tk-ligne{
+    display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:baseline;
+    padding:7px 0;border-bottom:1px dotted #bbb;
+  }
+  .tk-ligne .q{font-size:26px;font-weight:800;min-width:2.1em;white-space:nowrap}
+  .tk-ligne .nom{font-size:19px;font-weight:600;line-height:1.25}
+  .tk-ligne .m{font-size:17px;white-space:nowrap;font-variant-numeric:tabular-nums}
+  .tk-ligne .pu{display:block;font-size:13.5px;font-weight:400;color:#666}
+  .tk-retire{
+    margin-top:14px;padding:10px 12px;border-radius:6px;background:#fbe9e7;
+    color:#8a2c1b;font-size:15px;line-height:1.4;
+  }
+  .tk-retire s{opacity:.8}
+  .tk-total{
+    margin-top:16px;padding-top:12px;border-top:2px dashed #999;
+    display:flex;justify-content:space-between;align-items:baseline;gap:12px;
+  }
+  .tk-total .lib{font-size:15px;color:#444}
+  .tk-total .lib b{display:block;font-size:19px;color:#111}
+  .tk-total .somme{font-size:38px;font-weight:800;font-variant-numeric:tabular-nums}
+  .tk-bas{margin:14px 0 0;font-size:14.5px;line-height:1.45;color:#555;text-align:center}
+  .tk-actions{max-width:460px;margin:14px auto 0;display:flex;gap:10px;flex-wrap:wrap}
+  .tk-actions button{
+    flex:1 1 150px;min-height:52px;font:inherit;font-size:17px;font-weight:700;
+    border-radius:999px;cursor:pointer;touch-action:manipulation;
+  }
+  .tk-actions .retour-menu{background:var(--encre);color:var(--creme);border:none}
+  .tk-actions .vider{background:none;color:var(--encre);border:1px solid var(--trait)}
+  .tk-actions .vider.sur{background:#b3261e;border-color:#b3261e;color:#fff}
+
   /* Raccourci vers le paiement, distinct des rayons. */
   .rayons a.payer{background:var(--accent);border-color:var(--accent);color:var(--papier);font-weight:600}
 
@@ -214,9 +318,13 @@
   <img class="logo" src="logo.jpg" alt="Yoann's French Bakery">
   <h1>On the stall today</h1>
   <p class="sous">Yoann's French Bakery</p>
+  <p class="invite">Prepare your order here, then show your ticket to the baker
+    at the stall. It saves us both time and mistakes.
+    <span>Nothing is sent — you pay at the stall.</span></p>
 </header>
 
 <nav class="rayons" id="rayons" hidden></nav>
+
 
 <main id="menu">
   <div class="message">Loading the menu…</div>
@@ -233,6 +341,23 @@
   <div class="moyen" id="moyen"></div>
   <p class="astuce">Please show your payment confirmation at the stall.</p>
 </section>
+
+<div class="barre-commande" id="barre" hidden>
+  <button type="button" id="btnTicket">
+    <span class="n" id="barreN"></span>
+    <span>View my order</span>
+    <span class="t" id="barreT"></span>
+  </button>
+</div>
+
+<div class="ticket-fond" id="ticketFond" role="dialog" aria-modal="true"
+     aria-labelledby="tkEnseigne" hidden>
+  <div class="ticket" id="ticket"></div>
+  <div class="tk-actions">
+    <button type="button" class="retour-menu" id="tkRetour">Back to the menu</button>
+    <button type="button" class="vider" id="tkVider">Clear order</button>
+  </div>
+</div>
 
 <p class="pied">
   Prefer delivery? <a href="./">Order online</a> — baked to order, delivered Wednesday, Saturday and Sunday.
@@ -273,6 +398,42 @@ const ouverts = new Set();
 
 // Rubrique des produits hors boutique, toujours en dernier.
 const HORS_BOUTIQUE = "Also on the stall";
+
+/* ---------- Sélection du client ----------
+   id produit → quantité. Gardée sur l'appareil pour la journée : au-delà,
+   elle est oubliée (un menu de la veille n'a plus de sens). Tout accès au
+   stockage est protégé : navigateurs intégrés et navigation privée le
+   refusent parfois, la page doit marcher sans. */
+const CLE_SELECTION = "yfb-marche-commande";
+const QTE_MAX = 99;
+const panier = new Map();
+let numeroTicket = 0;
+
+function jourLocal() {
+  const d = new Date();
+  return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") +
+         "-" + String(d.getDate()).padStart(2, "0");
+}
+function lireSelection() {
+  try {
+    const d = JSON.parse(localStorage.getItem(CLE_SELECTION) || "null");
+    if (!d || d.jour !== jourLocal() || !d.qte) return;
+    Object.entries(d.qte).forEach(([id, n]) => {
+      n = Math.min(QTE_MAX, Math.floor(Number(n) || 0));
+      if (n > 0) panier.set(id, n);
+    });
+    numeroTicket = Number(d.num) || 0;
+  } catch (e) { /* stockage indisponible : on repart d'une sélection vide */ }
+}
+function ecrireSelection() {
+  try {
+    if (!panier.size) { localStorage.removeItem(CLE_SELECTION); return; }
+    localStorage.setItem(CLE_SELECTION, JSON.stringify({
+      jour: jourLocal(), num: numeroTicket, qte: Object.fromEntries(panier)
+    }));
+  } catch (e) { /* idem */ }
+}
+lireSelection();
 
 /* ---------- Catalogue : lu une fois ---------- */
 getDocs(collection(db, "boutique_produits"))
@@ -367,6 +528,8 @@ function afficher() {
     zone.appendChild(bloc);
   });
   marquerDepliables();
+  majBarre();
+  if (!$("ticketFond").hidden) dessinerTicket();   // la disponibilité a pu changer
 }
 
 /* Seules les lignes dont la description dépasse vraiment deviennent
@@ -436,12 +599,77 @@ function ligne(p) {
   }
   el.appendChild(texte);
 
+  const cote = document.createElement("div");
+  cote.className = "cote";
   const prix = document.createElement("div");
   prix.className = "prix";
   prix.textContent = peso(p.prix_vente || 0);
-  el.appendChild(prix);
+  cote.appendChild(prix);
+  if (!absent) cote.appendChild(controle(p));
+  el.appendChild(cote);
+  el.classList.toggle("choisi", !absent && panier.has(p.id));
 
   return el;
+}
+
+/* « Add » tant que rien n'est choisi, puis − quantité +. Le conteneur
+   arrête le clic : sinon il déplierait aussi la description de la ligne. */
+function controle(p) {
+  const n = panier.get(p.id) || 0;
+  const zone = document.createElement("div");
+  zone.className = "controle";
+  zone.onclick = (e) => e.stopPropagation();
+  zone.onkeydown = (e) => e.stopPropagation();
+
+  if (!n) {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "ajout";
+    b.textContent = "Add";
+    b.setAttribute("aria-label", "Add " + p.nom);
+    b.onclick = () => changerQte(p.id, +1);
+    zone.appendChild(b);
+    return zone;
+  }
+  zone.innerHTML = '<div class="qte">' +
+    '<button type="button" data-d="-1">−</button><output></output>' +
+    '<button type="button" data-d="1">+</button></div>';
+  zone.querySelector("output").textContent = n;
+  const [moins, plus] = zone.querySelectorAll("button");
+  moins.setAttribute("aria-label", "One less " + p.nom);
+  plus.setAttribute("aria-label", "One more " + p.nom);
+  moins.onclick = () => changerQte(p.id, -1);
+  plus.onclick = () => changerQte(p.id, +1);
+  plus.disabled = n >= QTE_MAX;
+  return zone;
+}
+
+function changerQte(id, delta) {
+  const n = Math.max(0, Math.min(QTE_MAX, (panier.get(id) || 0) + delta));
+  if (n) {
+    if (!panier.size) numeroTicket = 100 + Math.floor(Math.random() * 900);
+    panier.set(id, n);
+  } else {
+    panier.delete(id);
+    if (!panier.size) numeroTicket = 0;
+  }
+  ecrireSelection();
+
+  // Mise à jour sur place : redessiner tout le menu ferait sauter le défilement.
+  const el = document.querySelector('.produit[data-id="' + CSS.escape(id) + '"]');
+  const p = trouver(id);
+  if (el && p) {
+    el.querySelector(".controle").replaceWith(controle(p));
+    el.classList.toggle("choisi", panier.has(id));
+    // Le focus reste sur le bouton « + » pour enchaîner les ajouts.
+    const suite = el.querySelector(delta > 0 ? '.qte [data-d="1"]' : '.qte [data-d="1"], .ajout');
+    if (suite) suite.focus({ preventScroll: true });
+  }
+  majBarre();
+}
+
+function trouver(id) {
+  return (produits || []).find(p => p.id === id) || extras.find(p => p.id === id) || null;
 }
 
 /* Même recherche de photo que la vitrine : l'adresse saisie dans l'admin,
@@ -466,6 +694,151 @@ function photo(p) {
   cadre.appendChild(img);
   return cadre;
 }
+
+/* ============================================================
+   Barre du total et ticket
+   ============================================================ */
+
+const rayonAffiche = (p) => p.sansPhoto ? HORS_BOUTIQUE : rayonDe(p);
+
+/* Ce qui sera réellement servi. Un produit marqué absent depuis la sélection,
+   ou retiré du menu, ne compte plus et est signalé à part : le client ne doit
+   pas montrer au vendeur un ticket qu'il ne peut pas honorer. */
+function etatSelection() {
+  const valides = [], retirees = [];
+  panier.forEach((n, id) => {
+    const p = trouver(id);
+    if (p && !indispo.has(id)) valides.push({ p, n });
+    else retirees.push({ nom: p ? p.nom : id, n });
+  });
+  const total = valides.reduce((t, l) => t + l.n * (Number(l.p.prix_vente) || 0), 0);
+  const pieces = valides.reduce((t, l) => t + l.n, 0);
+  return { valides, retirees, total, pieces };
+}
+
+function majBarre() {
+  const e = etatSelection();
+  const visible = e.pieces > 0 && $("ticketFond").hidden;
+  $("barre").hidden = !(e.pieces > 0);
+  document.body.classList.toggle("avec-barre", e.pieces > 0);
+  $("barreN").textContent = e.pieces + (e.pieces > 1 ? " items" : " item");
+  $("barreT").textContent = peso(e.total);
+  if (!visible && !$("ticketFond").hidden) $("barre").hidden = true;
+}
+
+function echapper(t) {
+  return String(t).replace(/[&<>"']/g, c =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+function dessinerTicket() {
+  const e = etatSelection();
+  const rang = (r) => { const i = RAYONS.indexOf(r); return i === -1 ? 99 : i; };
+  const groupes = {};
+  e.valides.forEach(l => { const r = rayonAffiche(l.p); (groupes[r] = groupes[r] || []).push(l); });
+  const cles = Object.keys(groupes).sort((a, b) => {
+    if (a === HORS_BOUTIQUE) return 1;
+    if (b === HORS_BOUTIQUE) return -1;
+    return rang(a) - rang(b) || a.localeCompare(b);
+  });
+
+  const maintenant = new Date().toLocaleString("en-GB", {
+    weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit"
+  });
+
+  let h = '<div class="tk-tete">' +
+    '<p class="enseigne" id="tkEnseigne">Yoann\'s French Bakery</p>' +
+    '<p class="genre">Market order</p>' +
+    (numeroTicket ? '<p class="num">No. ' + numeroTicket + '</p>' : '') +
+    '<p class="quand">' + echapper(maintenant) + '</p></div>';
+
+  cles.forEach(cle => {
+    h += '<div class="tk-rayon">' + echapper(cle) + '</div>';
+    groupes[cle]
+      .sort((a, b) => a.p.nom.localeCompare(b.p.nom))
+      .forEach(({ p, n }) => {
+        const pu = Number(p.prix_vente) || 0;
+        h += '<div class="tk-ligne"><span class="q">' + n + ' ×</span>' +
+          '<span class="nom">' + echapper(p.nom) +
+          (n > 1 ? '<span class="pu">' + peso(pu) + ' each</span>' : '') + '</span>' +
+          '<span class="m">' + peso(n * pu) + '</span></div>';
+      });
+  });
+
+  if (e.retirees.length) {
+    h += '<div class="tk-retire"><b>No longer available today:</b> ' +
+      e.retirees.map(r => '<s>' + r.n + ' × ' + echapper(r.nom) + '</s>').join(", ") +
+      '<br>These are not included in the total.</div>';
+  }
+
+  h += '<div class="tk-total"><span class="lib"><b>TOTAL</b>' +
+    e.pieces + (e.pieces > 1 ? " items" : " item") + '</span>' +
+    '<span class="somme">' + peso(e.total) + '</span></div>' +
+    '<p class="tk-bas">Show this ticket to the baker and pay at the stall.<br>' +
+    'Nothing has been sent — this page is only your list.</p>';
+
+  $("ticket").innerHTML = h;
+}
+
+let verrouEcran = null;
+async function garderEcranAllume() {
+  try {
+    if ("wakeLock" in navigator) verrouEcran = await navigator.wakeLock.request("screen");
+  } catch (e) { /* refusé (économie d'énergie) : sans conséquence */ }
+}
+function lacherEcran() {
+  try { if (verrouEcran) verrouEcran.release(); } catch (e) {}
+  verrouEcran = null;
+}
+
+function ouvrirTicket() {
+  if (!etatSelection().pieces) return;
+  dessinerTicket();
+  confirmerVider(false);
+  $("ticketFond").hidden = false;
+  $("ticketFond").scrollTop = 0;
+  document.body.classList.add("ticket-ouvert");
+  $("barre").hidden = true;
+  garderEcranAllume();
+  $("tkRetour").focus({ preventScroll: true });
+}
+function fermerTicket() {
+  $("ticketFond").hidden = true;
+  document.body.classList.remove("ticket-ouvert");
+  lacherEcran();
+  majBarre();
+  $("btnTicket").focus({ preventScroll: true });
+}
+
+/* Vider la sélection demande un second toucher : sur un téléphone, c'est un
+   doigt qui glisse, et on ne perd pas une commande de vingt lignes pour ça.
+   Pas de fenêtre de confirmation du navigateur : elle bloque certaines
+   pages intégrées. */
+let delaiVider;
+function confirmerVider(actif) {
+  const b = $("tkVider");
+  clearTimeout(delaiVider);
+  b.classList.toggle("sur", actif);
+  b.textContent = actif ? "Tap again to clear" : "Clear order";
+  if (actif) delaiVider = setTimeout(() => confirmerVider(false), 4000);
+}
+$("tkVider").onclick = () => {
+  if (!$("tkVider").classList.contains("sur")) return confirmerVider(true);
+  panier.clear();
+  numeroTicket = 0;
+  ecrireSelection();
+  fermerTicket();
+  afficher();   // les contrôles repartent à « Add »
+};
+$("btnTicket").onclick = ouvrirTicket;
+$("tkRetour").onclick = fermerTicket;
+document.addEventListener("keydown", (ev) => {
+  if (ev.key === "Escape" && !$("ticketFond").hidden) fermerTicket();
+});
+// Le verrou d'écran saute quand l'onglet passe en arrière-plan : on le reprend.
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden && !$("ticketFond").hidden) garderEcranAllume();
+});
 
 /* ============================================================
    Paiement
